@@ -1,6 +1,6 @@
 # rtdl
 1. Install Go (go@1.17)
-2. In `./ingest`, `go mod init rtlake/ingest-service`
+2. In `./ingest`, `go mod init rtdl/ingest-service`
 3. Write `ingest-service.go`
 4. `go get github.com/gin-gonic/gin@v1.7.2`
 5. `go mod tidy`
