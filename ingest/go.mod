@@ -1,4 +1,4 @@
-module rtlake/ingest-service
+module rtdl/ingest-service
 
 go 1.17
 
