@@ -18,10 +18,15 @@
 4. [DockerSlim](https://dockersl.im/) - small, fast Docker images
 
 ## Hive Metastore
-1. [GH](https://github.com/arempter/hive-metastore-docker)
+1. **Use this one** [GH](https://github.com/arempter/hive-metastore-docker)
 2. [GH](https://github.com/IBM/docker-hive)
 3. [I built a working Hadoop-Spark-Hive cluster on Docker. Here is how.](https://marcel-jan.eu/datablog/2020/10/25/i-built-a-working-hadoop-spark-hive-cluster-on-docker-here-is-how/)
-4. [Old but gold: implementing a Hive Metastore Infrastructure](https://medium.com/quintoandar-tech-blog/old-but-gold-implementing-a-hive-metastore-infrastructure-225a8056fea8)
+    * [docker-compose](https://github.com/Marcel-Jan/docker-hadoop-spark/blob/master/docker-compose.yml)
+4. Big Data Europe
+    * [Hive Docker image](https://hub.docker.com/r/bde2020/hive)
+    * [Hive Metastore Docker image](https://hub.docker.com/layers/bde2020/hive/2.1.0-postgresql-metastore/images/sha256-c08e4c07c5d670ccfed2fc5123b2fe536d3678347f65f46629b8d2d98564c1d5?context=explore)
+    * [Hive Docker GH repo](https://github.com/big-data-europe/docker-hive)
+5. [Old but gold: implementing a Hive Metastore Infrastructure](https://medium.com/quintoandar-tech-blog/old-but-gold-implementing-a-hive-metastore-infrastructure-225a8056fea8)
 
 ## Flink
 1. [Docker Hub](https://hub.docker.com/_/flink)

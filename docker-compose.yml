@@ -1,0 +1,32 @@
+version: "2"
+
+services:
+  mariadb:
+    image: mariadb:latest
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+      MYSQL_DATABASE: metastore_db
+
+  hive-metastore:
+    build:
+      context: .
+      dockerfile: ./hive-metastore/Dockerfile
+    image: hive-metastore:latest
+    ports:
+    - 9083:9083
+    depends_on:
+      - mariadb
+
+  ingest:
+    build:
+      context: .
+      dockerfile: ./ingest/Dockerfile
+    image: rtdl-ingest:latest
+    ports:
+    - 8080:8080
+    depends_on:
+      - hive-metastore
