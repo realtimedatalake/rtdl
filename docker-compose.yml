@@ -1,31 +1,39 @@
-version: "2"
+version: '2'
 
 services:
-  mariadb:
-    image: mariadb:latest
+  yugabyte:
+    image: yugabytedb/yugabyte:latest
+    container_name: rtdl_yugabyte
+    volumes:
+      - '~/yb_data:/home/yugabyte/var'
+    command: ["bin/yugabyted", "start", "--daemon=false"]
     ports:
-      - 3306:3306
+      - 7000:7000
+      - 9000:9000
+      - 5433:5433
+      - 9042:9042
     environment:
-      MYSQL_ROOT_PASSWORD: admin
-      MYSQL_USER: admin
-      MYSQL_PASSWORD: admin
-      MYSQL_DATABASE: metastore_db
+      - YSQL_USER=admin
+      - YSQL_PASSWORD=admin
+      - YSQL_DATABASE=metastore_db
 
   hive-metastore:
     build:
       context: .
       dockerfile: ./hive-metastore/Dockerfile
     image: hive-metastore:latest
+    container_name: rtdl_hive-metastore
     ports:
     - 9083:9083
     depends_on:
-      - mariadb
+      - yugabyte
 
   ingest:
     build:
       context: .
       dockerfile: ./ingest/Dockerfile
     image: rtdl-ingest:latest
+    container_name: rtdl_ingest
     ports:
     - 8080:8080
     depends_on:

@@ -19,14 +19,17 @@
 
 ## Hive Metastore
 1. **Use this one** [GH](https://github.com/arempter/hive-metastore-docker)
-2. [GH](https://github.com/IBM/docker-hive)
-3. [I built a working Hadoop-Spark-Hive cluster on Docker. Here is how.](https://marcel-jan.eu/datablog/2020/10/25/i-built-a-working-hadoop-spark-hive-cluster-on-docker-here-is-how/)
+2. [Hive Metastore Standalone Admin Manual](https://cwiki.apache.org/confluence/display/Hive/AdminManual+Metastore+3.0+Administration)
+3. [YBDB JDBC Driver docs](https://docs.yugabyte.com/latest/integrations/jdbc-driver/)
+4. [SO Metastore WH directory](https://stackoverflow.com/questions/30518130/how-to-set-hive-metastore-warehouse-dir-in-hivecontext)
+5. [GH](https://github.com/IBM/docker-hive)
+6. [I built a working Hadoop-Spark-Hive cluster on Docker. Here is how.](https://marcel-jan.eu/datablog/2020/10/25/i-built-a-working-hadoop-spark-hive-cluster-on-docker-here-is-how/)
     * [docker-compose](https://github.com/Marcel-Jan/docker-hadoop-spark/blob/master/docker-compose.yml)
-4. Big Data Europe
+7. Big Data Europe
     * [Hive Docker image](https://hub.docker.com/r/bde2020/hive)
     * [Hive Metastore Docker image](https://hub.docker.com/layers/bde2020/hive/2.1.0-postgresql-metastore/images/sha256-c08e4c07c5d670ccfed2fc5123b2fe536d3678347f65f46629b8d2d98564c1d5?context=explore)
     * [Hive Docker GH repo](https://github.com/big-data-europe/docker-hive)
-5. [Old but gold: implementing a Hive Metastore Infrastructure](https://medium.com/quintoandar-tech-blog/old-but-gold-implementing-a-hive-metastore-infrastructure-225a8056fea8)
+8. [Old but gold: implementing a Hive Metastore Infrastructure](https://medium.com/quintoandar-tech-blog/old-but-gold-implementing-a-hive-metastore-infrastructure-225a8056fea8)
 
 ## Flink
 1. [Docker Hub](https://hub.docker.com/_/flink)
