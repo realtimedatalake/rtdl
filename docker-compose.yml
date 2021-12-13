@@ -5,8 +5,8 @@ services:
     image: yugabytedb/yugabyte:latest
     container_name: rtdl_yugabyte
     volumes:
-      - '~/yb_data:/home/yugabyte/var'
-    command: ["bin/yugabyted", "start", "--daemon=false"]
+      - '~/yb_data:/home/yugabyte/yb_data'
+    command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
     ports:
       - 7000:7000
       - 9000:9000
@@ -15,12 +15,11 @@ services:
     environment:
       - YSQL_USER=admin
       - YSQL_PASSWORD=admin
-      - YSQL_DATABASE=metastore_db
+      - YSQL_DB=metastore_db
 
   hive-metastore:
     build:
-      context: .
-      dockerfile: ./hive-metastore/Dockerfile
+      context: ./hive-metastore
     image: hive-metastore:latest
     container_name: rtdl_hive-metastore
     ports:
@@ -28,13 +27,12 @@ services:
     depends_on:
       - yugabyte
 
-  ingest:
-    build:
-      context: .
-      dockerfile: ./ingest/Dockerfile
-    image: rtdl-ingest:latest
-    container_name: rtdl_ingest
-    ports:
-    - 8080:8080
-    depends_on:
-      - hive-metastore
+#  ingest:
+#    build:
+#      context: ./ingest
+#    image: rtdl-ingest:latest
+#    container_name: rtdl_ingest
+#    ports:
+#    - 8080:8080
+#    depends_on:
+#      - hive-metastore
