@@ -1,10 +1,4 @@
 <configuration>
-    <!-- for aws s3
-    <property>
-        <name>metastore.warehouse.dir</name>
-        <value>s3a://spark/warehouse/</value>
-    </property>
-    -->
     <property>
         <name>metastore.thrift.uris</name>
         <value>thrift://0.0.0.0:9083</value>
@@ -12,7 +6,7 @@
     </property>
     <property>
         <name>metastore.task.threads.always</name>
-        <value>org.apache.hadoop.hive.metastore.events.EventCleanerTask,org.apache.hadoop.hive.metastore.MaterializationsCacheCleanerTask</value>
+        <value>org.apache.hadoop.hive.metastore.events.EventCleanerTask</value>
     </property>
     <property>
         <name>metastore.expression.proxy</name>
@@ -25,18 +19,24 @@
     </property>
     <property>
         <name>javax.jdo.option.ConnectionURL</name>
-        <value>jdbc:postgresql://localhost:5433/metastore_db</value>
+        <value>jdbc:postgresql://yugabyte:5433/metastore_db</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionUserName</name>
-        <value>admin</value>
+        <value>metastore</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionPassword</name>
-        <value>admin</value>
+        <value>metastore</value>
     </property>
 
 <!-- for aws s3
+    <property>
+        <name>metastore.warehouse.dir</name>
+        <value>s3a://spark/warehouse/</value>
+    </property>
+    -->
+<!-- for aws s3 w/ minio
     <property>
         <name>fs.s3a.access.key</name>
         <value>accesskey</value>
