@@ -13,27 +13,30 @@ services:
       - 5433:5433
       - 9042:9042
 
-  hive-metastore-database-init:
-    build:
-      context: ./hive-metastore-database-init
-    image: hive-metastore-database-init:latest
-    container_name: rtdl_hive-metastore-database-init
-    depends_on:
-      - yugabyte
-    links:
-      - yugabyte
-
-  # hive-metastore:
+  # Uncomment on first run
+  # hive-metastore-database-init:
   #   build:
-  #     context: ./hive-metastore
-  #   image: hive-metastore:latest
-  #   container_name: rtdl_hive-metastore
-  #   ports:
-  #   - 9083:9083
+  #     context: ./hive-metastore-database-init
+  #   image: hive-metastore-database-init:latest
+  #   container_name: rtdl_hive-metastore-database-init
   #   depends_on:
   #     - yugabyte
   #   links:
   #     - yugabyte
+
+  # Comment out on first run
+  hive-metastore:
+    build:
+      context: ./hive-metastore
+    image: hive-metastore:latest
+    container_name: rtdl_hive-metastore
+    ports:
+    - 9083:9083
+    depends_on:
+      - yugabyte
+      - hive-metastore-database-init
+    links:
+      - yugabyte
 
   # ingest:
   #   build:
