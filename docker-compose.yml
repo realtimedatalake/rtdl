@@ -6,7 +6,6 @@ services:
     container_name: rtdl_yugabyte
     volumes:
       - ./yb_data:/home/yugabyte/yb_data
-      - ./hive-metastore/scripts/database:/startup-scripts
     command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
     ports:
       - 7000:7000
@@ -14,17 +13,27 @@ services:
       - 5433:5433
       - 9042:9042
 
-  hive-metastore:
+  hive-metastore-database-init:
     build:
-      context: ./hive-metastore
-    image: hive-metastore:latest
-    container_name: rtdl_hive-metastore
-    ports:
-    - 9083:9083
+      context: ./hive-metastore-database-init
+    image: hive-metastore-database-init:latest
+    container_name: rtdl_hive-metastore-database-init
     depends_on:
       - yugabyte
     links:
       - yugabyte
+
+  # hive-metastore:
+  #   build:
+  #     context: ./hive-metastore
+  #   image: hive-metastore:latest
+  #   container_name: rtdl_hive-metastore
+  #   ports:
+  #   - 9083:9083
+  #   depends_on:
+  #     - yugabyte
+  #   links:
+  #     - yugabyte
 
   # ingest:
   #   build:
