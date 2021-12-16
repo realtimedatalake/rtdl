@@ -1,3 +1,13 @@
+# Steps to run
+1. Run `docker compose -f docker-compose.run-01.yml up`.
+2. After the container `rtdl_hive-metastore-database-init` exits with code 0, kill and delete the rtdl container set and the `hive-metastore-database-init` image.
+    * `docker container rm rtdl_hive-metastore-database-init rtdl_yugabyte-hive-metastore`
+    * `docker image rm hive-metastore-database-init`
+3. Run `docker compose -f docker-compose.run-02.yml up`.
+4. After the `schemaTool` completes running in the `rtdl_hive-metastore` container, kill and delete the rtdl container set.
+    * `docker container rm rtdl_yugabyte-hive-metastore rtdl_hive-metastore`
+5. Run `docker compose up` every time after.
+
 # rtdl
 1. Install Go (go@1.17)
 2. In `./ingest`, `go mod init rtdl/ingest-service`

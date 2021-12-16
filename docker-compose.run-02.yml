@@ -30,13 +30,3 @@ services:
         condition: service_healthy
     links:
       - yugabyte
-
-  # ingest:
-  #   build:
-  #     context: ./ingest
-  #   image: rtdl-ingest:latest
-  #   container_name: rtdl_ingest
-  #   ports:
-  #   - 8080:8080
-  #   depends_on:
-  #     - hive-metastore

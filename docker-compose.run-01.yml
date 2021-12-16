@@ -18,25 +18,13 @@ services:
         timeout: 3s
         retries: 10
 
-  hive-metastore:
+  hive-metastore-database-init:
     build:
-      context: ./hive-metastore
-    image: hive-metastore:latest
-    container_name: rtdl_hive-metastore
-    ports:
-    - 9083:9083
+      context: ./hive-metastore-database-init
+    image: hive-metastore-database-init:latest
+    container_name: rtdl_hive-metastore-database-init
     depends_on:
       yugabyte:
         condition: service_healthy
     links:
       - yugabyte
-
-  # ingest:
-  #   build:
-  #     context: ./ingest
-  #   image: rtdl-ingest:latest
-  #   container_name: rtdl_ingest
-  #   ports:
-  #   - 8080:8080
-  #   depends_on:
-  #     - hive-metastore
