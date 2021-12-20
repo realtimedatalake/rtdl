@@ -9,11 +9,18 @@
 5. Run `docker compose up` every time after.
 
 # rtdl
-1. Install Go (go@1.17)
-2. In `./ingest`, `go mod init rtdl/ingest-service`
-3. Write `ingest-service.go`
-4. `go get github.com/gin-gonic/gin@v1.7.2`
-5. `go mod tidy`
+1. Install OpenJDK 11 (via homebrew), [Quarkus](https://quarkus.io/get-started/),
+2. run
+    ```
+    ./mvnw package -Pnative \
+    -Dquarkus.native.container-build=true \
+    -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:21.3-java11 \
+    -Dquarkus.container-image.build=true \
+    -Dquarkus.container-image.name=rtdl/rtdl-ingest \
+    -Dquarkus.container-image.tag=0.0.1 \
+    -Dquarkus.container-image.additional-tags=latest
+    ```
+3. a
 
 # General Reading
 1. [An Introduction to Big Data Architectures](https://www.quastor.org/p/an-introduction-to-big-data-architectures)
