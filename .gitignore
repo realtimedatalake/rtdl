@@ -12,4 +12,4 @@
 *.out
 
 # Database data directory
-catalog-db_data/
+rtdl-catalog-db_data/
