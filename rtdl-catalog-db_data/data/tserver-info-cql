@@ -1,0 +1,30 @@
+{
+    "node_instance": {
+        "permanent_uuid": "0002331a981242cbbb199827b5bb183f",
+        "instance_seqno": 1640121342965419,
+        "start_time_us": 1640121342965419
+    },
+    "bound_rpc_addresses": [
+        {
+            "host": "0.0.0.0",
+            "port": 9042
+        }
+    ],
+    "bound_http_addresses": [
+        {
+            "host": "0.0.0.0",
+            "port": 12000
+        }
+    ],
+    "version_info": {
+        "git_hash": "a2bc4e912a985bfa9f389c1e98b6acf9837a6404",
+        "build_hostname": "centos-gcp-cloud-jenkins-worker-iz0610",
+        "build_timestamp": "19 Oct 2021 05:59:35 UTC",
+        "build_username": "jenkins",
+        "build_clean_repo": true,
+        "build_id": "3237",
+        "build_type": "RELEASE",
+        "version_number": "2.9.1.0",
+        "build_number": "140"
+    }
+}

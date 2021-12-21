@@ -28,11 +28,8 @@ ENV HIVE_HOME=/opt/apache-hive-metastore-${METASTORE_VERSION}-bin
 COPY --from=builder ${HIVE_HOME} ${HIVE_HOME}
 COPY --from=builder ${HADOOP_HOME} ${HADOOP_HOME}
 COPY /conf/metastore-site.xml ${HIVE_HOME}/conf
-COPY /scripts/entrypoint.sh /entrypoint.sh
 RUN groupadd -r hive --gid=1000 && \
     useradd -r -g hive --uid=1000 -d ${HIVE_HOME} hive && \
-    chown hive:hive -R ${HIVE_HOME} && \
-    chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh
+    chown hive:hive -R ${HIVE_HOME}
 USER hive
 EXPOSE 9083
-ENTRYPOINT ["sh", "-c", "/entrypoint.sh"]

@@ -1,0 +1,10 @@
+2021-12-21 21:08:52.404 UTC [189] LOG:  database system was interrupted; last known up at 2021-12-21 18:53:00 UTC
+I1221 21:08:52.423418   190 webserver.cc:172] Starting webserver on 0.0.0.0:13000
+I1221 21:08:52.423826   190 webserver.cc:177] Document root: /home/yugabyte/www
+I1221 21:08:52.424444   190 webserver.cc:167] Webserver listen spec is 0.0.0.0:13000
+I1221 21:08:52.426831   190 webserver.cc:266] Webserver started. Bound to: http://0.0.0.0:13000/
+2021-12-21 21:08:52.643 UTC [189] LOG:  database system was not properly shut down; automatic recovery in progress
+2021-12-21 21:08:52.649 UTC [189] LOG:  redo starts at 0/10001B0
+2021-12-21 21:08:52.649 UTC [189] LOG:  invalid record length at 0/1000258: wanted 24, got 0
+2021-12-21 21:08:52.649 UTC [189] LOG:  redo done at 0/10001E8
+2021-12-21 21:08:52.710 UTC [176] LOG:  database system is ready to accept connections

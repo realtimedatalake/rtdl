@@ -19,40 +19,14 @@
     </property>
     <property>
         <name>javax.jdo.option.ConnectionURL</name>
-        <value>jdbc:postgresql://catalog-db:5433/metastore_db</value>
+        <value>jdbc:postgresql://catalog-db:5433/rtdl_catalog_db</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionUserName</name>
-        <value>metastore</value>
+        <value>rtdl</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionPassword</name>
-        <value>metastore</value>
+        <value>rtdl</value>
     </property>
-
-<!-- for aws s3
-    <property>
-        <name>metastore.warehouse.dir</name>
-        <value>s3a://spark/warehouse/</value>
-    </property>
-    -->
-<!-- for aws s3 w/ minio
-    <property>
-        <name>fs.s3a.access.key</name>
-        <value>accesskey</value>
-    </property>
-    <property>
-        <name>fs.s3a.secret.key</name>
-        <value>secretkey</value>
-    </property>
-    <property>
-        <name>fs.s3a.endpoint</name>
-        <value>http://minio:9000</value>
-    </property>
-    <property>
-        <name>fs.s3a.path.style.access</name>
-        <value>true</value>
-    </property>
--->
-
 </configuration>

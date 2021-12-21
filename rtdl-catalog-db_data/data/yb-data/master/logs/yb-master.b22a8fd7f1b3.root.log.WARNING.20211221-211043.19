@@ -1,0 +1,16 @@
+Log file created at: 2021/12/21 21:10:43
+Running on machine: b22a8fd7f1b3
+Application fingerprint: version 2.9.1.0 build 140 revision a2bc4e912a985bfa9f389c1e98b6acf9837a6404 build_type RELEASE built at 19 Oct 2021 05:59:35 UTC
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W1221 21:10:43.292743    31 master.cc:197] Failed to get current config: Illegal state (yb/master/catalog_manager.cc:9110): Node f1092e5068764223b67815e9c93a25cb peer not initialized.
+W1221 21:10:43.447127    45 env.h:611] Failed to pre-allocate space for a file: IO error (yb/rocksdb/util/io_posix.cc:481): /home/yugabyte/yb_data/data/yb-data/master/data/rocksdb/table-sys.catalog.uuid/tablet-00000000000000000000000000000000/MANIFEST-000027: Operation not supported
+W1221 21:10:43.509539    45 env.h:611] Failed to pre-allocate space for a file: IO error (yb/rocksdb/util/io_posix.cc:481): /home/yugabyte/yb_data/data/yb-data/master/data/rocksdb/table-sys.catalog.uuid/tablet-00000000000000000000000000000000.intents/MANIFEST-000015: Operation not supported
+W1221 21:10:43.594611    45 log_util.cc:221] Could not read footer for segment: /home/yugabyte/yb_data/data/yb-data/master/wals/table-sys.catalog.uuid/tablet-00000000000000000000000000000000/wal-000000005: Not found (yb/consensus/log_util.cc:463): Footer not found. Footer magic doesn't match
+W1221 21:10:43.595865    45 log_reader.cc:188] T 00000000000000000000000000000000 P f1092e5068764223b67815e9c93a25cb: Log segment /home/yugabyte/yb_data/data/yb-data/master/wals/table-sys.catalog.uuid/tablet-00000000000000000000000000000000/wal-000000005 was likely left in-progress after a previous crash. Will try to rebuild footer by scanning data.
+W1221 21:10:43.909621    45 log_util.cc:221] Could not read footer for segment: /home/yugabyte/yb_data/data/yb-data/master/wals/table-sys.catalog.uuid/tablet-00000000000000000000000000000000/wal-000000006: Not found (yb/consensus/log_util.cc:463): Footer not found. Footer magic doesn't match
+W1221 21:10:43.911010    45 log_reader.cc:188] T 00000000000000000000000000000000 P f1092e5068764223b67815e9c93a25cb: Log segment /home/yugabyte/yb_data/data/yb-data/master/wals/table-sys.catalog.uuid/tablet-00000000000000000000000000000000/wal-000000006 was likely left in-progress after a previous crash. Will try to rebuild footer by scanning data.
+W1221 21:10:44.712435    45 remove_intents_task.cc:54] Remove intents task failed: Aborted (yb/tablet/tablet_peer.cc:1258): Thread pool not ready
+W1221 21:10:45.925849    76 catalog_manager_bg_tasks.cc:112] Catalog manager background task thread going to sleep: Service unavailable (yb/master/scoped_leader_shared_lock.cc:83): Catalog manager is not initialized. State: 1
+W1221 21:10:49.958516    95 catalog_manager.cc:843] Time spent T 00000000000000000000000000000000 P f1092e5068764223b67815e9c93a25cb: Loading metadata into memory: real 1.360s	user 0.162s	sys 0.079s
+W1221 21:10:53.890386    89 catalog_manager.cc:5920] T 00000000000000000000000000000000 P f1092e5068764223b67815e9c93a25cb: Invalid tablet report from 0002331a981242cbbb199827b5bb183f: Received an incremental tablet report when a full one was needed

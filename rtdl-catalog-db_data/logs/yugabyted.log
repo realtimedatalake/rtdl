@@ -1,0 +1,280 @@
+[yugabyted start] 2021-12-21 18:52:31,594 INFO:  | 0.0s | cmd = start using config file: /home/yugabyte/yb_data/conf/yugabyted.conf (args.config=None)
+[yugabyted start] 2021-12-21 18:52:31,596 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-admin
+[yugabyted start] 2021-12-21 18:52:31,597 INFO:  | 0.0s | Starting yugabyted...
+[yugabyted start] 2021-12-21 18:52:31,600 INFO:  | 0.0s | yugabyted started running with PID 1.
+[yugabyted start] 2021-12-21 18:52:31,602 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-master
+[yugabyted start] 2021-12-21 18:52:31,603 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-tserver
+[yugabyted start] 2021-12-21 18:52:31,608 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file post_install.sh
+[yugabyted start] 2021-12-21 18:52:31,610 INFO:  | 0.0s | Running the post-installation script /home/yugabyte/bin/post_install.sh (may be a no-op)
+[yugabyted start] 2021-12-21 18:52:31,623 INFO:  | 0.1s | Successfully ran the post-installation script.
+[yugabyted start] 2021-12-21 18:52:31,633 INFO:  | 0.1s | About to start master with cmd /home/yugabyte/bin/yb-master --stop_on_parent_termination --undefok=stop_on_parent_termination --fs_data_dirs=/home/yugabyte/yb_data/data --webserver_interface=0.0.0.0 --metrics_snapshotter_tserver_metrics_whitelist=handler_latency_yb_tserver_TabletServerService_Read_count,handler_latency_yb_tserver_TabletServerService_Write_count,handler_latency_yb_tserver_TabletServerService_Read_sum,handler_latency_yb_tserver_TabletServerService_Write_sum,disk_usage,cpu_usage,node_up --yb_num_shards_per_tserver=1 --ysql_num_shards_per_tserver=1 --cluster_uuid=25696d6f-d48a-4a5e-a491-fb775aa5d84d --rpc_bind_addresses=127.0.0.1:7100 --server_broadcast_addresses=127.0.0.1:7100 --replication_factor=1 --use_initial_sys_catalog_snapshot --server_dump_info_path=/home/yugabyte/yb_data/data/master-info --master_enable_metrics_snapshotter=true --webserver_port=7000 --default_memory_limit_to_ram_ratio=0.35 --instance_uuid_override=f1092e5068764223b67815e9c93a25cb --master_addresses=127.0.0.1:7100
+[yugabyted start] 2021-12-21 18:52:31,645 INFO:  | 0.1s | master started running with PID 18.
+[yugabyted start] 2021-12-21 18:52:31,652 INFO:  | 0.1s | Waiting for master
+[yugabyted start] 2021-12-21 18:52:31,664 INFO:  | 0.1s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 18:52:31,935 INFO:  | 0.4s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 18:52:32,439 INFO:  | 0.9s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 18:52:46,354 INFO:  | 14.8s | run_process returned 0: 
+OUT >>
+Master UUID                      	RPC Host/Port        	State    	Role
+f1092e5068764223b67815e9c93a25cb 	127.0.0.1:7100       	ALIVE    	LEADER
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 18:52:46,356 INFO:  | 14.8s | Querying for all masters in cluster
+[yugabyted start] 2021-12-21 18:52:46,357 INFO:  | 14.8s | Waiting to get the full master addrs list from master
+[yugabyted start] 2021-12-21 18:52:46,361 INFO:  | 14.8s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 18:52:46,548 INFO:  | 15.0s | run_process returned 0: 
+OUT >>
+Master UUID                      	RPC Host/Port        	State    	Role
+f1092e5068764223b67815e9c93a25cb 	127.0.0.1:7100       	ALIVE    	LEADER
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 18:52:46,549 INFO:  | 15.0s | Got all masters: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 18:52:46,565 INFO:  | 15.0s | Got full master addrs list: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 18:52:46,566 INFO:  | 15.0s | Old master flag is: [u'--tserver_master_addrs=127.0.0.1:7100'] and new master flag is: --tserver_master_addrs=127.0.0.1:7100
+[yugabyted start] 2021-12-21 18:52:46,568 INFO:  | 15.0s | About to start tserver with cmd /home/yugabyte/bin/yb-tserver --stop_on_parent_termination --undefok=stop_on_parent_termination --fs_data_dirs=/home/yugabyte/yb_data/data --webserver_interface=0.0.0.0 --metrics_snapshotter_tserver_metrics_whitelist=handler_latency_yb_tserver_TabletServerService_Read_count,handler_latency_yb_tserver_TabletServerService_Write_count,handler_latency_yb_tserver_TabletServerService_Read_sum,handler_latency_yb_tserver_TabletServerService_Write_sum,disk_usage,cpu_usage,node_up --yb_num_shards_per_tserver=1 --ysql_num_shards_per_tserver=1 --cluster_uuid=25696d6f-d48a-4a5e-a491-fb775aa5d84d --rpc_bind_addresses=0.0.0.0:9100 --server_broadcast_addresses=127.0.0.1:9100 --cql_proxy_bind_address=0.0.0.0:9042 --server_dump_info_path=/home/yugabyte/yb_data/data/tserver-info --start_pgsql_proxy --pgsql_proxy_bind_address=0.0.0.0:5433 --tserver_enable_metrics_snapshotter=true --metrics_snapshotter_interval_ms=11000 --webserver_port=9000 --default_memory_limit_to_ram_ratio=0.6 --instance_uuid_override=0002331a981242cbbb199827b5bb183f --start_redis_proxy=false --tserver_master_addrs=127.0.0.1:7100
+[yugabyted start] 2021-12-21 18:52:46,591 INFO:  | 15.0s | tserver started running with PID 98.
+[yugabyted start] 2021-12-21 18:52:46,605 INFO:  | 15.0s | Waiting for tserver ...
+[yugabyted start] 2021-12-21 18:52:46,617 INFO:  | 15.1s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_tablet_servers']
+[yugabyted start] 2021-12-21 18:52:46,936 INFO:  | 15.4s | run_process returned 0: 
+OUT >>
+Tablet Server UUID               RPC Host/Port Heartbeat delay Status   Reads/s  Writes/s Uptime   SST total size  SST uncomp size SST #files      Memory   
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 18:52:47,441 INFO:  | 15.9s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_tablet_servers']
+[yugabyted start] 2021-12-21 18:52:47,807 INFO:  | 16.2s | run_process returned 0: 
+OUT >>
+Tablet Server UUID               RPC Host/Port Heartbeat delay Status   Reads/s  Writes/s Uptime   SST total size  SST uncomp size SST #files      Memory   
+0002331a981242cbbb199827b5bb183f 8d62daecd75d:9100 0.20s           ALIVE    0.00     0.00     0        0 B             0 B             0               8.39 MB  
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 18:52:47,809 INFO:  | 16.2s | Found tserver uuid 0002331a981242cbbb199827b5bb183f in list of tserver uuids [u'0002331a981242cbbb199827b5bb183f'].
+[yugabyted start] 2021-12-21 18:52:47,810 INFO:  | 16.2s | Completed waiting for tserver.
+[yugabyted start] 2021-12-21 18:52:48,336 INFO:  | 16.8s | Waiting to get the full master addrs list from master
+[yugabyted start] 2021-12-21 18:52:48,337 INFO:  | 16.8s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 18:52:48,552 INFO:  | 17.0s | run_process returned 0: 
+OUT >>
+Master UUID                      	RPC Host/Port        	State    	Role
+f1092e5068764223b67815e9c93a25cb 	127.0.0.1:7100       	ALIVE    	LEADER
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 18:52:48,553 INFO:  | 17.0s | Got all masters: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 18:55:04,808 INFO:  | 153.2s | Callhome failed: <urlopen error [Errno 111] Connection refused>
+[yugabyted start] 2021-12-21 21:05:50,901 DEBUG: Received signal: 15
+[yugabyted start] 2021-12-21 21:05:50,902 INFO: Shutting down...
+[yugabyted start] 2021-12-21 21:05:50,917 INFO: yugabyted may not have terminated properly... Please check PGID 1.
+[yugabyted start] 2021-12-21 21:08:33,711 INFO:  | 0.0s | cmd = start using config file: /home/yugabyte/yb_data/conf/yugabyted.conf (args.config=None)
+[yugabyted start] 2021-12-21 21:08:33,712 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-admin
+[yugabyted start] 2021-12-21 21:08:33,714 INFO:  | 0.0s | Starting yugabyted...
+[yugabyted start] 2021-12-21 21:08:33,717 INFO:  | 0.0s | yugabyted started running with PID 1.
+[yugabyted start] 2021-12-21 21:08:33,719 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-master
+[yugabyted start] 2021-12-21 21:08:33,721 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-tserver
+[yugabyted start] 2021-12-21 21:08:33,726 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file post_install.sh
+[yugabyted start] 2021-12-21 21:08:33,728 INFO:  | 0.0s | Running the post-installation script /home/yugabyte/bin/post_install.sh (may be a no-op)
+[yugabyted start] 2021-12-21 21:08:33,745 INFO:  | 0.1s | Successfully ran the post-installation script.
+[yugabyted start] 2021-12-21 21:08:33,747 INFO:  | 0.1s | About to start master with cmd /home/yugabyte/bin/yb-master --stop_on_parent_termination --undefok=stop_on_parent_termination --fs_data_dirs=/home/yugabyte/yb_data/data --webserver_interface=0.0.0.0 --metrics_snapshotter_tserver_metrics_whitelist=handler_latency_yb_tserver_TabletServerService_Read_count,handler_latency_yb_tserver_TabletServerService_Write_count,handler_latency_yb_tserver_TabletServerService_Read_sum,handler_latency_yb_tserver_TabletServerService_Write_sum,disk_usage,cpu_usage,node_up --yb_num_shards_per_tserver=1 --ysql_num_shards_per_tserver=1 --cluster_uuid=25696d6f-d48a-4a5e-a491-fb775aa5d84d --rpc_bind_addresses=127.0.0.1:7100 --server_broadcast_addresses=127.0.0.1:7100 --replication_factor=1 --use_initial_sys_catalog_snapshot --server_dump_info_path=/home/yugabyte/yb_data/data/master-info --master_enable_metrics_snapshotter=true --webserver_port=7000 --default_memory_limit_to_ram_ratio=0.35 --instance_uuid_override=f1092e5068764223b67815e9c93a25cb --master_addresses=127.0.0.1:7100
+[yugabyted start] 2021-12-21 21:08:33,778 INFO:  | 0.1s | master started running with PID 21.
+[yugabyted start] 2021-12-21 21:08:33,784 INFO:  | 0.1s | Node was a member of some cluster before. Skipping master setup
+[yugabyted start] 2021-12-21 21:08:33,785 INFO:  | 0.1s | Querying for all masters in cluster
+[yugabyted start] 2021-12-21 21:08:33,786 INFO:  | 0.1s | Waiting to get the full master addrs list from master
+[yugabyted start] 2021-12-21 21:08:33,787 INFO:  | 0.1s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:08:34,088 INFO:  | 0.4s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:08:34,091 INFO:  | 0.4s | Got all masters: []
+[yugabyted start] 2021-12-21 21:08:34,594 INFO:  | 0.9s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:08:35,061 INFO:  | 1.4s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:08:35,065 INFO:  | 1.4s | Got all masters: []
+[yugabyted start] 2021-12-21 21:08:35,569 INFO:  | 1.9s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:08:35,824 INFO:  | 2.1s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:08:35,825 INFO:  | 2.1s | Got all masters: []
+[yugabyted start] 2021-12-21 21:08:36,306 INFO:  | 2.6s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:08:36,549 INFO:  | 2.9s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:08:36,551 INFO:  | 2.9s | Got all masters: []
+[yugabyted start] 2021-12-21 21:08:37,053 INFO:  | 3.4s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:08:42,461 INFO:  | 8.8s | run_process returned 0: 
+OUT >>
+Master UUID                      	RPC Host/Port        	State    	Role
+f1092e5068764223b67815e9c93a25cb 	127.0.0.1:7100       	ALIVE    	LEADER
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:08:42,463 INFO:  | 8.8s | Got all masters: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 21:08:42,464 INFO:  | 8.8s | Got full master addrs list: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 21:08:42,466 INFO:  | 8.8s | Old master flag is: [u'--tserver_master_addrs=127.0.0.1:7100'] and new master flag is: --tserver_master_addrs=127.0.0.1:7100
+[yugabyted start] 2021-12-21 21:08:42,470 INFO:  | 8.8s | About to start tserver with cmd /home/yugabyte/bin/yb-tserver --stop_on_parent_termination --undefok=stop_on_parent_termination --fs_data_dirs=/home/yugabyte/yb_data/data --webserver_interface=0.0.0.0 --metrics_snapshotter_tserver_metrics_whitelist=handler_latency_yb_tserver_TabletServerService_Read_count,handler_latency_yb_tserver_TabletServerService_Write_count,handler_latency_yb_tserver_TabletServerService_Read_sum,handler_latency_yb_tserver_TabletServerService_Write_sum,disk_usage,cpu_usage,node_up --yb_num_shards_per_tserver=1 --ysql_num_shards_per_tserver=1 --cluster_uuid=25696d6f-d48a-4a5e-a491-fb775aa5d84d --rpc_bind_addresses=0.0.0.0:9100 --server_broadcast_addresses=127.0.0.1:9100 --cql_proxy_bind_address=0.0.0.0:9042 --server_dump_info_path=/home/yugabyte/yb_data/data/tserver-info --start_pgsql_proxy --pgsql_proxy_bind_address=0.0.0.0:5433 --tserver_enable_metrics_snapshotter=true --metrics_snapshotter_interval_ms=11000 --webserver_port=9000 --default_memory_limit_to_ram_ratio=0.6 --instance_uuid_override=0002331a981242cbbb199827b5bb183f --start_redis_proxy=false --tserver_master_addrs=127.0.0.1:7100
+[yugabyted start] 2021-12-21 21:08:42,485 INFO:  | 8.8s | tserver started running with PID 99.
+[yugabyted start] 2021-12-21 21:08:42,494 INFO:  | 8.8s | Node was a member of some cluster before. Skipping tserver setup
+[yugabyted start] 2021-12-21 21:08:43,051 INFO:  | 9.4s | Waiting to get the full master addrs list from master
+[yugabyted start] 2021-12-21 21:08:43,058 INFO:  | 9.4s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:08:43,474 INFO:  | 9.8s | run_process returned 0: 
+OUT >>
+Master UUID                      	RPC Host/Port        	State    	Role
+f1092e5068764223b67815e9c93a25cb 	127.0.0.1:7100       	ALIVE    	LEADER
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:08:43,475 INFO:  | 9.8s | Got all masters: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 21:09:36,128 DEBUG:  | 62.4s | Received signal: 15
+[yugabyted start] 2021-12-21 21:09:36,129 INFO:  | 62.4s | Shutting down...
+[yugabyted start] 2021-12-21 21:09:36,152 INFO:  | 62.5s | yugabyted may not have terminated properly... Please check PGID 1.
+[yugabyted start] 2021-12-21 21:10:43,023 INFO:  | 0.0s | cmd = start using config file: /home/yugabyte/yb_data/conf/yugabyted.conf (args.config=None)
+[yugabyted start] 2021-12-21 21:10:43,024 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-admin
+[yugabyted start] 2021-12-21 21:10:43,026 INFO:  | 0.0s | Starting yugabyted...
+[yugabyted start] 2021-12-21 21:10:43,029 INFO:  | 0.0s | yugabyted started running with PID 1.
+[yugabyted start] 2021-12-21 21:10:43,031 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-master
+[yugabyted start] 2021-12-21 21:10:43,032 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-tserver
+[yugabyted start] 2021-12-21 21:10:43,038 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file post_install.sh
+[yugabyted start] 2021-12-21 21:10:43,039 INFO:  | 0.0s | Running the post-installation script /home/yugabyte/bin/post_install.sh (may be a no-op)
+[yugabyted start] 2021-12-21 21:10:43,057 INFO:  | 0.1s | Successfully ran the post-installation script.
+[yugabyted start] 2021-12-21 21:10:43,061 INFO:  | 0.1s | About to start master with cmd /home/yugabyte/bin/yb-master --stop_on_parent_termination --undefok=stop_on_parent_termination --fs_data_dirs=/home/yugabyte/yb_data/data --webserver_interface=0.0.0.0 --metrics_snapshotter_tserver_metrics_whitelist=handler_latency_yb_tserver_TabletServerService_Read_count,handler_latency_yb_tserver_TabletServerService_Write_count,handler_latency_yb_tserver_TabletServerService_Read_sum,handler_latency_yb_tserver_TabletServerService_Write_sum,disk_usage,cpu_usage,node_up --yb_num_shards_per_tserver=1 --ysql_num_shards_per_tserver=1 --cluster_uuid=25696d6f-d48a-4a5e-a491-fb775aa5d84d --rpc_bind_addresses=127.0.0.1:7100 --server_broadcast_addresses=127.0.0.1:7100 --replication_factor=1 --use_initial_sys_catalog_snapshot --server_dump_info_path=/home/yugabyte/yb_data/data/master-info --master_enable_metrics_snapshotter=true --webserver_port=7000 --default_memory_limit_to_ram_ratio=0.35 --instance_uuid_override=f1092e5068764223b67815e9c93a25cb --master_addresses=127.0.0.1:7100
+[yugabyted start] 2021-12-21 21:10:43,086 INFO:  | 0.1s | master started running with PID 19.
+[yugabyted start] 2021-12-21 21:10:43,094 INFO:  | 0.1s | Node was a member of some cluster before. Skipping master setup
+[yugabyted start] 2021-12-21 21:10:43,095 INFO:  | 0.1s | Querying for all masters in cluster
+[yugabyted start] 2021-12-21 21:10:43,096 INFO:  | 0.1s | Waiting to get the full master addrs list from master
+[yugabyted start] 2021-12-21 21:10:43,097 INFO:  | 0.1s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:10:43,362 INFO:  | 0.4s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:10:43,363 INFO:  | 0.4s | Got all masters: []
+[yugabyted start] 2021-12-21 21:10:43,865 INFO:  | 0.9s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:10:44,160 INFO:  | 1.2s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:10:44,162 INFO:  | 1.2s | Got all masters: []
+[yugabyted start] 2021-12-21 21:10:44,666 INFO:  | 1.7s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:10:44,895 INFO:  | 1.9s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:10:44,896 INFO:  | 1.9s | Got all masters: []
+[yugabyted start] 2021-12-21 21:10:45,398 INFO:  | 2.4s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:10:45,758 INFO:  | 2.8s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:10:45,759 INFO:  | 2.8s | Got all masters: []
+[yugabyted start] 2021-12-21 21:10:46,262 INFO:  | 3.3s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:10:49,972 INFO:  | 7.0s | run_process returned 0: 
+OUT >>
+Master UUID                      	RPC Host/Port        	State    	Role
+f1092e5068764223b67815e9c93a25cb 	127.0.0.1:7100       	ALIVE    	LEADER
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:10:49,974 INFO:  | 7.0s | Got all masters: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 21:10:49,975 INFO:  | 7.0s | Got full master addrs list: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 21:10:49,975 INFO:  | 7.0s | Old master flag is: [u'--tserver_master_addrs=127.0.0.1:7100'] and new master flag is: --tserver_master_addrs=127.0.0.1:7100
+[yugabyted start] 2021-12-21 21:10:49,978 INFO:  | 7.0s | About to start tserver with cmd /home/yugabyte/bin/yb-tserver --stop_on_parent_termination --undefok=stop_on_parent_termination --fs_data_dirs=/home/yugabyte/yb_data/data --webserver_interface=0.0.0.0 --metrics_snapshotter_tserver_metrics_whitelist=handler_latency_yb_tserver_TabletServerService_Read_count,handler_latency_yb_tserver_TabletServerService_Write_count,handler_latency_yb_tserver_TabletServerService_Read_sum,handler_latency_yb_tserver_TabletServerService_Write_sum,disk_usage,cpu_usage,node_up --yb_num_shards_per_tserver=1 --ysql_num_shards_per_tserver=1 --cluster_uuid=25696d6f-d48a-4a5e-a491-fb775aa5d84d --rpc_bind_addresses=0.0.0.0:9100 --server_broadcast_addresses=127.0.0.1:9100 --cql_proxy_bind_address=0.0.0.0:9042 --server_dump_info_path=/home/yugabyte/yb_data/data/tserver-info --start_pgsql_proxy --pgsql_proxy_bind_address=0.0.0.0:5433 --tserver_enable_metrics_snapshotter=true --metrics_snapshotter_interval_ms=11000 --webserver_port=9000 --default_memory_limit_to_ram_ratio=0.6 --instance_uuid_override=0002331a981242cbbb199827b5bb183f --start_redis_proxy=false --tserver_master_addrs=127.0.0.1:7100
+[yugabyted start] 2021-12-21 21:10:49,990 INFO:  | 7.0s | tserver started running with PID 97.
+[yugabyted start] 2021-12-21 21:10:49,995 INFO:  | 7.0s | Node was a member of some cluster before. Skipping tserver setup
+[yugabyted start] 2021-12-21 21:10:50,327 INFO:  | 7.3s | Waiting to get the full master addrs list from master
+[yugabyted start] 2021-12-21 21:10:50,329 INFO:  | 7.3s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:10:50,901 INFO:  | 7.9s | run_process returned 0: 
+OUT >>
+Master UUID                      	RPC Host/Port        	State    	Role
+f1092e5068764223b67815e9c93a25cb 	127.0.0.1:7100       	ALIVE    	LEADER
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:10:50,903 INFO:  | 7.9s | Got all masters: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 21:13:40,634 DEBUG:  | 177.6s | Received signal: 15
+[yugabyted start] 2021-12-21 21:13:40,635 INFO:  | 177.6s | Shutting down...
+[yugabyted start] 2021-12-21 21:13:40,704 INFO:  | 177.7s | yugabyted may not have terminated properly... Please check PGID 1.
+[yugabyted start] 2021-12-21 21:15:24,070 INFO:  | 0.0s | cmd = start using config file: /home/yugabyte/yb_data/conf/yugabyted.conf (args.config=None)
+[yugabyted start] 2021-12-21 21:15:24,071 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-admin
+[yugabyted start] 2021-12-21 21:15:24,073 INFO:  | 0.0s | Starting yugabyted...
+[yugabyted start] 2021-12-21 21:15:24,075 INFO:  | 0.0s | yugabyted started running with PID 1.
+[yugabyted start] 2021-12-21 21:15:24,078 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-master
+[yugabyted start] 2021-12-21 21:15:24,079 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file yb-tserver
+[yugabyted start] 2021-12-21 21:15:24,085 INFO:  | 0.0s | Found directory /home/yugabyte/bin for file post_install.sh
+[yugabyted start] 2021-12-21 21:15:24,086 INFO:  | 0.0s | Running the post-installation script /home/yugabyte/bin/post_install.sh (may be a no-op)
+[yugabyted start] 2021-12-21 21:15:24,099 INFO:  | 0.1s | Successfully ran the post-installation script.
+[yugabyted start] 2021-12-21 21:15:24,102 INFO:  | 0.1s | About to start master with cmd /home/yugabyte/bin/yb-master --stop_on_parent_termination --undefok=stop_on_parent_termination --fs_data_dirs=/home/yugabyte/yb_data/data --webserver_interface=0.0.0.0 --metrics_snapshotter_tserver_metrics_whitelist=handler_latency_yb_tserver_TabletServerService_Read_count,handler_latency_yb_tserver_TabletServerService_Write_count,handler_latency_yb_tserver_TabletServerService_Read_sum,handler_latency_yb_tserver_TabletServerService_Write_sum,disk_usage,cpu_usage,node_up --yb_num_shards_per_tserver=1 --ysql_num_shards_per_tserver=1 --cluster_uuid=25696d6f-d48a-4a5e-a491-fb775aa5d84d --rpc_bind_addresses=127.0.0.1:7100 --server_broadcast_addresses=127.0.0.1:7100 --replication_factor=1 --use_initial_sys_catalog_snapshot --server_dump_info_path=/home/yugabyte/yb_data/data/master-info --master_enable_metrics_snapshotter=true --webserver_port=7000 --default_memory_limit_to_ram_ratio=0.35 --instance_uuid_override=f1092e5068764223b67815e9c93a25cb --master_addresses=127.0.0.1:7100
+[yugabyted start] 2021-12-21 21:15:24,113 INFO:  | 0.1s | master started running with PID 17.
+[yugabyted start] 2021-12-21 21:15:24,118 INFO:  | 0.1s | Node was a member of some cluster before. Skipping master setup
+[yugabyted start] 2021-12-21 21:15:24,122 INFO:  | 0.1s | Querying for all masters in cluster
+[yugabyted start] 2021-12-21 21:15:24,126 INFO:  | 0.1s | Waiting to get the full master addrs list from master
+[yugabyted start] 2021-12-21 21:15:24,129 INFO:  | 0.1s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:15:24,378 INFO:  | 0.3s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:15:24,381 INFO:  | 0.3s | Got all masters: []
+[yugabyted start] 2021-12-21 21:15:24,883 INFO:  | 0.8s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:15:25,276 INFO:  | 1.2s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:15:25,281 INFO:  | 1.2s | Got all masters: []
+[yugabyted start] 2021-12-21 21:15:25,787 INFO:  | 1.7s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:15:26,044 INFO:  | 2.0s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:15:26,045 INFO:  | 2.0s | Got all masters: []
+[yugabyted start] 2021-12-21 21:15:26,547 INFO:  | 2.5s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:15:26,887 INFO:  | 2.8s | run_process returned 1: 
+OUT >>
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:15:26,889 INFO:  | 2.8s | Got all masters: []
+[yugabyted start] 2021-12-21 21:15:27,406 INFO:  | 3.4s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:15:33,550 INFO:  | 9.5s | run_process returned 0: 
+OUT >>
+Master UUID                      	RPC Host/Port        	State    	Role
+f1092e5068764223b67815e9c93a25cb 	127.0.0.1:7100       	ALIVE    	LEADER
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:15:33,551 INFO:  | 9.5s | Got all masters: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 21:15:33,552 INFO:  | 9.5s | Got full master addrs list: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 21:15:33,553 INFO:  | 9.5s | Old master flag is: [u'--tserver_master_addrs=127.0.0.1:7100'] and new master flag is: --tserver_master_addrs=127.0.0.1:7100
+[yugabyted start] 2021-12-21 21:15:33,555 INFO:  | 9.5s | About to start tserver with cmd /home/yugabyte/bin/yb-tserver --stop_on_parent_termination --undefok=stop_on_parent_termination --fs_data_dirs=/home/yugabyte/yb_data/data --webserver_interface=0.0.0.0 --metrics_snapshotter_tserver_metrics_whitelist=handler_latency_yb_tserver_TabletServerService_Read_count,handler_latency_yb_tserver_TabletServerService_Write_count,handler_latency_yb_tserver_TabletServerService_Read_sum,handler_latency_yb_tserver_TabletServerService_Write_sum,disk_usage,cpu_usage,node_up --yb_num_shards_per_tserver=1 --ysql_num_shards_per_tserver=1 --cluster_uuid=25696d6f-d48a-4a5e-a491-fb775aa5d84d --rpc_bind_addresses=0.0.0.0:9100 --server_broadcast_addresses=127.0.0.1:9100 --cql_proxy_bind_address=0.0.0.0:9042 --server_dump_info_path=/home/yugabyte/yb_data/data/tserver-info --start_pgsql_proxy --pgsql_proxy_bind_address=0.0.0.0:5433 --tserver_enable_metrics_snapshotter=true --metrics_snapshotter_interval_ms=11000 --webserver_port=9000 --default_memory_limit_to_ram_ratio=0.6 --instance_uuid_override=0002331a981242cbbb199827b5bb183f --start_redis_proxy=false --tserver_master_addrs=127.0.0.1:7100
+[yugabyted start] 2021-12-21 21:15:33,569 INFO:  | 9.5s | tserver started running with PID 95.
+[yugabyted start] 2021-12-21 21:15:33,574 INFO:  | 9.5s | Node was a member of some cluster before. Skipping tserver setup
+[yugabyted start] 2021-12-21 21:15:33,980 INFO:  | 9.9s | Waiting to get the full master addrs list from master
+[yugabyted start] 2021-12-21 21:15:33,982 INFO:  | 9.9s | run_process: cmd: [u'/home/yugabyte/bin/yb-admin', u'--init_master_addrs', u'127.0.0.1:7100', u'list_all_masters']
+[yugabyted start] 2021-12-21 21:15:34,692 INFO:  | 10.7s | run_process returned 0: 
+OUT >>
+Master UUID                      	RPC Host/Port        	State    	Role
+f1092e5068764223b67815e9c93a25cb 	127.0.0.1:7100       	ALIVE    	LEADER
+
+<< ERR >>
+<<
+[yugabyted start] 2021-12-21 21:15:34,695 INFO:  | 10.7s | Got all masters: [u'127.0.0.1:7100']
+[yugabyted start] 2021-12-21 21:20:12,013 DEBUG:  | 288.0s | Received signal: 15
+[yugabyted start] 2021-12-21 21:20:12,018 INFO:  | 288.0s | Shutting down...
+[yugabyted start] 2021-12-21 21:20:12,068 INFO:  | 288.0s | yugabyted may not have terminated properly... Please check PGID 1.

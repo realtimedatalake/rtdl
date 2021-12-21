@@ -3,9 +3,9 @@ version: '3'
 services:
   catalog-db:
     image: yugabytedb/yugabyte:latest
-    container_name: rtdl_rtdl-catalog-db
+    container_name: rtdl_catalog-db
     volumes:
-      - ./catalog-db_data:/home/yugabyte/yb_data
+      - ./rtdl-catalog-db_data:/home/yugabyte/yb_data
     command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
     ports:
       - 7000:7000
@@ -22,9 +22,12 @@ services:
     build:
       context: ./catalog
     image: rtdl/rtdl-catalog:latest
-    container_name: rtdl_rtdl-catalog
+    container_name: rtdl_catalog
     ports:
-    - 9083:9083
+      - 9083:9083
+    volumes:
+      - ./catalog/scripts/entrypoint-run.sh:/entrypoint.sh
+    entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
     depends_on:
       catalog-db:
         condition: service_healthy
@@ -33,7 +36,7 @@ services:
   
   # process:
   #   image: flink:1.14.2-java11
-  #   container_name: rtdl_rtdl-process
+  #   container_name: rtdl_process
   #   ports:
   #   - 8081:8081
   #   depends_on:
@@ -45,7 +48,7 @@ services:
   #   build:
   #     context: ./ingest
   #   image: rtdl/rtdl-ingest:latest
-  #   container_name: rtdl_rtdl-ingest
+  #   container_name: rtdl_ingest
   #   ports:
   #   - 8080:8080
   #   depends_on:

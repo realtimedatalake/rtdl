@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+  catalog-db:
+    image: yugabytedb/yugabyte:latest
+    container_name: rtdl_catalog-db
+    volumes:
+      - ./rtdl-catalog-db_data:/home/yugabyte/yb_data
+    command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
+    ports:
+      - 7000:7000
+      - 9000:9000
+      - 5433:5433
+      - 9042:9042
+    healthcheck:
+        test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
+        interval: 10s
+        timeout: 5s
+        retries: 12
+
+  catalog-db-init:
+    build:
+      context: ./psql-client
+    image: rtdl/psql-client:latest
+    container_name: rtdl_catalog-db-init
+    volumes:
+      - ./catalog/scripts/create-user-db.postgres.sql:/create-user-db.postgres.sql
+    entrypoint: psql -h catalog-db -p 5433 -U yugabyte -f /create-user-db.postgres.sql
+    depends_on:
+      catalog-db:
+        condition: service_healthy
+    links:
+      - catalog-db
+  
+  catalog:
+    build:
+      context: ./catalog
+    image: rtdl/rtdl-catalog:latest
+    container_name: rtdl_catalog-init
+    ports:
+      - 9083:9083
+    volumes:
+      - ./catalog/scripts/entrypoint-init.sh:/entrypoint.sh
+    entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
+    depends_on:
+      catalog-db:
+        condition: service_healthy
+      catalog-db-init:
+        condition: service_completed_successfully
+    links:
+      - catalog-db
