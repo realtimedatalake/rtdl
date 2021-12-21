@@ -1,11 +1,11 @@
 version: '3'
 
 services:
-  yugabyte:
+  catalog-db:
     image: yugabytedb/yugabyte:latest
-    container_name: rtdl_yugabyte-hive-metastore
+    container_name: rtdl_rtdl-catalog-db
     volumes:
-      - ./yb_data:/home/yugabyte/yb_data
+      - ./catalog-db_data:/home/yugabyte/yb_data
     command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
     ports:
       - 7000:7000
@@ -14,17 +14,20 @@ services:
       - 9042:9042
     healthcheck:
         test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
-        interval: 5s
-        timeout: 3s
-        retries: 10
+        interval: 10s
+        timeout: 5s
+        retries: 12
 
-  hive-metastore-database-init:
+  catalog-db-init:
     build:
-      context: ./hive-metastore-database-init
-    image: hive-metastore-database-init:latest
-    container_name: rtdl_hive-metastore-database-init
+      context: ./psql-client
+    image: rtdl/psql-client:latest
+    container_name: rtdl_rtdl-catalog-db-init
+    volumes:
+      - ./catalog/scripts/create-user.postgres.sql:/create-user.postgres.sql
+    entrypoint: psql -h catalog-db -p 5433 -U yugabyte -f /create-user.postgres.sql
     depends_on:
-      yugabyte:
+      catalog-db:
         condition: service_healthy
     links:
-      - yugabyte
+      - catalog-db

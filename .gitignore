@@ -12,4 +12,4 @@
 *.out
 
 # Database data directory
-yb_data/
+catalog-db_data/

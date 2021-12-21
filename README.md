@@ -1,37 +1,47 @@
 # Steps to run
 1. Run `docker compose -f docker-compose.run-01.yml up`.
-2. After the container `rtdl_hive-metastore-database-init` exits with code 0, kill and delete the rtdl container set and the `hive-metastore-database-init` image.
-    * `docker container rm rtdl_hive-metastore-database-init rtdl_yugabyte-hive-metastore`
-    * `docker image rm hive-metastore-database-init`
+2. After the container `rtdl_catalog-db-init` exits with code 0, kill and delete the rtdl container set.
+    * `docker container rm rtdl_rtdl-catalog-db rtdl_rtdl-catalog-db-init`
 3. Run `docker compose -f docker-compose.run-02.yml up`.
-4. After the `schemaTool` completes running in the `rtdl_hive-metastore` container, kill and delete the rtdl container set.
-    * `docker container rm rtdl_yugabyte-hive-metastore rtdl_hive-metastore`
+4. After the `schemaTool` completes running in the `rtdl_rtdl-catalog` container, kill and delete the rtdl container set.
+    * `docker container rm rtdl_rtdl-catalog-db rtdl_rtdl-catalog`
 5. Run `docker compose up` every time after.
 
 # rtdl
-1. Install OpenJDK 11 (via homebrew), [Quarkus](https://quarkus.io/get-started/),
-2. run
-    ```
-    ./mvnw package -Pnative \
-    -Dquarkus.native.container-build=true \
-    -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:21.3-java11 \
-    -Dquarkus.container-image.build=true \
-    -Dquarkus.container-image.name=rtdl/rtdl-ingest \
-    -Dquarkus.container-image.tag=0.0.1 \
-    -Dquarkus.container-image.additional-tags=latest
-    ```
-3. a
+1. a
 
 # General Reading
 1. [An Introduction to Big Data Architectures](https://www.quastor.org/p/an-introduction-to-big-data-architectures)
 2. [Why Not to Become a Data Engineer](https://medium.com/coriers/why-not-to-become-a-data-engineer-3533286bf642)
 3. [What is AWS Glue? A Detailed Introductory Guide](https://www.lastweekinaws.com/blog/what-is-aws-glue-a-detailed-introductory-guide/)
 
-## ingest-service
-1. [Tutorial](https://golang.org/doc/tutorial/web-service-gin)
-2. [SO Post](https://stackoverflow.com/questions/42247978/go-gin-gonic-get-text-from-post-request)
-3. [SO Post](https://stackoverflow.com/questions/61919830/go-gin-get-request-body-json)
-3. ["Distroless" Docker Images](https://github.com/GoogleContainerTools/distroless) - images containing only your application and its runtime dependencies
+## ingest
+1. Install OpenJDK 11 (via homebrew), [Quarkus](https://quarkus.io/get-started/),
+2. Build docker image using
+    ```
+    // For bigger image, JVM build (short build time)
+    ./mvnw clean package \
+    -Dquarkus.container-image.build=true \
+    -Dquarkus.container-image.group=rtdl \
+    -Dquarkus.container-image.name=rtdl-ingest \
+    -Dquarkus.container-image.additional-tags=latest
+
+    // For lighter image, native build (long build time)
+    ./mvnw clean package -Pnative \
+    -Dquarkus.native.container-build=true \
+    -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:21.3-java11 \
+    -Dquarkus.container-image.build=true \
+    -Dquarkus.container-image.group=rtdl \
+    -Dquarkus.container-image.name=rtdl-ingest \
+    -Dquarkus.container-image.additional-tags=latest
+    ```
+3. Run docker image using
+    ```
+    docker run -d \
+    --name rtdl-ingest \
+    -p 8080:8080 \
+    rtdl/rtdl-ingest:latest
+    ```
 4. [DockerSlim](https://dockersl.im/) - small, fast Docker images
 
 ## Hive Metastore

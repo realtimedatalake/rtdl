@@ -19,7 +19,7 @@
     </property>
     <property>
         <name>javax.jdo.option.ConnectionURL</name>
-        <value>jdbc:postgresql://yugabyte:5433/metastore_db</value>
+        <value>jdbc:postgresql://catalog-db:5433/metastore_db</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionUserName</name>

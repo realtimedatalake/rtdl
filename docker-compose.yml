@@ -1,11 +1,11 @@
 version: '3'
 
 services:
-  yugabyte:
+  catalog-db:
     image: yugabytedb/yugabyte:latest
-    container_name: rtdl_yugabyte-hive-metastore
+    container_name: rtdl_rtdl-catalog-db
     volumes:
-      - ./yb_data:/home/yugabyte/yb_data
+      - ./catalog-db_data:/home/yugabyte/yb_data
     command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
     ports:
       - 7000:7000
@@ -14,29 +14,39 @@ services:
       - 9042:9042
     healthcheck:
         test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
-        interval: 5s
-        timeout: 3s
-        retries: 10
+        interval: 10s
+        timeout: 5s
+        retries: 12
 
-  hive-metastore:
+  catalog:
     build:
-      context: ./hive-metastore
-    image: hive-metastore:latest
-    container_name: rtdl_hive-metastore
+      context: ./catalog
+    image: rtdl/rtdl-catalog:latest
+    container_name: rtdl_rtdl-catalog
     ports:
     - 9083:9083
     depends_on:
-      yugabyte:
+      catalog-db:
         condition: service_healthy
     links:
-      - yugabyte
+      - catalog-db
+  
+  # process:
+  #   image: flink:1.14.2-java11
+  #   container_name: rtdl_rtdl-process
+  #   ports:
+  #   - 8081:8081
+  #   depends_on:
+  #     - catalog
+  #   links:
+  #     - catalog
 
   # ingest:
   #   build:
   #     context: ./ingest
-  #   image: rtdl-ingest:latest
-  #   container_name: rtdl_ingest
+  #   image: rtdl/rtdl-ingest:latest
+  #   container_name: rtdl_rtdl-ingest
   #   ports:
   #   - 8080:8080
   #   depends_on:
-  #     - hive-metastore
+  #     - process
