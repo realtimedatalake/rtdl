@@ -1,31 +1,25 @@
 ## ingest
-1. Install OpenJDK 11 (via homebrew), [Quarkus](https://quarkus.io/get-started/),
-2. Build docker image using
-    ```
-    // For bigger image, JVM build (short build time)
-    ./mvnw clean package \
-    -Dquarkus.container-image.build=true \
-    -Dquarkus.container-image.group=rtdl \
-    -Dquarkus.container-image.name=rtdl-ingest \
-    -Dquarkus.container-image.additional-tags=latest
-
-    // For lighter image, native build (long build time)
-    ./mvnw clean package -Pnative \
-    -Dquarkus.native.container-build=true \
-    -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:21.3-java11 \
-    -Dquarkus.container-image.build=true \
-    -Dquarkus.container-image.group=rtdl \
-    -Dquarkus.container-image.name=rtdl-ingest \
-    -Dquarkus.container-image.additional-tags=latest
-    ```
-3. Run docker image using
+* Install Go (go@1.17)
+* In `./ingest`, `go mod init rtdl/ingest-service`
+* Write `ingest-service.go`
+* `go get github.com/gin-gonic/gin@v1.7.2`
+* `go mod tidy`
+* `go build -o ./ingest-service` (won't be visible in finder)
+* run executable `./ingest-service` 
+* `docker build --no-cache -t rtdl/rtdl-ingest:latest -t rtdl/rtdl-ingest:0.1.0 .`
+* `docker push -a rtdl/rtdl-ingest`
+* Run docker image using
     ```
     docker run -d \
     --name rtdl-ingest \
     -p 8080:8080 \
     rtdl/rtdl-ingest:latest
     ```
-4. [DockerSlim](https://dockersl.im/) - small, fast Docker images
+* [DockerSlim](https://dockersl.im/) - small, fast Docker images
+
+## catalog
+* `docker build --no-cache -t rtdl/hive-metastore:latest -t rtdl/hive-metastore:3.1.2 .`
+* `docker push -a rtdl/hive-metastore`
 
 ## process
 * `curl https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-hive-3.1.2_2.12/1.14.2/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar --output flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar`
@@ -33,6 +27,10 @@
     volumes:
       - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
     ```
+
+## psql-client
+* `docker build --no-cache -t rtdl/psql-client:latest -t rtdl/psql-client:1.0.0 .`
+* `docker push -a rtdl/psql-client`
 
 # General Reading
 1. [An Introduction to Big Data Architectures](https://www.quastor.org/p/an-introduction-to-big-data-architectures)
@@ -58,3 +56,24 @@
 2. [GH](https://github.com/apache/flink)
 3. [Catalogs](https://nightlies.apache.org/flink/flink-docs-release-1.14/docs/dev/table/catalogs/) - how to use Flink w/ Hive Metastore
 4. [FileSystem](https://nightlies.apache.org/flink/flink-docs-master/docs/connectors/table/filesystem/) - Streaming Sink is how you can write data files including auto-compaction
+
+## ingest-java
+1. Install OpenJDK 11 (via homebrew), [Quarkus](https://quarkus.io/get-started/),
+2. Build docker image using
+    ```
+    // For bigger image, JVM build (short build time)
+    ./mvnw clean package \
+    -Dquarkus.container-image.build=true \
+    -Dquarkus.container-image.group=rtdl \
+    -Dquarkus.container-image.name=rtdl-ingest \
+    -Dquarkus.container-image.additional-tags=latest
+
+    // For lighter image, native build (long build time)
+    ./mvnw clean package -Pnative \
+    -Dquarkus.native.container-build=true \
+    -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:21.3-java11 \
+    -Dquarkus.container-image.build=true \
+    -Dquarkus.container-image.group=rtdl \
+    -Dquarkus.container-image.name=rtdl-ingest \
+    -Dquarkus.container-image.additional-tags=latest
+    ```

@@ -19,8 +19,6 @@ services:
         retries: 12
 
   catalog-db-init:
-    build:
-      context: ./psql-client
     image: rtdl/psql-client:latest
     container_name: rtdl_catalog-db-init
     volumes:
@@ -33,14 +31,13 @@ services:
       - catalog-db
   
   catalog:
-    build:
-      context: ./catalog
-    image: rtdl/rtdl-catalog:latest
+    image: rtdl/hive-metastore
     container_name: rtdl_catalog-init
     ports:
       - 9083:9083
     volumes:
       - ./catalog/scripts/entrypoint-init.sh:/entrypoint.sh
+      - ./catalog/conf/metastore-site.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
     entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
     depends_on:
       catalog-db:
