@@ -27,6 +27,13 @@
     ```
 4. [DockerSlim](https://dockersl.im/) - small, fast Docker images
 
+## process
+* `curl https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-hive-3.1.2_2.12/1.14.2/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar --output flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar`
+*   ```
+    volumes:
+      - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
+    ```
+
 # General Reading
 1. [An Introduction to Big Data Architectures](https://www.quastor.org/p/an-introduction-to-big-data-architectures)
 2. [Why Not to Become a Data Engineer](https://medium.com/coriers/why-not-to-become-a-data-engineer-3533286bf642)

@@ -42,8 +42,10 @@ services:
   #     - 8081:8081
   #   environment:
   #     FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
+  #     HADOOP_CLASSPATH: "`hadoop classpath`"
   #   command: jobmanager
   #   volumes:
+  #     - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
   #     - ./process/jobs/jobfile:/opt/flink/usrlib/jobfile
   #   depends_on:
   #     - catalog
@@ -55,8 +57,10 @@ services:
   #   container_name: rtdl_process-taskmanager
   #   environment:
   #     FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
+  #     HADOOP_CLASSPATH: "`hadoop classpath`"
   #   command: taskmanager
   #   volumes:
+  #     - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
   #     - ./process/jobs/jobfile:/opt/flink/usrlib/jobfile
   #   depends_on:
   #     - catalog
