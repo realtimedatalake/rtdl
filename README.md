@@ -2,9 +2,7 @@
 
 ## Quickstart
 1. Run `docker compose -f docker-compose.init.yml up -d`.
-2. After the `schemaTool` completes running in the `rtdl_catalog-init` container, kill and delete the rtdl container set.
-    * `docker container stop rtdl_catalog-db`
-    * `docker container rm rtdl_catalog-db rtdl_catalog-db-init rtdl_catalog-init`
+2. After the `schemaTool` completes running in the `rtdl_catalog-init` container, kill and delete the rtdl container set. Run `docker compose -f docker-compose.init.yml down`
 3. Run `docker compose up -d` every time after.
     * `docker compose down` to stop.
 
