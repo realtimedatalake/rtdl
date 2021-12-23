@@ -67,12 +67,12 @@ services:
       - catalog
       - process-jobmanager
 
-  # ingest:
-  #   build:
-  #     context: ./ingest
-  #   image: rtdl/rtdl-ingest:latest
-  #   container_name: rtdl_ingest
-  #   ports:
-  #   - 8080:8080
-  #   depends_on:
-  #     - process
+  ingest:
+    build:
+      context: ./ingest
+    image: rtdl/rtdl-ingest:latest
+    container_name: rtdl_ingest
+    ports:
+      - 8080:8080
+    depends_on:
+      - process
