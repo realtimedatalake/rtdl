@@ -2,6 +2,7 @@ version: '3'
 
 services:
   catalog-db:
+    platform: linux/amd64
     image: yugabytedb/yugabyte:latest
     container_name: rtdl_catalog-db
     volumes:
@@ -19,6 +20,7 @@ services:
         retries: 12
 
   catalog-db-init:
+    platform: linux/amd64
     image: rtdl/psql-client:latest
     container_name: rtdl_catalog-db-init
     volumes:
@@ -31,6 +33,7 @@ services:
       - catalog-db
   
   catalog:
+    platform: linux/amd64
     image: rtdl/hive-metastore
     container_name: rtdl_catalog-init
     ports:
