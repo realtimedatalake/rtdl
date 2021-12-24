@@ -3,7 +3,9 @@
 * In `./ingest`, `go mod init rtdl/ingest-service`
 * Write `ingest-service.go`
 * `go get github.com/gin-gonic/gin@v1.7.2`
+* `go get .`
 * `go mod tidy`
+* `go run .`
 * `go build -o ./ingest-service` (won't be visible in finder)
 * run executable `./ingest-service` 
 * `docker build --no-cache -t rtdl/rtdl-ingest:latest -t rtdl/rtdl-ingest:0.1.0 .`
