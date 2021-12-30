@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 	"time"
-
+	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
 	kafka "github.com/segmentio/kafka-go"
 	//"github.com/segmentio/kafka-go/snappy"
 )
@@ -40,11 +40,19 @@ func producerHandler(kafkaURL string, topic string) func(http.ResponseWriter, *h
 		if err := conn.Close(); err != nil {
 			log.Fatal("failed to close writer:", err)
 		}
+
+		fmt.Println("message written")
 	})
 }
 
 
 func main() {
+
+	builder := statefun.StatefulFunctionsBuilder()
+	_ = builder.WithSpec(statefun.StatefulFunctionSpec{
+		FunctionType: statefun.TypeNameFrom("com.rtdl.ingest.sf/ingest"),
+		Function:     statefun.StatefulFunctionPointer(ingest),
+	})
 	// get kafka writer using environment variables.
 	kafkaURL := os.Getenv("KAFKA_URL")
 	topic := os.Getenv("KAFKA_TOPIC")
