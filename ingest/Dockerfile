@@ -4,7 +4,8 @@ ENV GIN_MODE=release
 COPY go.mod ./
 COPY go.sum ./
 COPY ingest-service.go ./
-RUN go mod download
+COPY sf-ingest.go ./
+RUN go mod download -x
 RUN go build -o ./ingest-service
 
 FROM golang:1.17-alpine as runner
