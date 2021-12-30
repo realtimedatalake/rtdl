@@ -47,9 +47,13 @@ services:
     command: jobmanager
     volumes:
       - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
+      - ./ingest/module.yaml:/opt/statefun/modules/ingest/module.yaml
       # - ./process/jobs/jobfile:/opt/flink/usrlib/jobfile
     depends_on:
       - catalog
+      - kafka
+      - ingest
+
     links:
       - catalog
 
@@ -107,6 +111,5 @@ services:
       KAFKA_URL: kafka:9092
       KAFKA_TOPIC: events
 
-    depends_on:
-      - process
+    depends_on:      
       - kafka
