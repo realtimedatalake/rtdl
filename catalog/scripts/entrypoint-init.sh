@@ -1,5 +1,7 @@
 #!/bin/sh
 
+export CLASSPATH=`echo $CLASSPATH| sed 's/\/slf4j\-log4j12\-1\.7\.30\.jar//g'`
+
 export HADOOP_VERSION=3.3.1
 export METASTORE_VERSION=3.1.2
 

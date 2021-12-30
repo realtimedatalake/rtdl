@@ -2,7 +2,7 @@
 
 ## Quickstart
 1. Run `docker compose -f docker-compose.init.yml up -d`.
-    * **Note:** If any containers or processes fail when running this, run `docker compose -f docker-compose.init.yml down` and retry. The `catalog-db-init` service in the `rtdl_catalog-db-init` container sometimes fails on first run (it most likely has something to do with the healthcheck for `catalog-db` service returning `service_healthy` too early).
+    * **Note:** This configuration should be fault-tolerant, but if any containers or processes fail when running this, run `docker compose -f docker-compose.init.yml down` and retry.
 2. After the `schemaTool` completes running in the `rtdl_catalog-init` container, kill and delete the rtdl container set by running `docker compose -f docker-compose.init.yml down`
 3. Run `docker compose up -d` every time after.
     * `docker compose down` to stop.
@@ -11,17 +11,21 @@
 ## Architecture
 rtdl has a multi-service architecture composed of tested and trusted open source tools to process and catalog your data and custom-built services to interact with them more easily.
 
+### config
+Written in Go
+#### config-db
+YugabyteDB
+
 ### ingest
 Written in Go
 
-### process-jobmanager
+### process
+#### process-jobmanager
 Apache Flink
-
-### process-taskmanager
+#### process-taskmanager
 Apache Flink
 
 ### catalog
 Apache Hive Metastore
-
-### catalog-db
+#### catalog-db
 YugabyteDB
