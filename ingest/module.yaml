@@ -1,6 +1,0 @@
-kind: io.statefun.endpoints.v2/http
-spec:
-  functions: com.rtdl.ingest.sf/*
-  urlPathTemplate: http://0.0.0.0:8080/ingest
-  transport:
-    type: io.statefun.transports.v1/async

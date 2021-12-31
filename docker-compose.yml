@@ -3,18 +3,24 @@ version: '3'
 services:
   catalog-db:
     #platform: linux/amd64
-    image: yugabytedb/yugabyte:latest
+    #image: yugabytedb/yugabyte:latest
+    image: 'bitnami/postgresql:latest'
+    environment:
+      - POSTGRES_USER=postgres
+      - ALLOW_EMPTY_PASSWORD=yes
     container_name: rtdl_catalog-db
     volumes:
       - ./rtdl-catalog-db_data:/home/yugabyte/yb_data
-    command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
+    #command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
     ports:
-      - 7000:7000
-      - 9000:9000
-      - 5433:5433
-      - 9042:9042
+      #- 7000:7000
+      #- 9000:9000
+      #- 5433:5433
+      #- 9042:9042
+      - "5432:5432"
     healthcheck:
-        test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
+        #test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
         interval: 10s
         timeout: 5s
         retries: 12
@@ -35,44 +41,72 @@ services:
     links:
       - catalog-db
   
-  process-jobmanager:
+  #process-jobmanager:
     #platform: linux/amd64
-    image: flink:1.14.2-java11
-    container_name: rtdl_process-jobmanager
+  #  image: flink:1.14.2-java11
+  #  container_name: rtdl_process-jobmanager
+  #  ports:
+  #    - 8081:8081
+  #  environment:
+  #    FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
+  #    HADOOP_CLASSPATH: "`hadoop classpath`"
+  #  command: jobmanager
+  #  volumes:
+  #    - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
+  #    - ./ingest/module.yaml:/opt/statefun/modules/ingest/module.yaml
+  #    # - ./process/jobs/jobfile:/opt/flink/usrlib/jobfile
+  #  depends_on:
+  #    - catalog
+  #    - kafka
+  #    - ingest
+
+  #  links:
+  #    - catalog
+
+  #process-taskmanager:
+  #  #platform: linux/amd64
+  #  image: flink:1.14.2-java11
+  #  container_name: rtdl_process-taskmanager
+  #  environment:
+  #    FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
+  #    HADOOP_CLASSPATH: "`hadoop classpath`"
+  #  command: taskmanager
+  #  volumes:
+  #    - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
+  #    # - ./process/jobs/jobfile:/opt/flink/usrlib/jobfile
+  #  depends_on:
+  #    - process-jobmanager
+  #  links:
+  #    - catalog
+  #    - process-jobmanager
+  
+  statefun-manager:
+    image: apache/flink-statefun:3.1.0
+    expose:
+      - "6123"
     ports:
-      - 8081:8081
+      - "8082:8081"
     environment:
-      FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
-      HADOOP_CLASSPATH: "`hadoop classpath`"
-    command: jobmanager
+      ROLE: master
+      MASTER_HOST: statefun-manager
     volumes:
-      - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
-      - ./ingest/module.yaml:/opt/statefun/modules/ingest/module.yaml
-      # - ./process/jobs/jobfile:/opt/flink/usrlib/jobfile
+      - ./greeter/module.yaml:/opt/statefun/modules/greeter/module.yaml
     depends_on:
-      - catalog
-      - kafka
       - ingest
 
-    links:
-      - catalog
-
-  process-taskmanager:
-    #platform: linux/amd64
-    image: flink:1.14.2-java11
-    container_name: rtdl_process-taskmanager
-    environment:
-      FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
-      HADOOP_CLASSPATH: "`hadoop classpath`"
-    command: taskmanager
-    volumes:
-      - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
-      # - ./process/jobs/jobfile:/opt/flink/usrlib/jobfile
+  statefun-worker:
+    image: apache/flink-statefun:3.1.0
+    expose:
+      - "6121"
+      - "6122"
     depends_on:
-      - process-jobmanager
-    links:
-      - catalog
-      - process-jobmanager
+      - statefun-manager
+      - kafka
+    environment:
+      ROLE: worker
+      MASTER_HOST: statefun-manager
+    volumes:
+      - ./greeter/module.yaml:/opt/statefun/modules/greeter/module.yaml
       
   zookeeper:
     image: wurstmeister/zookeeper:3.4.6
@@ -94,8 +128,9 @@ services:
       - "9092:9092"
     environment:
       KAFKA_ADVERTISED_HOST_NAME: kafka
-      KAFKA_CREATE_TOPICS: "events:2:1"
+      KAFKA_CREATE_TOPICS: "names:1:1"
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     restart: always
     container_name: kafka      
 
@@ -109,7 +144,14 @@ services:
       - 8080:8080
     environment:
       KAFKA_URL: kafka:9092
-      KAFKA_TOPIC: events
+      KAFKA_TOPIC: names
 
     depends_on:      
       - kafka
+      
+ 
+  functions:
+    build:
+      context: ./greeter
+    expose:
+      - "8000"

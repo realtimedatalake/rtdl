@@ -4,7 +4,6 @@ ENV GIN_MODE=release
 COPY go.mod ./
 COPY go.sum ./
 COPY ingest-service.go ./
-COPY sf-ingest.go ./
 RUN go mod download -x
 RUN go build -o ./ingest-service
 
