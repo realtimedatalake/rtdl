@@ -1,91 +1,69 @@
 version: '3'
 
 services:
-  catalog-db:
-    #platform: linux/amd64
-    #image: yugabytedb/yugabyte:latest
-    image: 'bitnami/postgresql:latest'
+  ##### Ingest Service - Start #####
+  ingest:
+    build:
+      context: ./ingest
+    platform: linux/amd64
+    image: rtdl/rtdl-ingest:latest
+    container_name: rtdl_ingest
+    ports:
+      - 8080:8080
     environment:
-      - POSTGRES_USER=postgres
-      - ALLOW_EMPTY_PASSWORD=yes
-    container_name: rtdl_catalog-db
-    volumes:
-      - ./rtdl-catalog-db_data:/home/yugabyte/yb_data
-    #command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
-    ports:
-      #- 7000:7000
-      #- 9000:9000
-      #- 5433:5433
-      #- 9042:9042
-      - "5432:5432"
-    healthcheck:
-        #test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
-        test: ["CMD-SHELL", "pg_isready -U postgres"]
-        interval: 10s
-        timeout: 5s
-        retries: 12
+      KAFKA_URL: kafka:9092
+      KAFKA_TOPIC: names
+    depends_on:      
+      - kafka
+  ##### Ingest Service - End #####
 
-  catalog:
-    #platform: linux/amd64
-    image: rtdl/hive-metastore:latest
-    container_name: rtdl_catalog
-    ports:
-      - 9083:9083
-    volumes:
-      - ./catalog/scripts/entrypoint-run.sh:/entrypoint.sh
-      - ./catalog/conf/metastore-site.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
-    entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
-    depends_on:
-      catalog-db:
-        condition: service_healthy
-    links:
-      - catalog-db
-  
-  #process-jobmanager:
-    #platform: linux/amd64
-  #  image: flink:1.14.2-java11
-  #  container_name: rtdl_process-jobmanager
-  #  ports:
-  #    - 8081:8081
-  #  environment:
-  #    FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
-  #    HADOOP_CLASSPATH: "`hadoop classpath`"
-  #  command: jobmanager
-  #  volumes:
-  #    - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
-  #    - ./ingest/module.yaml:/opt/statefun/modules/ingest/module.yaml
-  #    # - ./process/jobs/jobfile:/opt/flink/usrlib/jobfile
-  #  depends_on:
-  #    - catalog
-  #    - kafka
-  #    - ingest
 
-  #  links:
-  #    - catalog
-
-  #process-taskmanager:
-  #  #platform: linux/amd64
-  #  image: flink:1.14.2-java11
-  #  container_name: rtdl_process-taskmanager
-  #  environment:
-  #    FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
-  #    HADOOP_CLASSPATH: "`hadoop classpath`"
-  #  command: taskmanager
-  #  volumes:
-  #    - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
-  #    # - ./process/jobs/jobfile:/opt/flink/usrlib/jobfile
-  #  depends_on:
-  #    - process-jobmanager
-  #  links:
-  #    - catalog
-  #    - process-jobmanager
-  
-  statefun-manager:
-    image: apache/flink-statefun:3.1.0
+  ##### Kafka Services - Start #####
+  kafka-zookeeper:
+    platform: linux/amd64
+    #image: wurstmeister/zookeeper:3.4.6
+    image: bitnami/zookeeper:latest
+    container_name: rtdl_kafka-zookeeper
     expose:
-      - "6123"
+      - 2181
     ports:
-      - "8082:8081"
+      - 2181:2181
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: yes
+    restart: always
+
+  kafka:
+    platform: linux/amd64
+    #image: wurstmeister/kafka:2.12-2.3.0
+    image: bitnami/kafka:latest
+    #image: dipanjanb/kafka-m1:0.1
+    container_name: rtdl_kafka
+    expose:
+      - 9092
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_CREATE_TOPICS: "names:1:1"
+      KAFKA_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      ALLOW_PLAINTEXT_LISTENER: yes
+    depends_on:
+      - kafka-zookeeper
+    restart: always
+  ##### Kafka Services - End #####
+  
+
+  ##### Processing Services - Start #####
+  statefun-manager:
+    platform: linux/amd64
+    image: apache/flink-statefun:3.1.0
+    container_name: rtdl_process-statefun-manager
+    expose:
+      - 6123
+    ports:
+      #- 8082:8081
+      - 8081:8081
     environment:
       ROLE: master
       MASTER_HOST: statefun-manager
@@ -95,63 +73,129 @@ services:
       - ingest
 
   statefun-worker:
+    platform: linux/amd64
     image: apache/flink-statefun:3.1.0
+    container_name: rtdl_process-statefun-worker
     expose:
-      - "6121"
-      - "6122"
-    depends_on:
-      - statefun-manager
-      - kafka
+      - 6121
+      - 6122
     environment:
       ROLE: worker
       MASTER_HOST: statefun-manager
     volumes:
       - ./greeter/module.yaml:/opt/statefun/modules/greeter/module.yaml
-      
-  zookeeper:
-    image: wurstmeister/zookeeper:3.4.6
-    expose:
-      - "2181"
-    ports:
-      - "2181:2181"
-    restart: always
-    container_name: zookeeper
-
-  kafka:
-    #image: wurstmeister/kafka:2.12-2.3.0
-    image: dipanjanb/kafka-m1:0.1
     depends_on:
-      - zookeeper
-    expose:
-      - "9092"
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_ADVERTISED_HOST_NAME: kafka
-      KAFKA_CREATE_TOPICS: "names:1:1"
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    restart: always
-    container_name: kafka      
-
-  ingest:
-    build:
-      context: ./ingest
-        #platform: linux/amd64
-    image: rtdl/rtdl-ingest:latest
-    container_name: rtdl_ingest
-    ports:
-      - 8080:8080
-    environment:
-      KAFKA_URL: kafka:9092
-      KAFKA_TOPIC: names
-
-    depends_on:      
+      - statefun-manager
       - kafka
-      
- 
-  functions:
+
+  statefun-functions:
     build:
       context: ./greeter
+    platform: linux/amd64
+    container_name: rtdl_process-statefun-functions
     expose:
-      - "8000"
+      - 8082
+  ##### Processing Services - End #####
+
+
+  ##### Catalog Services - Start #####
+  ### For YBDB - Start ###
+  # catalog-db:
+  #   platform: linux/amd64
+  #   image: yugabytedb/yugabyte:latest
+  #   container_name: rtdl_catalog-db
+  #   volumes:
+  #     - ./rtdl-catalog-db_data:/home/yugabyte/yb_data
+  #   command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
+  #   ports:
+  #     - 5433:5433
+  #   healthcheck:
+  #       test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
+  #       interval: 10s
+  #       timeout: 5s
+  #       retries: 12
+
+  # catalog:
+  #   platform: linux/amd64
+  #   image: rtdl/hive-metastore
+  #   container_name: rtdl_catalog
+  #   ports:
+  #     - 9083:9083
+  #   volumes:
+  #     - ./catalog/scripts/entrypoint-run.sh:/entrypoint.sh
+  #     - ./catalog/conf/metastore-site.ybdb.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
+  #   entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
+  #   depends_on:
+  #     catalog-db:
+  #       condition: service_healthy
+  ### For YBDB - End ###
+
+  ### For Postgres - Start ###
+  catalog-db:
+    platform: linux/amd64
+    image: postgres:latest
+    container_name: rtdl_catalog-db
+    volumes:
+      - ./rtdl-catalog-db_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: 10s
+        timeout: 5s
+        retries: 12
+
+  catalog:
+    platform: linux/amd64
+    image: rtdl/hive-metastore
+    container_name: rtdl_catalog
+    ports:
+      - 9083:9083
+    volumes:
+      - ./catalog/scripts/entrypoint-run.sh:/entrypoint.sh
+      - ./catalog/conf/metastore-site.postgres.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
+    entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
+    depends_on:
+      catalog-db:
+        condition: service_healthy
+  ### For Postgres - End ###
+  ##### Catalog Services - End #####
+
+
+
+
+
+##### OLD #####
+  # process-jobmanager:
+  #   platform: linux/amd64
+  #   image: flink:1.14.2-java11
+  #   container_name: rtdl_process-jobmanager
+  #   ports:
+  #     - 8081:8081
+  #   environment:
+  #     FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
+  #     HADOOP_CLASSPATH: "`hadoop classpath`"
+  #   command: jobmanager
+  #   volumes:
+  #     - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
+  #     - ./ingest/module.yaml:/opt/statefun/modules/ingest/module.yaml
+  #   depends_on:
+  #     - catalog
+  #     - kafka
+  #     - ingest
+
+  # process-taskmanager:
+  #   platform: linux/amd64
+  #   image: flink:1.14.2-java11
+  #   container_name: rtdl_process-taskmanager
+  #   environment:
+  #     FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
+  #     HADOOP_CLASSPATH: "`hadoop classpath`"
+  #   command: taskmanager
+  #   volumes:
+  #     - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
+  #   depends_on:
+  #     - process-jobmanager

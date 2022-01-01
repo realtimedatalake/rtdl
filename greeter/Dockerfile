@@ -29,6 +29,6 @@ COPY *.go ./
 
 RUN go build -o /greeter
 
-EXPOSE 8000
+EXPOSE 8082
 
 CMD [ "/greeter" ]

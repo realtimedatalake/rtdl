@@ -18,8 +18,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
 	"net/http"
+
+	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
 )
 
 type GreetRequest struct {
@@ -119,5 +120,5 @@ func main() {
 	})
 
 	http.Handle("/statefun", builder.AsHandler())
-	_ = http.ListenAndServe(":8000", nil)
+	_ = http.ListenAndServe(":8082", nil)
 }

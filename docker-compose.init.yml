@@ -1,40 +1,84 @@
 version: '3'
 
 services:
+  ##### Catalog Services - Start #####
+  ### For YBDB - Start ###
+  # catalog-db:
+  #   platform: linux/amd64
+  #   image: yugabytedb/yugabyte:latest
+  #   container_name: rtdl_catalog-db
+  #   volumes:
+  #     - ./rtdl-catalog-db_data:/home/yugabyte/yb_data
+  #   command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
+  #   ports:
+  #     - 5433:5433
+  #   healthcheck:
+  #       test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
+  #       interval: 10s
+  #       timeout: 5s
+  #       retries: 12
+  
+  # catalog-db-init:
+  #   platform: linux/amd64
+  #   image: rtdl/psql-client:latest
+  #   container_name: rtdl_catalog-db-init
+  #   volumes:
+  #     - ./catalog/scripts/create-user-db.postgres.sql:/create-user-db.postgres.sql
+  #   entrypoint: psql -h catalog-db -p 5433 -U yugabyte -f /create-user-db.postgres.sql
+  #   deploy:
+  #     restart_policy:
+  #       condition: on-failure
+  #       delay: 5s
+  #       max_attempts: 5
+  #       window: 10s
+  #   depends_on:
+  #     catalog-db:
+  #       condition: service_healthy
+
+  # catalog:
+  #   platform: linux/amd64
+  #   image: rtdl/hive-metastore
+  #   container_name: rtdl_catalog-init
+  #   ports:
+  #     - 9083:9083
+  #   volumes:
+  #     - ./catalog/scripts/entrypoint-init.sh:/entrypoint.sh
+  #     - ./catalog/conf/metastore-site.ybdb.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
+  #   entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
+  #   depends_on:
+  #     catalog-db:
+  #       condition: service_healthy
+  #     catalog-db-init:
+  #       condition: service_completed_successfully
+  ### For YBDB - End ###
+
+  ### For Postgres - Start ###
   catalog-db:
     platform: linux/amd64
-    restart: always
-    environment:
-      - POSTGRES_USER=postgres
-      - ALLOW_EMPTY_PASSWORD=yes
-    #image: yugabytedb/yugabyte:latest
-    image: 'bitnami/postgresql:latest'
+    image: postgres:latest
     container_name: rtdl_catalog-db
     volumes:
-      #- ./rtdl-catalog-db_data:/home/yugabyte/yb_data
       - ./rtdl-catalog-db_data:/var/lib/postgresql/data
-    #command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
     ports:
-    #  - 7000:7000
-    #  - 9000:9000
-    #  - 5433:5433
-    #  - 9042:9042
-      - "5432:5432"
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     healthcheck:
-        #test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
         test: ["CMD-SHELL", "pg_isready -U postgres"]
         interval: 10s
         timeout: 5s
         retries: 12
-
+  
   catalog-db-init:
     platform: linux/amd64
     image: rtdl/psql-client:latest
     container_name: rtdl_catalog-db-init
     volumes:
       - ./catalog/scripts/create-user-db.postgres.sql:/create-user-db.postgres.sql
-    #entrypoint: psql -h catalog-db -p 5433 -U yugabyte -f /create-user-db.postgres.sql
     entrypoint: psql -h catalog-db -p 5432 -U postgres -f /create-user-db.postgres.sql
+    environment:
+      PGPASSWORD: postgres
     deploy:
       restart_policy:
         condition: on-failure
@@ -44,8 +88,6 @@ services:
     depends_on:
       catalog-db:
         condition: service_healthy
-    links:
-      - catalog-db
   
   catalog:
     platform: linux/amd64
@@ -55,12 +97,12 @@ services:
       - 9083:9083
     volumes:
       - ./catalog/scripts/entrypoint-init.sh:/entrypoint.sh
-      - ./catalog/conf/metastore-site.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
+      - ./catalog/conf/metastore-site.postgres.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
     entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
     depends_on:
       catalog-db:
         condition: service_healthy
       catalog-db-init:
         condition: service_completed_successfully
-    links:
-      - catalog-db
+  ### For Postgres - End ###
+  ##### Catalog Services - End #####
