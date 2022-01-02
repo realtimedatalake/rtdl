@@ -1,6 +1,49 @@
 version: '3'
 
 services:
+  ##### Config Services - Start #####
+  ### For YBDB - Start ###
+  # rtdl-db:
+  #   platform: linux/amd64
+  #   image: yugabytedb/yugabyte:latest
+  #   container_name: rtdl_rtdl-db
+  #   volumes:
+  #     - ./storage/rtdl-db_data:/home/yugabyte/yb_data
+  #   command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
+  #   expose:
+  #     - 5433
+  #   ports:
+  #     - 5434:5433
+  #   healthcheck:
+  #       test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
+  #       interval: 10s
+  #       timeout: 5s
+  #       retries: 12
+  ### For YBDB - End ###
+
+  ### For Postgres - Start ###
+  rtdl-db:
+    platform: linux/amd64
+    image: postgres:latest
+    container_name: rtdl_rtdl-db
+    volumes:
+      - ./storage/rtdl-db_data:/var/lib/postgresql/data
+    expose:
+      - 5432
+    ports:
+      - 5433:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: 10s
+        timeout: 5s
+        retries: 12
+  ### For Postgres - End ###
+  ##### Config Services - End #####
+
+
   ##### Ingest Service - Start #####
   ingest:
     build:
@@ -8,6 +51,8 @@ services:
     platform: linux/amd64
     image: rtdl/rtdl-ingest:latest
     container_name: rtdl_ingest
+    expose:
+      - 8080
     ports:
       - 8080:8080
     environment:
@@ -35,8 +80,8 @@ services:
   kafka:
     platform: linux/amd64
     #image: wurstmeister/kafka:2.12-2.3.0
-    image: bitnami/kafka:latest
     #image: dipanjanb/kafka-m1:0.1
+    image: bitnami/kafka:latest
     container_name: rtdl_kafka
     expose:
       - 9092
@@ -61,13 +106,14 @@ services:
     container_name: rtdl_process-statefun-manager
     expose:
       - 6123
+      - 8081
     ports:
-      #- 8082:8081
       - 8081:8081
     environment:
       ROLE: master
       MASTER_HOST: statefun-manager
     volumes:
+      - ./storage/rtdl-statefun-manager_store:/checkpoint-dir
       - ./greeter/module.yaml:/opt/statefun/modules/greeter/module.yaml
     depends_on:
       - ingest
@@ -83,6 +129,7 @@ services:
       ROLE: worker
       MASTER_HOST: statefun-manager
     volumes:
+      - ./storage/rtdl-statefun-worker_store:/checkpoint-dir
       - ./greeter/module.yaml:/opt/statefun/modules/greeter/module.yaml
     depends_on:
       - statefun-manager
@@ -105,8 +152,10 @@ services:
   #   image: yugabytedb/yugabyte:latest
   #   container_name: rtdl_catalog-db
   #   volumes:
-  #     - ./rtdl-catalog-db_data:/home/yugabyte/yb_data
+  #     - ./storage/rtdl-catalog-db_data:/home/yugabyte/yb_data
   #   command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
+  #   expose:
+  #     - 5433
   #   ports:
   #     - 5433:5433
   #   healthcheck:
@@ -119,6 +168,8 @@ services:
   #   platform: linux/amd64
   #   image: rtdl/hive-metastore
   #   container_name: rtdl_catalog
+  #   expose:
+  #     - 9083
   #   ports:
   #     - 9083:9083
   #   volumes:
@@ -136,7 +187,9 @@ services:
     image: postgres:latest
     container_name: rtdl_catalog-db
     volumes:
-      - ./rtdl-catalog-db_data:/var/lib/postgresql/data
+      - ./storage/rtdl-catalog-db_data:/var/lib/postgresql/data
+    expose:
+      - 5432
     ports:
       - 5432:5432
     environment:
@@ -152,6 +205,8 @@ services:
     platform: linux/amd64
     image: rtdl/hive-metastore
     container_name: rtdl_catalog
+    expose:
+      - 9083
     ports:
       - 9083:9083
     volumes:

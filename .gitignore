@@ -11,5 +11,5 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Database data directory
-rtdl-catalog-db_data/
+# Data storage directories
+storage/
