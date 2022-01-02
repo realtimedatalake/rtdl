@@ -114,6 +114,7 @@ services:
       MASTER_HOST: statefun-manager
     volumes:
       - ./storage/rtdl-statefun-manager_store:/checkpoint-dir
+      #- ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
       - ./greeter/module.yaml:/opt/statefun/modules/greeter/module.yaml
     depends_on:
       - ingest
@@ -130,6 +131,7 @@ services:
       MASTER_HOST: statefun-manager
     volumes:
       - ./storage/rtdl-statefun-worker_store:/checkpoint-dir
+      #- ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
       - ./greeter/module.yaml:/opt/statefun/modules/greeter/module.yaml
     depends_on:
       - statefun-manager
