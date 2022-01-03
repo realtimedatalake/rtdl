@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS file_store_types (
 
 CREATE TABLE IF NOT EXISTS streams (
   stream_id uuid DEFAULT gen_random_uuid(),
-  stream_ald_id VARCHAR,
+  stream_alt_id VARCHAR,
   active BOOLEAN DEFAULT FALSE,
   file_store_type_id INTEGER NOT NULL,
   region VARCHAR,
@@ -44,6 +44,53 @@ VALUES
     ('AWS'),
     ('GCP');
 
+CREATE OR REPLACE FUNCTION getAllStreams()
+    RETURNS TABLE (
+        stream_id uuid,
+        stream_alt_id VARCHAR,
+        active BOOLEAN,
+        file_store_type_name VARCHAR,
+        region VARCHAR,
+        bucket_name VARCHAR,
+        folder_name VARCHAR,
+        iam_arn VARCHAR,
+        credentials JSON
+    )
+AS $$
+BEGIN
+    RETURN QUERY
+        SELECT s.stream_id, s.stream_alt_id, s.active, fst.file_store_type_name, s.region, s.bucket_name, s.folder_name, s.iam_arn, s.credentials
+        FROM streams s
+        LEFT OUTER JOIN file_store_types fst
+            ON s.file_store_type_id = fst.file_store_type_id
+        ORDER BY s.stream_id ASC;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION getAllActiveStreams()
+    RETURNS TABLE (
+        stream_id uuid,
+        stream_alt_id VARCHAR,
+        active BOOLEAN,
+        file_store_type_name VARCHAR,
+        region VARCHAR,
+        bucket_name VARCHAR,
+        folder_name VARCHAR,
+        iam_arn VARCHAR,
+        credentials JSON
+    )
+AS $$
+BEGIN
+    RETURN QUERY
+        SELECT s.stream_id, s.stream_alt_id, s.active, fst.file_store_type_name, s.region, s.bucket_name, s.folder_name, s.iam_arn, s.credentials
+        FROM streams s
+        LEFT OUTER JOIN file_store_types fst
+            ON s.file_store_type_id = fst.file_store_type_id
+        WHERE s.active = TRUE
+        ORDER BY s.stream_id ASC;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION getAllFileStoreTypes()
     RETURNS TABLE (
         file_store_type_id INTEGER,
@@ -53,7 +100,8 @@ AS $$
 BEGIN
     RETURN QUERY
         SELECT fst.file_store_type_id, fst.file_store_type_name
-        FROM file_store_types fst;
+        FROM file_store_types fst
+        ORDER BY fst.file_store_type_id ASC;
 END;
 $$ LANGUAGE plpgsql;
 

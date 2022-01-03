@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,24 +8,45 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
 const (
-	db_host_def     = "rtdl-db"
+	db_host_def = "rtdl-db"
+	//db_host_def     = "localhost"
 	db_port_def     = 5433
 	db_user_def     = "rtdl"
 	db_password_def = "rtdl"
 	db_dbname_def   = "rtdl_db"
 )
 
+type fileStoreType struct {
+	FileStoreTypeID   int    `db:"file_store_type_id" json:",omitempty"`
+	FileStoreTypeName string `db:"file_store_type_name" json:",omitempty"`
+}
+
+type stream struct {
+	StreamID          string `db:"stream_id" json:",omitempty"`
+	StreamAltId       string `db:"stream_alt_id" json:",omitempty"`
+	Active            bool   `db:"active" json:",omitempty"`
+	FileStoreTypeName string `db:"file_store_type_name" json:",omitempty"`
+	Region            string `db:"region" json:",omitempty"`
+	BucketName        string `db:"bucket_name" json:",omitempty"`
+	FolderName        string `db:"folder_name" json:",omitempty"`
+	IamARN            string `db:"iam_arn" json:",omitempty"`
+	Credentials       string `db:"credentials" json:",omitempty"`
+}
+
 func main() {
 
 	// connection string
 	psqlconn := getDBConnectionString()
 	// open database
-	db, err := sql.Open("postgres", psqlconn)
-	CheckError(err)
+	db, err := sqlx.Open("postgres", psqlconn)
+	if err != nil {
+		CheckError(err)
+	}
 	// close database
 	defer db.Close()
 
@@ -43,7 +63,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":80", nil))
 }
 
-func getStreamHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
+func getStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 	// getStream -- streamId
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		// body, err := ioutil.ReadAll(req.Body)
@@ -66,18 +86,27 @@ func getStreamHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
 	})
 }
 
-func getAllStreamsHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
+func getAllStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 	// getAllStreams -- N/A
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			// Serve the resource.
+			streams := []stream{}
+			err := db.Select(&streams, "select * from getAllStreams()")
+			if err != nil {
+				fmt.Println("Error fetching rows")
+				CheckError(err)
+			}
+			jsonData, err := json.MarshalIndent(streams, "", "    ")
+			if err != nil {
+				jsonData = nil
+				CheckError(err)
+			}
+			wrt.WriteHeader(http.StatusOK)
+			wrt.Write(jsonData)
 		case http.MethodPost:
-			// Create a new record.
 		case http.MethodPut:
-			// Update an existing record.
 		case http.MethodDelete:
-			// Remove the record.
 		default:
 			wrt.WriteHeader(http.StatusMethodNotAllowed)
 			http.Error(wrt, "Method not allowed", http.StatusMethodNotAllowed)
@@ -85,12 +114,24 @@ func getAllStreamsHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
 	})
 }
 
-func getAllActiveStreamsHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
+func getAllActiveStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 	// getAllActiveStreams -- N/A
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			// Serve the resource.
+			streams := []stream{}
+			err := db.Select(&streams, "select * from getAllActiveStreams()")
+			if err != nil {
+				fmt.Println("Error fetching rows")
+				CheckError(err)
+			}
+			jsonData, err := json.MarshalIndent(streams, "", "    ")
+			if err != nil {
+				jsonData = nil
+				CheckError(err)
+			}
+			wrt.WriteHeader(http.StatusOK)
+			wrt.Write(jsonData)
 		case http.MethodPost:
 			// Create a new record.
 		case http.MethodPut:
@@ -104,7 +145,7 @@ func getAllActiveStreamsHandler(db *sql.DB) func(http.ResponseWriter, *http.Requ
 	})
 }
 
-func createStreamHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
+func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 	// createStream -- active, streamAltId, fileStoreType, region (AWS), bucket(AWS, GCP), folder, IAM ARN (AWS w/ IAM), credentials JSON (GCP)
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		// body, err := ioutil.ReadAll(req.Body)
@@ -127,7 +168,7 @@ func createStreamHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
 	})
 }
 
-func updateStreamHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
+func updateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 	// updateStream -- streamId, active, streamAltId, fileStoreType, region (AWS), bucket(AWS, GCP), folder, IAM ARN (AWS w/ IAM), credentials JSON (GCP)
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		// body, err := ioutil.ReadAll(req.Body)
@@ -150,7 +191,7 @@ func updateStreamHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
 	})
 }
 
-func deleteStreamHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
+func deleteStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 	// deleteStream -- streamId
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		// body, err := ioutil.ReadAll(req.Body)
@@ -173,25 +214,27 @@ func deleteStreamHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
 	})
 }
 
-func getAllFileStoreTypesHandler(db *sql.DB) func(http.ResponseWriter, *http.Request) {
+func getAllFileStoreTypesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 	// getAllFileStoreTypes -- N/A
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			rows, err := db.Query(`select * from getAllFileStoreTypes()`)
+			fst := []fileStoreType{}
+			err := db.Select(&fst, "select * from getAllFileStoreTypes()")
 			if err != nil {
 				fmt.Println("Error fetching rows")
 				CheckError(err)
 			}
-			jsonData := sqlRowsToJSON(rows)
+			jsonData, err := json.MarshalIndent(fst, "", "    ")
+			if err != nil {
+				jsonData = nil
+				CheckError(err)
+			}
 			wrt.WriteHeader(http.StatusOK)
 			wrt.Write(jsonData)
 		case http.MethodPost:
-			// Create a new record.
 		case http.MethodPut:
-			// Update an existing record.
 		case http.MethodDelete:
-			// Remove the record.
 		default:
 			wrt.WriteHeader(http.StatusMethodNotAllowed)
 			http.Error(wrt, "Method not allowed", http.StatusMethodNotAllowed)
@@ -223,79 +266,6 @@ func getDBConnectionString() (psqlconn string) {
 		db_dbname = db_dbname_env
 	}
 	psqlconn = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", db_host, db_port, db_user, db_password, db_dbname)
-	return
-}
-
-func sqlRowsToJSON(rows *sql.Rows) (jsonData []byte) {
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		CheckError(err)
-	}
-
-	count := len(columnTypes)
-	finalRows := []interface{}{}
-
-	for rows.Next() {
-		scanArgs := make([]interface{}, count)
-
-		for i, v := range columnTypes {
-			switch v.DatabaseTypeName() {
-			case "VARCHAR", "TEXT", "UUID", "TIMESTAMP":
-				scanArgs[i] = new(sql.NullString)
-				break
-			case "BOOL":
-				scanArgs[i] = new(sql.NullBool)
-				break
-			case "INT4":
-				scanArgs[i] = new(sql.NullInt64)
-				break
-			default:
-				scanArgs[i] = new(sql.NullString)
-			}
-		}
-
-		err := rows.Scan(scanArgs...)
-		if err != nil {
-			CheckError(err)
-		}
-
-		masterData := map[string]interface{}{}
-
-		for i, v := range columnTypes {
-			if z, ok := (scanArgs[i]).(*sql.NullBool); ok {
-				masterData[v.Name()] = z.Bool
-				continue
-			}
-			if z, ok := (scanArgs[i]).(*sql.NullString); ok {
-				masterData[v.Name()] = z.String
-				continue
-			}
-			if z, ok := (scanArgs[i]).(*sql.NullInt64); ok {
-				masterData[v.Name()] = z.Int64
-				continue
-			}
-			if z, ok := (scanArgs[i]).(*sql.NullFloat64); ok {
-				masterData[v.Name()] = z.Float64
-				continue
-			}
-			if z, ok := (scanArgs[i]).(*sql.NullInt32); ok {
-				masterData[v.Name()] = z.Int32
-				continue
-			}
-			masterData[v.Name()] = scanArgs[i]
-		}
-
-		finalRows = append(finalRows, masterData)
-	}
-
-	z, err := json.MarshalIndent(finalRows)
-	if err != nil {
-		jsonData = nil
-		CheckError(err)
-	} else {
-		jsonData = z
-	}
-
 	return
 }
 
