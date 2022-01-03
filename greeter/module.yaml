@@ -15,7 +15,7 @@
 kind: io.statefun.endpoints.v2/http
 spec:
   functions: example/*
-  urlPathTemplate: http://functions:8082/statefun
+  urlPathTemplate: http://statefun-functions:8082/statefun
   transport:  
     type: io.statefun.transports.v1/async
 ---
