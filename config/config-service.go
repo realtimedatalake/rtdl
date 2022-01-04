@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -13,8 +14,8 @@ import (
 )
 
 const (
-	db_host_def = "rtdl-db"
-	//db_host_def     = "localhost"
+	//db_host_def = "rtdl-db"
+	db_host_def     = "localhost"
 	db_port_def     = 5433
 	db_user_def     = "rtdl"
 	db_password_def = "rtdl"
@@ -22,20 +23,21 @@ const (
 )
 
 type fileStoreType struct {
-	FileStoreTypeID   int    `db:"file_store_type_id" json:",omitempty"`
-	FileStoreTypeName string `db:"file_store_type_name" json:",omitempty"`
+	FileStoreTypeID   int    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
+	FileStoreTypeName string `db:"file_store_type_name" json:"file_store_type_name,omitempty"`
 }
 
 type stream struct {
-	StreamID          string `db:"stream_id" json:",omitempty"`
-	StreamAltId       string `db:"stream_alt_id" json:",omitempty"`
-	Active            bool   `db:"active" json:",omitempty"`
-	FileStoreTypeName string `db:"file_store_type_name" json:",omitempty"`
-	Region            string `db:"region" json:",omitempty"`
-	BucketName        string `db:"bucket_name" json:",omitempty"`
-	FolderName        string `db:"folder_name" json:",omitempty"`
-	IamARN            string `db:"iam_arn" json:",omitempty"`
-	Credentials       string `db:"credentials" json:",omitempty"`
+	StreamID          string `db:"stream_id" json:"stream_id,omitempty"`
+	StreamAltID       string `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
+	Active            bool   `db:"active" json:"active,omitempty"`
+	FileStoreTypeID   int    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
+	FileStoreTypeName string `db:"file_store_type_name" json:"file_store_type_name,omitempty"`
+	Region            string `db:"region" json:"region,omitempty"`
+	BucketName        string `db:"bucket_name" json:"bucket_name,omitempty"`
+	FolderName        string `db:"folder_name" json:"folder_name,omitempty"`
+	IamARN            string `db:"iam_arn" json:"iam_arn,omitempty"`
+	Credentials       string `db:"credentials" json:"credentials,omitempty"`
 }
 
 func main() {
@@ -148,15 +150,29 @@ func getAllActiveStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Req
 func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 	// createStream -- active, streamAltId, fileStoreType, region (AWS), bucket(AWS, GCP), folder, IAM ARN (AWS w/ IAM), credentials JSON (GCP)
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
-		// body, err := ioutil.ReadAll(req.Body)
-		// if err != nil {
-		// 	log.Fatalln(err)
-		// }
 		switch req.Method {
+		case http.MethodPost:
+			body, err := ioutil.ReadAll(req.Body)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			resp := "Received a POST request"
+			jsonData, err := json.MarshalIndent(resp, "", "    ")
+			if err != nil {
+				jsonData = nil
+				CheckError(err)
+			}
+			wrt.WriteHeader(http.StatusOK)
+			wrt.Write(jsonData)
+
+			var reqStream stream
+			err = json.Unmarshal(body, &reqStream)
+			if err != nil {
+				CheckError(err)
+			}
+			fmt.Printf("%s\n", reqStream.Credentials)
 		case http.MethodGet:
 			// Serve the resource.
-		case http.MethodPost:
-			// Create a new record.
 		case http.MethodPut:
 			// Update an existing record.
 		case http.MethodDelete:

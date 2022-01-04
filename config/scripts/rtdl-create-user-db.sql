@@ -82,7 +82,7 @@ CREATE OR REPLACE FUNCTION getAllActiveStreams()
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT s.stream_id, s.stream_alt_id, s.active, fst.file_store_type_name, s.region, s.bucket_name, s.folder_name, s.iam_arn, s.credentials
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.file_store_type_id, fst.file_store_type_name, s.region, s.bucket_name, s.folder_name, s.iam_arn, s.credentials
         FROM streams s
         LEFT OUTER JOIN file_store_types fst
             ON s.file_store_type_id = fst.file_store_type_id

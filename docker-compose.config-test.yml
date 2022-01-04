@@ -77,19 +77,19 @@ services:
       rtdl-db:
         condition: service_healthy
 
-  config:
-    build:
-      context: ./config
-    platform: linux/amd64
-    #image: rtdl/rtdl-config:latest
-    container_name: rtdl_config
-    expose:
-      - 80
-    ports:
-      - 80:80
-    environment:
-      RTDL_DB_PORT: 5432
-    depends_on:      
-      - rtdl-db-init
+  # config:
+  #   build:
+  #     context: ./config
+  #   platform: linux/amd64
+  #   #image: rtdl/rtdl-config:latest
+  #   container_name: rtdl_config
+  #   expose:
+  #     - 80
+  #   ports:
+  #     - 80:80
+  #   environment:
+  #     RTDL_DB_PORT: 5432
+  #   depends_on:      
+  #     - rtdl-db-init
   ### For Postgres - End ###
   ##### Config Services - End #####
