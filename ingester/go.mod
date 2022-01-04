@@ -18,4 +18,7 @@ module statefun.io/greeter
 
 go 1.16
 
-require github.com/apache/flink-statefun/statefun-sdk-go/v3 v3.1.1
+require (
+	github.com/apache/flink-statefun/statefun-sdk-go/v3 v3.1.1
+	github.com/tidwall/gjson v1.12.1 // indirect
+)

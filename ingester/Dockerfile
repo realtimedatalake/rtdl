@@ -1,3 +1,5 @@
+
+#
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -12,30 +14,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-kind: io.statefun.endpoints.v2/http
-spec:
-  functions: example/*
-  urlPathTemplate: http://statefun-functions:8082/statefun
-  transport:  
-    type: io.statefun.transports.v1/async
----
-kind: io.statefun.kafka.v1/ingress
-spec:
-  id: example/names
-  address: kafka:9092
-  consumerGroupId: my-group-id
-  startupPosition:
-    type: earliest
-  topics:
-    - topic: names
-      valueType: example/GreetRequest
-      targets:
-        - example/person
----
-kind: io.statefun.kafka.v1/egress
-spec:
-  id: example/greets
-  address: kafka:9092
-  deliverySemantic:
-    type: exactly-once
-    transactionTimeout: 15min
+
+FROM golang:1.16-alpine
+RUN apk add --no-cache git
+
+RUN mkdir -p /app
+WORKDIR /app
+
+COPY go.mod ./
+COPY go.sum ./
+RUN go mod download
+
+COPY *.go ./
+
+RUN go build -o /ingester
+
+EXPOSE 8082
+
+CMD [ "/ingester" ]
