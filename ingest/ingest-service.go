@@ -59,7 +59,7 @@ func main() {
 	//defer kafkaWriter.Close()
 
 	// Add handle func for producer.
-	http.HandleFunc("/", producerHandler(kafkaURL, topic))
+	http.HandleFunc("/ingest", producerHandler(kafkaURL, topic))
 
 	// Run the web server.
 	fmt.Println("start producer-api ... !!")
