@@ -27,17 +27,32 @@ type fileStoreType struct {
 	FileStoreTypeName string `db:"file_store_type_name" json:"file_store_type_name,omitempty"`
 }
 
+type partitionTime struct {
+	PartitionTimeId   int    `db:"partition_time_id" json:"partition_time_id,omitempty"`
+	PartitionTimeName string `db:"partition_time_name" json:"partition_time_name,omitempty"`
+}
+
+type compressionType struct {
+	CompressionTypeId   int    `db:"compression_type_id" json:"compression_type_id,omitempty"`
+	CompressionTypeName string `db:"compression_type_name" json:"compression_type_name,omitempty"`
+}
+
 type stream struct {
-	StreamID          string `db:"stream_id" json:"stream_id,omitempty"`
-	StreamAltID       string `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
-	Active            bool   `db:"active" json:"active,omitempty"`
-	FileStoreTypeID   int    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
-	FileStoreTypeName string `db:"file_store_type_name" json:"file_store_type_name,omitempty"`
-	Region            string `db:"region" json:"region,omitempty"`
-	BucketName        string `db:"bucket_name" json:"bucket_name,omitempty"`
-	FolderName        string `db:"folder_name" json:"folder_name,omitempty"`
-	IamARN            string `db:"iam_arn" json:"iam_arn,omitempty"`
-	Credentials       string `db:"credentials" json:"credentials,omitempty"`
+	StreamID            string `db:"stream_id" json:"stream_id,omitempty"`
+	StreamAltID         string `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
+	Active              bool   `db:"active" json:"active,omitempty"`
+	MessageType         string `db:"message_type" json:"message_type,omitempty"`
+	FileStoreTypeID     int    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
+	FileStoreTypeName   string `db:"file_store_type_name" json:"file_store_type_name,omitempty"`
+	Region              string `db:"region" json:"region,omitempty"`
+	BucketName          string `db:"bucket_name" json:"bucket_name,omitempty"`
+	FolderName          string `db:"folder_name" json:"folder_name,omitempty"`
+	PartitionTimeID     int    `db:"partition_time_id" json:"partition_time_id,omitempty"`
+	PartitionTimeName   string `db:"partition_time_name" json:"partition_time_name,omitempty"`
+	CompressionTypeID   int    `db:"compression_type_id" json:"compression_type_id,omitempty"`
+	CompressionTypeName string `db:"compression_type_name" json:"compression_type_name,omitempty"`
+	IamARN              string `db:"iam_arn" json:"iam_arn,omitempty"`
+	Credentials         string `db:"credentials" json:"credentials,omitempty"`
 }
 
 func main() {
@@ -60,6 +75,8 @@ func main() {
 	http.HandleFunc("/updateStream", updateStreamHandler(db))
 	http.HandleFunc("/deleteStream", deleteStreamHandler(db))
 	http.HandleFunc("/getAllFileStoreTypes", getAllFileStoreTypesHandler(db))
+	http.HandleFunc("/getAllPartitionTimes", getAllPartitionTimesHandler(db))
+	http.HandleFunc("/getAllCompressionTypes", getAllCompressionTypesHandler(db))
 
 	// Run the web server
 	log.Fatal(http.ListenAndServe(":80", nil))
@@ -89,7 +106,6 @@ func getStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 }
 
 func getAllStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
-	// getAllStreams -- N/A
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
@@ -117,7 +133,6 @@ func getAllStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) 
 }
 
 func getAllActiveStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
-	// getAllActiveStreams -- N/A
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
@@ -135,11 +150,8 @@ func getAllActiveStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Req
 			wrt.WriteHeader(http.StatusOK)
 			wrt.Write(jsonData)
 		case http.MethodPost:
-			// Create a new record.
 		case http.MethodPut:
-			// Update an existing record.
 		case http.MethodDelete:
-			// Remove the record.
 		default:
 			wrt.WriteHeader(http.StatusMethodNotAllowed)
 			http.Error(wrt, "Method not allowed", http.StatusMethodNotAllowed)
@@ -152,6 +164,7 @@ func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodPost:
+			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
 				log.Fatalln(err)
@@ -171,6 +184,79 @@ func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 				CheckError(err)
 			}
 			fmt.Printf("%s\n", reqStream.Credentials)
+
+			// Send to database function
+			/*
+				streams := []stream{}
+				queryStr := "select * from createStream("
+				if reqStream.StreamAltID != nil {
+					queryStr = queryStr + *reqStream.StreamAltID + ", "
+				} else {
+					queryStr = queryStr + "NULL, "
+				}
+				if reqStream.Active != nil {
+					queryStr = queryStr + strconv.FormatBool(*reqStream.Active) + ", "
+				} else {
+					queryStr = queryStr + "NULL, "
+				}
+				if reqStream.MessageType != nil {
+					queryStr = queryStr + *reqStream.MessageType + ", "
+				} else {
+					queryStr = queryStr + "NULL, "
+				}
+				if reqStream.FileStoreTypeID != nil {
+					queryStr = queryStr + strconv.Itoa(*reqStream.FileStoreTypeID) + ", "
+				} else {
+					queryStr = queryStr + "NULL, "
+				}
+				if reqStream.Region != nil {
+					queryStr = queryStr + *reqStream.Region + ", "
+				} else {
+					queryStr = queryStr + "NULL, "
+				}
+				if reqStream.BucketName != nil {
+					queryStr = queryStr + *reqStream.BucketName + ", "
+				} else {
+					queryStr = queryStr + "NULL, "
+				}
+				if reqStream.FolderName != nil {
+					queryStr = queryStr + *reqStream.FolderName + ", "
+				} else {
+					queryStr = queryStr + "NULL, "
+				}
+				if reqStream.PartitionTimeID != nil {
+					queryStr = queryStr + strconv.Itoa(*reqStream.PartitionTimeID) + ", "
+				} else {
+					queryStr = queryStr + "NULL, "
+				}
+				if reqStream.CompressionTypeID != nil {
+					queryStr = queryStr + strconv.Itoa(*reqStream.CompressionTypeID) + ", "
+				} else {
+					queryStr = queryStr + "NULL, "
+				}
+				if reqStream.IamARN != nil {
+					queryStr = queryStr + *reqStream.IamARN + ", "
+				} else {
+					queryStr = queryStr + "NULL, "
+				}
+				if reqStream.Credentials != nil {
+					queryStr = queryStr + *reqStream.Credentials + ")"
+				} else {
+					queryStr = queryStr + "NULL)"
+				}
+
+				err = db.Select(&streams, queryStr)
+				if err != nil {
+					fmt.Println("Error fetching rows")
+					CheckError(err)
+				}
+				jsonDataRet, errRet := json.MarshalIndent(streams, "", "    ")
+				if errRet != nil {
+					jsonDataRet = nil
+					CheckError(err)
+				}
+				wrt.WriteHeader(http.StatusOK)
+				wrt.Write(jsonDataRet)*/
 		case http.MethodGet:
 			// Serve the resource.
 		case http.MethodPut:
@@ -231,7 +317,6 @@ func deleteStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 }
 
 func getAllFileStoreTypesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
-	// getAllFileStoreTypes -- N/A
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
@@ -242,6 +327,60 @@ func getAllFileStoreTypesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Re
 				CheckError(err)
 			}
 			jsonData, err := json.MarshalIndent(fst, "", "    ")
+			if err != nil {
+				jsonData = nil
+				CheckError(err)
+			}
+			wrt.WriteHeader(http.StatusOK)
+			wrt.Write(jsonData)
+		case http.MethodPost:
+		case http.MethodPut:
+		case http.MethodDelete:
+		default:
+			wrt.WriteHeader(http.StatusMethodNotAllowed)
+			http.Error(wrt, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+}
+
+func getAllPartitionTimesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
+	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodGet:
+			pt := []partitionTime{}
+			err := db.Select(&pt, "select * from getAllPartitionTimes()")
+			if err != nil {
+				fmt.Println("Error fetching rows")
+				CheckError(err)
+			}
+			jsonData, err := json.MarshalIndent(pt, "", "    ")
+			if err != nil {
+				jsonData = nil
+				CheckError(err)
+			}
+			wrt.WriteHeader(http.StatusOK)
+			wrt.Write(jsonData)
+		case http.MethodPost:
+		case http.MethodPut:
+		case http.MethodDelete:
+		default:
+			wrt.WriteHeader(http.StatusMethodNotAllowed)
+			http.Error(wrt, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+}
+
+func getAllCompressionTypesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
+	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodGet:
+			ct := []compressionType{}
+			err := db.Select(&ct, "select * from getAllCompressionTypes()")
+			if err != nil {
+				fmt.Println("Error fetching rows")
+				CheckError(err)
+			}
+			jsonData, err := json.MarshalIndent(ct, "", "    ")
 			if err != nil {
 				jsonData = nil
 				CheckError(err)
