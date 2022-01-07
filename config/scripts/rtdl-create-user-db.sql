@@ -47,17 +47,11 @@ CREATE TABLE IF NOT EXISTS streams (
   partition_time_id INTEGER DEFAULT 1,
   compression_type_id INTEGER DEFAULT 1,
   iam_arn VARCHAR,
-  credentials JSON,
+  credentials VARCHAR,
   PRIMARY KEY (stream_id),
-  CONSTRAINT fk_file_store_type
-    FOREIGN KEY(file_store_type_id)
-      REFERENCES file_store_types(file_store_type_id)
-  CONSTRAINT fk_partition_time
-    FOREIGN KEY(partition_time_id)
-      REFERENCES partition_times(partition_time_id)
-  CONSTRAINT fk_compression_type
-    FOREIGN KEY(compression_type_id)
-      REFERENCES compression_types(compression_type_id)
+  FOREIGN KEY(file_store_type_id) REFERENCES file_store_types(file_store_type_id),
+  FOREIGN KEY(partition_time_id) REFERENCES partition_times(partition_time_id),
+  FOREIGN KEY(compression_type_id) REFERENCES compression_types(compression_type_id)
 );
 
 INSERT INTO file_store_types (file_store_type_name)
@@ -92,12 +86,12 @@ CREATE OR REPLACE FUNCTION getAllStreams()
         partition_time_name VARCHAR,
         compression_type_name VARCHAR,
         iam_arn VARCHAR,
-        credentials JSON
+        credentials VARCHAR
     )
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT s.stream_id, s.stream_alt_id, s.active, fst.file_store_type_name, s.region, s.bucket_name, s.folder_name, pt.partition_time_name, ct.compression_type_name, s.iam_arn, s.credentials
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, fst.file_store_type_name, s.region, s.bucket_name, s.folder_name, pt.partition_time_name, ct.compression_type_name, s.iam_arn, s.credentials
         FROM streams s
         LEFT OUTER JOIN file_store_types fst
             ON s.file_store_type_id = fst.file_store_type_id
@@ -122,12 +116,12 @@ CREATE OR REPLACE FUNCTION getAllActiveStreams()
         partition_time_name VARCHAR,
         compression_type_name VARCHAR,
         iam_arn VARCHAR,
-        credentials JSON
+        credentials VARCHAR
     )
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT s.stream_id, s.stream_alt_id, s.active, fst.file_store_type_name, s.region, s.bucket_name, s.folder_name, pt.partition_time_name, ct.compression_type_name, s.iam_arn, s.credentials
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, fst.file_store_type_name, s.region, s.bucket_name, s.folder_name, pt.partition_time_name, ct.compression_type_name, s.iam_arn, s.credentials
         FROM streams s
         LEFT OUTER JOIN file_store_types fst
             ON s.file_store_type_id = fst.file_store_type_id
@@ -140,7 +134,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION createStream(stream_alt_id_arg VARCHAR, active_arg BOOLEAN, message_type_arg VARCHAR, file_store_type_id_arg INTEGER, region_arg VARCHAR, bucket_name_arg VARCHAR, folder_name_arg VARCHAR, partition_time_id_arg INTEGER, compression_type_id_arg INTEGER, iam_arn_arg VARCHAR, credentials_arg JSON)
+CREATE OR REPLACE FUNCTION createStream(stream_alt_id_arg VARCHAR, active_arg BOOLEAN, message_type_arg VARCHAR, file_store_type_id_arg INTEGER, region_arg VARCHAR, bucket_name_arg VARCHAR, folder_name_arg VARCHAR, partition_time_id_arg INTEGER, compression_type_id_arg INTEGER, iam_arn_arg VARCHAR, credentials_arg VARCHAR)
     RETURNS TABLE (
         stream_id uuid,
         stream_alt_id VARCHAR,
@@ -153,7 +147,7 @@ CREATE OR REPLACE FUNCTION createStream(stream_alt_id_arg VARCHAR, active_arg BO
         partition_time_id INTEGER,
         compression_type_id INTEGER,
         iam_arn VARCHAR,
-        credentials JSON
+        credentials VARCHAR
     )
 AS $$
 BEGIN
@@ -161,7 +155,7 @@ BEGIN
         INSERT INTO streams  (stream_alt_id, active, message_type, file_store_type_id, region, bucket_name, folder_name, partition_time_id, compression_type_id, iam_arn, credentials)
         VALUES
             (stream_alt_id_arg, active_arg, message_type_arg, file_store_type_id_arg, region_arg, bucket_name_arg, folder_name_arg, partition_time_id_arg, compression_type_id_arg, iam_arn_arg, credentials_arg)
-        RETURNING *;
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.iam_arn, streams.credentials;
 END;
 $$ LANGUAGE plpgsql;
 

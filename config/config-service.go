@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -37,7 +38,7 @@ type compressionType struct {
 	CompressionTypeName string `db:"compression_type_name" json:"compression_type_name,omitempty"`
 }
 
-type stream struct {
+type stream_json struct {
 	StreamID            string `db:"stream_id" json:"stream_id,omitempty"`
 	StreamAltID         string `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
 	Active              bool   `db:"active" json:"active,omitempty"`
@@ -53,6 +54,24 @@ type stream struct {
 	CompressionTypeName string `db:"compression_type_name" json:"compression_type_name,omitempty"`
 	IamARN              string `db:"iam_arn" json:"iam_arn,omitempty"`
 	Credentials         string `db:"credentials" json:"credentials,omitempty"`
+}
+
+type stream_sql struct {
+	StreamID            sql.NullString `db:"stream_id" json:"stream_id,omitempty"`
+	StreamAltID         sql.NullString `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
+	Active              sql.NullBool   `db:"active" json:"active,omitempty"`
+	MessageType         sql.NullString `db:"message_type" json:"message_type,omitempty"`
+	FileStoreTypeID     sql.NullInt64  `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
+	FileStoreTypeName   sql.NullString `db:"file_store_type_name" json:"file_store_type_name,omitempty"`
+	Region              sql.NullString `db:"region" json:"region,omitempty"`
+	BucketName          sql.NullString `db:"bucket_name" json:"bucket_name,omitempty"`
+	FolderName          sql.NullString `db:"folder_name" json:"folder_name,omitempty"`
+	PartitionTimeID     sql.NullInt64  `db:"partition_time_id" json:"partition_time_id,omitempty"`
+	PartitionTimeName   sql.NullString `db:"partition_time_name" json:"partition_time_name,omitempty"`
+	CompressionTypeID   sql.NullInt64  `db:"compression_type_id" json:"compression_type_id,omitempty"`
+	CompressionTypeName sql.NullString `db:"compression_type_name" json:"compression_type_name,omitempty"`
+	IamARN              sql.NullString `db:"iam_arn" json:"iam_arn,omitempty"`
+	Credentials         sql.NullString `db:"credentials" json:"credentials,omitempty"`
 }
 
 func main() {
@@ -82,6 +101,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":80", nil))
 }
 
+////////// HANDLER FUNCTIONS - Start //////////
 func getStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 	// getStream -- streamId
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
@@ -109,7 +129,7 @@ func getAllStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) 
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			streams := []stream{}
+			streams := []stream_sql{}
 			err := db.Select(&streams, "select * from getAllStreams()")
 			if err != nil {
 				fmt.Println("Error fetching rows")
@@ -136,7 +156,7 @@ func getAllActiveStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Req
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			streams := []stream{}
+			streams := []stream_sql{}
 			err := db.Select(&streams, "select * from getAllActiveStreams()")
 			if err != nil {
 				fmt.Println("Error fetching rows")
@@ -160,7 +180,6 @@ func getAllActiveStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Req
 }
 
 func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
-	// createStream -- active, streamAltId, fileStoreType, region (AWS), bucket(AWS, GCP), folder, IAM ARN (AWS w/ IAM), credentials JSON (GCP)
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodPost:
@@ -169,16 +188,7 @@ func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			if err != nil {
 				log.Fatalln(err)
 			}
-			resp := "Received a POST request"
-			jsonData, err := json.MarshalIndent(resp, "", "    ")
-			if err != nil {
-				jsonData = nil
-				CheckError(err)
-			}
-			wrt.WriteHeader(http.StatusOK)
-			wrt.Write(jsonData)
-
-			var reqStream stream
+			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
 			if err != nil {
 				CheckError(err)
@@ -186,77 +196,20 @@ func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			fmt.Printf("%s\n", reqStream.Credentials)
 
 			// Send to database function
-			/*
-				streams := []stream{}
-				queryStr := "select * from createStream("
-				if reqStream.StreamAltID != nil {
-					queryStr = queryStr + *reqStream.StreamAltID + ", "
-				} else {
-					queryStr = queryStr + "NULL, "
-				}
-				if reqStream.Active != nil {
-					queryStr = queryStr + strconv.FormatBool(*reqStream.Active) + ", "
-				} else {
-					queryStr = queryStr + "NULL, "
-				}
-				if reqStream.MessageType != nil {
-					queryStr = queryStr + *reqStream.MessageType + ", "
-				} else {
-					queryStr = queryStr + "NULL, "
-				}
-				if reqStream.FileStoreTypeID != nil {
-					queryStr = queryStr + strconv.Itoa(*reqStream.FileStoreTypeID) + ", "
-				} else {
-					queryStr = queryStr + "NULL, "
-				}
-				if reqStream.Region != nil {
-					queryStr = queryStr + *reqStream.Region + ", "
-				} else {
-					queryStr = queryStr + "NULL, "
-				}
-				if reqStream.BucketName != nil {
-					queryStr = queryStr + *reqStream.BucketName + ", "
-				} else {
-					queryStr = queryStr + "NULL, "
-				}
-				if reqStream.FolderName != nil {
-					queryStr = queryStr + *reqStream.FolderName + ", "
-				} else {
-					queryStr = queryStr + "NULL, "
-				}
-				if reqStream.PartitionTimeID != nil {
-					queryStr = queryStr + strconv.Itoa(*reqStream.PartitionTimeID) + ", "
-				} else {
-					queryStr = queryStr + "NULL, "
-				}
-				if reqStream.CompressionTypeID != nil {
-					queryStr = queryStr + strconv.Itoa(*reqStream.CompressionTypeID) + ", "
-				} else {
-					queryStr = queryStr + "NULL, "
-				}
-				if reqStream.IamARN != nil {
-					queryStr = queryStr + *reqStream.IamARN + ", "
-				} else {
-					queryStr = queryStr + "NULL, "
-				}
-				if reqStream.Credentials != nil {
-					queryStr = queryStr + *reqStream.Credentials + ")"
-				} else {
-					queryStr = queryStr + "NULL)"
-				}
-
-				err = db.Select(&streams, queryStr)
-				if err != nil {
-					fmt.Println("Error fetching rows")
-					CheckError(err)
-				}
-				jsonDataRet, errRet := json.MarshalIndent(streams, "", "    ")
-				if errRet != nil {
-					jsonDataRet = nil
-					CheckError(err)
-				}
-				wrt.WriteHeader(http.StatusOK)
-				wrt.Write(jsonDataRet)*/
+			retStreams := []stream_sql{}
+			queryStr := buildQueryString_createStream(reqStream)
+			err = db.Select(&retStreams, queryStr)
+			if err != nil {
+				fmt.Println("Error fetching rows")
+				CheckError(err)
+			}
+			resp, errRet := json.MarshalIndent(retStreams, "", "    ")
+			if errRet != nil {
+				resp = nil
+				CheckError(err)
+			}
+			wrt.WriteHeader(http.StatusOK)
+			wrt.Write(resp)
 		case http.MethodGet:
 			// Serve the resource.
 		case http.MethodPut:
@@ -397,6 +350,65 @@ func getAllCompressionTypesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.
 	})
 }
 
+////////// HANDLER FUNCTIONS - End //////////
+
+////////// HELPER FUNCTIONS - Start //////////
+func buildQueryString_createStream(reqStream stream_json) (queryStr string) {
+	queryStr = "select * from createStream("
+	if reqStream.StreamAltID != "" {
+		queryStr = queryStr + "'" + reqStream.StreamAltID + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+	queryStr = queryStr + strconv.FormatBool(reqStream.Active) + ", "
+	if reqStream.MessageType != "" {
+		queryStr = queryStr + "'" + reqStream.MessageType + "', "
+	} else {
+		// TODO: Required field. Return error.
+		queryStr = queryStr + "NULL, "
+	}
+	if reqStream.FileStoreTypeID < 1 {
+		reqStream.FileStoreTypeID = 1
+	}
+	queryStr = queryStr + strconv.Itoa(reqStream.FileStoreTypeID) + ", "
+	if reqStream.Region != "" {
+		queryStr = queryStr + "'" + reqStream.Region + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+	if reqStream.BucketName != "" {
+		queryStr = queryStr + "'" + reqStream.BucketName + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+	if reqStream.FolderName != "" {
+		queryStr = queryStr + "'" + reqStream.FolderName + "', "
+	} else {
+		// TODO: Required field. Return error.
+		queryStr = queryStr + "NULL, "
+	}
+	if reqStream.PartitionTimeID < 1 {
+		reqStream.PartitionTimeID = 1
+	}
+	queryStr = queryStr + strconv.Itoa(reqStream.PartitionTimeID) + ", "
+	if reqStream.CompressionTypeID < 1 {
+		reqStream.CompressionTypeID = 1
+	}
+	queryStr = queryStr + strconv.Itoa(reqStream.CompressionTypeID) + ", "
+	if reqStream.IamARN != "" {
+		queryStr = queryStr + "'" + reqStream.IamARN + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+	if reqStream.Credentials != "" {
+		queryStr = queryStr + "'" + reqStream.Credentials + "')"
+	} else {
+		queryStr = queryStr + "NULL)"
+	}
+
+	return queryStr
+}
+
 func getDBConnectionString() (psqlconn string) {
 	var db_host, db_port, db_user, db_password, db_dbname = db_host_def, db_port_def, db_user_def, db_password_def, db_dbname_def
 	var db_host_env, db_user_env, db_password_env, db_dbname_env = os.Getenv("RTDL_DB_HOST"), os.Getenv("RTDL_DB_USER"), os.Getenv("RTDL_DB_PASSWORD"), os.Getenv("RTDL_DB_DBNAME")
@@ -429,3 +441,5 @@ func CheckError(err error) {
 		panic(err)
 	}
 }
+
+////////// HELPER FUNCTIONS - End //////////
