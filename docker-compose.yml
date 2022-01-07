@@ -29,7 +29,7 @@ services:
     volumes:
       - ./storage/rtdl-db_data:/var/lib/postgresql/data
     expose:
-      - 5432
+      - 5432      
     ports:
       - 5433:5432
     environment:
@@ -144,6 +144,20 @@ services:
     container_name: rtdl_process-statefun-functions
     expose:
       - 8082
+    environment:
+      POSTGRES_HOST: rtdl-db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: rtdl
+      POSTGRES_PASSWORD: rtdl
+      POSTGRES_DBNAME: rtdl_db
+    depends_on:
+      catalog-db:
+        condition: service_healthy      
+      rtdl-db:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
   ##### Processing Services - End #####
 
 

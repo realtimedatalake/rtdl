@@ -20,5 +20,11 @@ go 1.16
 
 require (
 	github.com/apache/flink-statefun/statefun-sdk-go/v3 v3.1.1
+	github.com/go-pg/pg v8.0.7+incompatible // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jmoiron/sqlx v1.3.4 // indirect
+	github.com/lib/pq v1.10.4 // indirect
 	github.com/tidwall/gjson v1.12.1 // indirect
+	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
+	mellium.im/sasl v0.2.1 // indirect
 )
