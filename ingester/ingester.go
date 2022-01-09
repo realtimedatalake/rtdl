@@ -19,7 +19,9 @@ package main
 import (
 	"os"
 	"fmt"
+	"reflect"
 	"strconv"
+	"strings"
 	"net/http"
 	"encoding/json"
 	_ "github.com/lib/pq"
@@ -31,7 +33,7 @@ type IncomingMessage struct {
 
 	SourceKey string `json:"source_key"`
 	MessageType string `json:"message_type"`
-	Payload interface {} `json:"payload"`
+	Payload map[string]interface{} `json:"payload"`
 }
 
 type Config struct {
@@ -65,12 +67,89 @@ func getEnv(key, defaultValue string) string {
     return value
 }
 
+func getParquetDataType(dataType string) string {
+
+	switch dataType {
+		case "string":
+			return `BYTE_ARRAY`
+		case "int32":
+			return `INT32`
+		case "int64":
+			return `INT64`
+		case "int96":
+			return `INT96`
+		case "float32":
+			return `FLOAT`
+		case "float64":
+			return `DOUBLE`
+
+	}
+	return ""
+
+}
+
+func generateSchema(payload map[string]interface{}, messageType string, jsonSchema string) string {
+
+	if jsonSchema == "" {
+		jsonSchema = `{"Tag": "name=` + messageType +`, repititiontype=REQUIRED",`
+		jsonSchema += `"Fields": [`
+	}
+	
+	
+
+	for key,value := range(payload) {
+	
+		jsonSchema += `{"Tag": "name=` + key + `, type=`
+		
+		dataType := reflect.TypeOf(value).String()
+		fmt.Println(fmt.Sprintf("%s is %s",key, dataType))
+		
+		
+		
+		if strings.HasPrefix(dataType, "map[string]interface") {
+			
+			jsonSchema += `MAP, repititiontype=REQUIRED", "Fields" : [`
+			jsonSchema = generateSchema(value.(map[string]interface{}), messageType, jsonSchema)
+			jsonSchema += `]},`
+			
+		} else if strings.HasPrefix(dataType, "[]interface") {
+		
+			jsonSchema += `LIST, repititiontype=REQUIRED", "Fields" : [`
+			arrayItemDataType := reflect.TypeOf(value.([]interface{})[0]).String()
+			if strings.HasPrefix(arrayItemDataType, "map[string]interface") {
+				 
+				jsonSchema = generateSchema(value.([]interface{})[0].(map[string]interface{}),messageType, jsonSchema)
+				
+			} else {
+			
+				jsonSchema += `{"Tag": "name=element, type=` + getParquetDataType(reflect.TypeOf(value.([]interface{})[0]).String())
+				jsonSchema += `, repititiontype=REQUIRED"},`
+			}
+			jsonSchema += `]},`
+		} else {
+			
+			jsonSchema += getParquetDataType(dataType)	
+			jsonSchema += `, repititiontype=REQUIRED"},`
+			
+		}
+		
+		
+		
+		
+	}
+	
+	return jsonSchema
+
+}
+
+
 func Ingest(ctx statefun.Context, message statefun.Message) error {
 	var request IncomingMessage
 	if err := message.As(IncomingMessageType, &request); err != nil {
 		return fmt.Errorf("failed to deserialize incoming message: %w", err)
 	}
 	
+	fmt.Println(generateSchema(request.Payload,request.MessageType, "")+"]}")
 
 	payload, _ := json.Marshal(request.Payload)	
 	
