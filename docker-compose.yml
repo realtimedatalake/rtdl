@@ -19,6 +19,23 @@ services:
   #       interval: 10s
   #       timeout: 5s
   #       retries: 12
+  
+  # rtdl-db-init:
+  #   platform: linux/amd64
+  #   image: rtdl/psql-client:latest
+  #   container_name: rtdl_rtdl-db-init
+  #   volumes:
+  #     - ./config/scripts/rtdl-create-user-db.sql:/rtdl-create-user-db.sql
+  #   entrypoint: psql -h rtdl-db -p 5433 -U yugabyte -f /rtdl-create-user-db.sql
+  #   deploy:
+  #     restart_policy:
+  #       condition: on-failure
+  #       delay: 5s
+  #       max_attempts: 5
+  #       window: 10s
+  #   depends_on:
+  #     rtdl-db:
+  #       condition: service_healthy
   ### For YBDB - End ###
 
   ### For Postgres - Start ###
@@ -29,7 +46,7 @@ services:
     volumes:
       - ./storage/rtdl-db_data:/var/lib/postgresql/data
     expose:
-      - 5432      
+      - 5432
     ports:
       - 5433:5432
     environment:
@@ -40,7 +57,41 @@ services:
         interval: 10s
         timeout: 5s
         retries: 12
+  
+  rtdl-db-init:
+    platform: linux/amd64
+    image: rtdl/psql-client:latest
+    container_name: rtdl_rtdl-db-init
+    volumes:
+      - ./config/scripts/rtdl-create-user-db.sql:/rtdl-create-user-db.sql
+    entrypoint: psql -h rtdl-db -p 5432 -U postgres -f /rtdl-create-user-db.sql
+    environment:
+      PGPASSWORD: postgres
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 10s
+    depends_on:
+      rtdl-db:
+        condition: service_healthy
   ### For Postgres - End ###
+
+  config:
+    build:
+      context: ./config
+    platform: linux/amd64
+    image: rtdl/rtdl-config:latest
+    container_name: rtdl_config
+    expose:
+      - 80
+    ports:
+      - 80:80
+    environment:
+      RTDL_DB_PORT: 5432
+    depends_on:      
+      - rtdl-db-init
   ##### Config Services - End #####
 
 
@@ -157,7 +208,6 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started
-
   ##### Processing Services - End #####
 
 
@@ -234,39 +284,3 @@ services:
         condition: service_healthy
   ### For Postgres - End ###
   ##### Catalog Services - End #####
-
-
-
-
-
-##### OLD #####
-  # process-jobmanager:
-  #   platform: linux/amd64
-  #   image: flink:1.14.2-java11
-  #   container_name: rtdl_process-jobmanager
-  #   ports:
-  #     - 8081:8081
-  #   environment:
-  #     FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
-  #     HADOOP_CLASSPATH: "`hadoop classpath`"
-  #   command: jobmanager
-  #   volumes:
-  #     - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
-  #     - ./ingest/module.yaml:/opt/statefun/modules/ingest/module.yaml
-  #   depends_on:
-  #     - catalog
-  #     - kafka
-  #     - ingest
-
-  # process-taskmanager:
-  #   platform: linux/amd64
-  #   image: flink:1.14.2-java11
-  #   container_name: rtdl_process-taskmanager
-  #   environment:
-  #     FLINK_PROPERTIES: "jobmanager.rpc.address: process-jobmanager"
-  #     HADOOP_CLASSPATH: "`hadoop classpath`"
-  #   command: taskmanager
-  #   volumes:
-  #     - ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
-  #   depends_on:
-  #     - process-jobmanager

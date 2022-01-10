@@ -1,6 +1,8 @@
+-- create database rtdl_db if it doesn't exist
 SELECT 'CREATE DATABASE rtdl_db'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'rtdl_db')\gexec
 
+-- create user rtdl if it doesn't exist
 DO
 $do$
 BEGIN
@@ -10,13 +12,16 @@ BEGIN
 END
 $do$;
 
+-- make user rtdl the owner of database rtdl_db and grant it all privileges
 ALTER DATABASE rtdl_db OWNER TO rtdl;
 GRANT ALL PRIVILEGES ON DATABASE rtdl_db to rtdl;
 
+-- switch to database rtdl_db
 \c rtdl_db
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- create tables
 CREATE TABLE IF NOT EXISTS file_store_types (
   file_store_type_id SERIAL,
   file_store_type_name VARCHAR,
@@ -54,6 +59,7 @@ CREATE TABLE IF NOT EXISTS streams (
   FOREIGN KEY(compression_type_id) REFERENCES compression_types(compression_type_id)
 );
 
+-- populate master data
 INSERT INTO file_store_types (file_store_type_name)
 VALUES
     ('AWS'),
@@ -73,32 +79,52 @@ VALUES
     ('gzip'),
     ('lzo');
 
-CREATE OR REPLACE FUNCTION getAllStreams()
+-- create functions
+CREATE OR REPLACE FUNCTION getStream(stream_id_arg VARCHAR)
     RETURNS TABLE (
         stream_id uuid,
         stream_alt_id VARCHAR,
         active BOOLEAN,
         message_type VARCHAR,
-        file_store_type_name VARCHAR,
+        file_store_type_id INTEGER,
         region VARCHAR,
         bucket_name VARCHAR,
         folder_name VARCHAR,
-        partition_time_name VARCHAR,
-        compression_type_name VARCHAR,
+        partition_time_id INTEGER,
+        compression_type_id INTEGER,
         iam_arn VARCHAR,
         credentials VARCHAR
     )
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, fst.file_store_type_name, s.region, s.bucket_name, s.folder_name, pt.partition_time_name, ct.compression_type_name, s.iam_arn, s.credentials
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.iam_arn, s.credentials
         FROM streams s
-        LEFT OUTER JOIN file_store_types fst
-            ON s.file_store_type_id = fst.file_store_type_id
-        LEFT OUTER JOIN partition_times pt
-            ON s.partition_time_id = pt.partition_time_id
-        LEFT OUTER JOIN compression_types ct
-            ON s.compression_type_id = ct.compression_type_id
+        WHERE s.stream_id = (stream_id_arg)::uuid
+        ORDER BY s.stream_id ASC;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION getAllStreams()
+    RETURNS TABLE (
+        stream_id uuid,
+        stream_alt_id VARCHAR,
+        active BOOLEAN,
+        message_type VARCHAR,
+        file_store_type_id INTEGER,
+        region VARCHAR,
+        bucket_name VARCHAR,
+        folder_name VARCHAR,
+        partition_time_id INTEGER,
+        compression_type_id INTEGER,
+        iam_arn VARCHAR,
+        credentials VARCHAR
+    )
+AS $$
+BEGIN
+    RETURN QUERY
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.iam_arn, s.credentials
+        FROM streams s
         ORDER BY s.stream_id ASC;
 END;
 $$ LANGUAGE plpgsql;
@@ -109,26 +135,20 @@ CREATE OR REPLACE FUNCTION getAllActiveStreams()
         stream_alt_id VARCHAR,
         active BOOLEAN,
         message_type VARCHAR,
-        file_store_type_name VARCHAR,
+        file_store_type_id INTEGER,
         region VARCHAR,
         bucket_name VARCHAR,
         folder_name VARCHAR,
-        partition_time_name VARCHAR,
-        compression_type_name VARCHAR,
+        partition_time_id INTEGER,
+        compression_type_id INTEGER,
         iam_arn VARCHAR,
         credentials VARCHAR
     )
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, fst.file_store_type_name, s.region, s.bucket_name, s.folder_name, pt.partition_time_name, ct.compression_type_name, s.iam_arn, s.credentials
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.iam_arn, s.credentials
         FROM streams s
-        LEFT OUTER JOIN file_store_types fst
-            ON s.file_store_type_id = fst.file_store_type_id
-        LEFT OUTER JOIN partition_times pt
-            ON s.partition_time_id = pt.partition_time_id
-        LEFT OUTER JOIN compression_types ct
-            ON s.compression_type_id = ct.compression_type_id
         WHERE s.active = TRUE
         ORDER BY s.stream_id ASC;
 END;
@@ -155,6 +175,115 @@ BEGIN
         INSERT INTO streams  (stream_alt_id, active, message_type, file_store_type_id, region, bucket_name, folder_name, partition_time_id, compression_type_id, iam_arn, credentials)
         VALUES
             (stream_alt_id_arg, active_arg, message_type_arg, file_store_type_id_arg, region_arg, bucket_name_arg, folder_name_arg, partition_time_id_arg, compression_type_id_arg, iam_arn_arg, credentials_arg)
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.iam_arn, streams.credentials;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION updateStream(stream_id_arg VARCHAR, stream_alt_id_arg VARCHAR, active_arg BOOLEAN, message_type_arg VARCHAR, file_store_type_id_arg INTEGER, region_arg VARCHAR, bucket_name_arg VARCHAR, folder_name_arg VARCHAR, partition_time_id_arg INTEGER, compression_type_id_arg INTEGER, iam_arn_arg VARCHAR, credentials_arg VARCHAR)
+    RETURNS TABLE (
+        stream_id uuid,
+        stream_alt_id VARCHAR,
+        active BOOLEAN,
+        message_type VARCHAR,
+        file_store_type_id INTEGER,
+        region VARCHAR,
+        bucket_name VARCHAR,
+        folder_name VARCHAR,
+        partition_time_id INTEGER,
+        compression_type_id INTEGER,
+        iam_arn VARCHAR,
+        credentials VARCHAR
+    )
+AS $$
+BEGIN
+    RETURN QUERY
+        UPDATE streams
+        SET stream_alt_id = stream_alt_id_arg,
+            active = active_arg,
+            message_type = message_type_arg,
+            file_store_type_id = file_store_type_id_arg,
+            region = region_arg,
+            bucket_name = bucket_name_arg,
+            folder_name = folder_name_arg,
+            partition_time_id = partition_time_id_arg,
+            compression_type_id = compression_type_id_arg,
+            iam_arn = iam_arn_arg,
+            credentials = credentials_arg
+        WHERE streams.stream_id = (stream_id_arg)::uuid
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.iam_arn, streams.credentials;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION deleteStream(stream_id_arg VARCHAR)
+    RETURNS TABLE (
+        stream_id uuid,
+        stream_alt_id VARCHAR,
+        active BOOLEAN,
+        message_type VARCHAR,
+        file_store_type_id INTEGER,
+        region VARCHAR,
+        bucket_name VARCHAR,
+        folder_name VARCHAR,
+        partition_time_id INTEGER,
+        compression_type_id INTEGER,
+        iam_arn VARCHAR,
+        credentials VARCHAR
+    )
+AS $$
+BEGIN
+    RETURN QUERY
+        DELETE FROM streams
+        WHERE streams.stream_id = (stream_id_arg)::uuid
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.iam_arn, streams.credentials;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION activateStream(stream_id_arg VARCHAR)
+    RETURNS TABLE (
+        stream_id uuid,
+        stream_alt_id VARCHAR,
+        active BOOLEAN,
+        message_type VARCHAR,
+        file_store_type_id INTEGER,
+        region VARCHAR,
+        bucket_name VARCHAR,
+        folder_name VARCHAR,
+        partition_time_id INTEGER,
+        compression_type_id INTEGER,
+        iam_arn VARCHAR,
+        credentials VARCHAR
+    )
+AS $$
+BEGIN
+    RETURN QUERY
+        UPDATE streams
+        SET active = TRUE
+        WHERE streams.stream_id = (stream_id_arg)::uuid
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.iam_arn, streams.credentials;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION deactivateStream(stream_id_arg VARCHAR)
+    RETURNS TABLE (
+        stream_id uuid,
+        stream_alt_id VARCHAR,
+        active BOOLEAN,
+        message_type VARCHAR,
+        file_store_type_id INTEGER,
+        region VARCHAR,
+        bucket_name VARCHAR,
+        folder_name VARCHAR,
+        partition_time_id INTEGER,
+        compression_type_id INTEGER,
+        iam_arn VARCHAR,
+        credentials VARCHAR
+    )
+AS $$
+BEGIN
+    RETURN QUERY
+        UPDATE streams
+        SET active = FALSE
+        WHERE streams.stream_id = (stream_id_arg)::uuid
         RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.iam_arn, streams.credentials;
 END;
 $$ LANGUAGE plpgsql;
@@ -201,8 +330,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- grant user rtdl all privileges in the database rtdl_db
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO rtdl;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO rtdl;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO rtdl;
 GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO rtdl;
-
