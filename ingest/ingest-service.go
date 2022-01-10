@@ -12,11 +12,22 @@ import (
 	
 )
 
-func producerHandler(kafkaURL string, topic string) func(http.ResponseWriter, *http.Request) {
+func producerHandler(kafkaURL string, topic string, processingType string) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
-		body, err := ioutil.ReadAll(req.Body)
-		if err != nil {
-			log.Fatalln(err)
+		
+		var body []byte
+		var err1 error 
+		
+		if processingType == "ingest" {
+			body, err1 = ioutil.ReadAll(req.Body)
+			if err1 != nil {
+				log.Fatalln(err1)
+			}
+
+		} else {
+			
+			body = []byte(`{"source_key":"","message_type":"rtdl_205","payload":{}}`)
+		
 		}
 		
 	
@@ -59,10 +70,11 @@ func main() {
 	//defer kafkaWriter.Close()
 
 	// Add handle func for producer.
-	http.HandleFunc("/ingest", producerHandler(kafkaURL, topic))
+	http.HandleFunc("/ingest", producerHandler(kafkaURL, topic, "ingest"))
+	
+	http.HandleFunc("/refreshCache", producerHandler(kafkaURL, topic, "refresh-cache"))
 
 	// Run the web server.
-	fmt.Println("start producer-api ... !!")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 

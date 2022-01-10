@@ -48,8 +48,7 @@ type Config struct {
 	Credentials string `db:"credentials"`
 }
 
-var config Config
-
+var configs []Config
 
 var (
 	
@@ -57,6 +56,43 @@ var (
 	KafkaEgressTypeName = statefun.TypeNameFrom("com.rtdl.sf/egress")
 	IncomingMessageType    = statefun.MakeJsonType(statefun.TypeNameFrom("com.rtdl.sf/IncomingMessage"))
 )
+
+func loadConfig() error {
+
+
+	pghost := getEnv("POSTGRES_HOST","localhost")
+	pgport, err := strconv.Atoi(getEnv("POSTGRES_PORT","5432"))
+	if err != nil {
+		pgport = 5432
+	}
+	pguser := getEnv("POSTGRES_USER","postgres")
+	pgpassword := getEnv("POSTGRES_PASSWORD","postgres")
+	pgdbname := getEnv("POSTGRES_DBNAME","postgres")
+	
+	dsn := fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable",pguser, pgpassword, pghost, pgport, pgdbname)
+	
+	db, err := sqlx.Connect("postgres", dsn)
+	
+	if err != nil {
+		fmt.Println("Failed to open a DB connection: ", err)
+		return err
+	}
+	
+
+	configSql := "SELECT * FROM streams"
+
+	db.Select(&configs, configSql)
+	if err != nil {
+		fmt.Println("Failed to execute query: ", err)
+		return err
+	}
+	
+	defer db.Close()
+	fmt.Println("No. of config records retrieved : " + strconv.Itoa(len(configs)))
+	return nil
+}
+
+
 
 // getEnv get key environment variable if exist otherwise return defalutValue
 func getEnv(key, defaultValue string) string {
@@ -149,6 +185,17 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 		return fmt.Errorf("failed to deserialize incoming message: %w", err)
 	}
 	
+	if request.MessageType == "rtdl_205" {
+	
+		err := loadConfig()
+	
+		if err!= nil {
+			fmt.Println(err)
+			return err
+		}
+
+		return nil
+	}
 	fmt.Println(generateSchema(request.Payload,request.MessageType, "")+"]}")
 
 	payload, _ := json.Marshal(request.Payload)	
@@ -166,54 +213,20 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 	return nil
 }
 
-func getConfig() error {
 
-
-	pghost := getEnv("POSTGRES_HOST","localhost")
-	pgport, err := strconv.Atoi(getEnv("POSTGRES_PORT","5432"))
-	if err != nil {
-		pgport = 5432
-	}
-	pguser := getEnv("POSTGRES_USER","postgres")
-	pgpassword := getEnv("POSTGRES_PASSWORD","postgres")
-	pgdbname := getEnv("POSTGRES_DBNAME","postgres")
-	
-	dsn := fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable",pguser, pgpassword, pghost, pgport, pgdbname)
-	
-	db, err := sqlx.Connect("postgres", dsn)
-	
-	if err != nil {
-		fmt.Println("Failed to open a DB connection: ", err)
-		return err
-	}
-	
-
-	var configs []Config
-	configSql := "SELECT * FROM streams"
-
-	db.Select(&configs, configSql)
-	if err != nil {
-		fmt.Println("Failed to execute query: ", err)
-		return err
-	}
-	
-	defer db.Close()
-	return nil
-}
 
 func main() {
 
 
-	getConfig()
-	builder := statefun.StatefulFunctionsBuilder()
-
-					
-	err := getConfig()
+	err := loadConfig()
 	
+		
 	if err!= nil {
 		fmt.Println(err)
 	}
 
+	builder := statefun.StatefulFunctionsBuilder()					
+	
 	_ = builder.WithSpec(statefun.StatefulFunctionSpec{
 		FunctionType: IngestTypeName,
 		Function:     statefun.StatefulFunctionPointer(Ingest),
