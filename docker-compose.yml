@@ -12,30 +12,29 @@ services:
   #   command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
   #   expose:
   #     - 5433
-  #   ports:
-  #     - 5434:5433
+  #   # ports:
+  #   #   - 5433:5432
   #   healthcheck:
   #       test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
   #       interval: 10s
   #       timeout: 5s
   #       retries: 12
-  
-  # rtdl-db-init:
+
+  # config:
+  #   build:
+  #     context: ./config
   #   platform: linux/amd64
-  #   image: rtdl/psql-client:latest
-  #   container_name: rtdl_rtdl-db-init
-  #   volumes:
-  #     - ./config/scripts/rtdl-create-user-db.sql:/rtdl-create-user-db.sql
-  #   entrypoint: psql -h rtdl-db -p 5433 -U yugabyte -f /rtdl-create-user-db.sql
-  #   deploy:
-  #     restart_policy:
-  #       condition: on-failure
-  #       delay: 5s
-  #       max_attempts: 5
-  #       window: 10s
-  #   depends_on:
-  #     rtdl-db:
-  #       condition: service_healthy
+  #   image: rtdl/rtdl-config:latest
+  #   container_name: rtdl_config
+  #   expose:
+  #     - 80
+  #   ports:
+  #     - 80:80
+  #   environment:
+  #     RTDL_DB_PORT: 5433
+  # depends_on:
+  #   rtdl-db:
+  #     condition: service_healthy
   ### For YBDB - End ###
 
   ### For Postgres - Start ###
@@ -47,8 +46,8 @@ services:
       - ./storage/rtdl-db_data:/var/lib/postgresql/data
     expose:
       - 5432
-    ports:
-      - 5433:5432
+    # ports:
+    #   - 5433:5432
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -57,25 +56,6 @@ services:
         interval: 10s
         timeout: 5s
         retries: 12
-  
-  rtdl-db-init:
-    platform: linux/amd64
-    image: rtdl/psql-client:latest
-    container_name: rtdl_rtdl-db-init
-    volumes:
-      - ./config/scripts/rtdl-create-user-db.sql:/rtdl-create-user-db.sql
-    entrypoint: psql -h rtdl-db -p 5432 -U postgres -f /rtdl-create-user-db.sql
-    environment:
-      PGPASSWORD: postgres
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 5
-        window: 10s
-    depends_on:
-      rtdl-db:
-        condition: service_healthy
   ### For Postgres - End ###
 
   config:
@@ -90,8 +70,9 @@ services:
       - 80:80
     environment:
       RTDL_DB_PORT: 5432
-    depends_on:      
-      - rtdl-db-init
+    depends_on:
+      rtdl-db:
+        condition: service_healthy
   ##### Config Services - End #####
 
 
@@ -222,6 +203,8 @@ services:
   #   command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
   #   expose:
   #     - 5433
+  #   # ports:
+  #   #   - 5433:5432
   #   ports:
   #     - 5433:5433
   #   healthcheck:
@@ -256,8 +239,8 @@ services:
       - ./storage/rtdl-catalog-db_data:/var/lib/postgresql/data
     expose:
       - 5432
-    ports:
-      - 5432:5432
+    # ports:
+    #   - 5432:5432
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

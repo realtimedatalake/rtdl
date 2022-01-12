@@ -8,16 +8,16 @@ import (
 	"net/http"
 	"os"
 	"time"
+
 	kafka "github.com/segmentio/kafka-go"
-	
 )
 
 func producerHandler(kafkaURL string, topic string, processingType string) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
-		
+
 		var body []byte
-		var err1 error 
-		
+		var err1 error
+
 		if processingType == "ingest" {
 			body, err1 = ioutil.ReadAll(req.Body)
 			if err1 != nil {
@@ -25,12 +25,11 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 			}
 
 		} else {
-			
+
 			body = []byte(`{"source_key":"","message_type":"rtdl_205","payload":{}}`)
-		
+
 		}
-		
-	
+
 		// to produce messages
 		partition := 0
 
@@ -38,12 +37,11 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 		if err != nil {
 			log.Fatal("failed to dial leader:", err)
 		}
-		
-		
-		conn.SetWriteDeadline(time.Now().Add(10*time.Second))
+
+		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 		_, err = conn.WriteMessages(
 			kafka.Message{
-				Key: []byte("message"),
+				Key:   []byte("message"),
 				Value: body,
 			},
 		)
@@ -59,22 +57,19 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 	})
 }
 
-
 func main() {
 
 	// get kafka writer using environment variables.
 	kafkaURL := os.Getenv("KAFKA_URL")
 	topic := os.Getenv("KAFKA_TOPIC")
 
-
 	//defer kafkaWriter.Close()
 
 	// Add handle func for producer.
 	http.HandleFunc("/ingest", producerHandler(kafkaURL, topic, "ingest"))
-	
+
 	http.HandleFunc("/refreshCache", producerHandler(kafkaURL, topic, "refresh-cache"))
 
 	// Run the web server.
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
-

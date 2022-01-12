@@ -21,25 +21,38 @@ GRANT ALL PRIVILEGES ON DATABASE rtdl_db to rtdl;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- create tables
+-- create a function to help automate setting `updated_at` fields
+CREATE OR REPLACE FUNCTION triggerSetTS()
+    RETURNS TRIGGER
+AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- create `file_store_types` table
 CREATE TABLE IF NOT EXISTS file_store_types (
   file_store_type_id SERIAL,
   file_store_type_name VARCHAR,
   PRIMARY KEY (file_store_type_id)
 );
 
+-- create `partition_times` table
 CREATE TABLE IF NOT EXISTS partition_times (
   partition_time_id SERIAL,
   partition_time_name VARCHAR,
   PRIMARY KEY (partition_time_id)
 );
 
+-- create `compression_types` table
 CREATE TABLE IF NOT EXISTS compression_types (
   compression_type_id SERIAL,
   compression_type_name VARCHAR,
   PRIMARY KEY (compression_type_id)
 );
 
+-- create `streams` table
 CREATE TABLE IF NOT EXISTS streams (
   stream_id uuid DEFAULT gen_random_uuid(),
   stream_alt_id VARCHAR,
@@ -53,13 +66,21 @@ CREATE TABLE IF NOT EXISTS streams (
   compression_type_id INTEGER DEFAULT 1,
   iam_arn VARCHAR,
   credentials VARCHAR,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (stream_id),
   FOREIGN KEY(file_store_type_id) REFERENCES file_store_types(file_store_type_id),
   FOREIGN KEY(partition_time_id) REFERENCES partition_times(partition_time_id),
   FOREIGN KEY(compression_type_id) REFERENCES compression_types(compression_type_id)
 );
 
--- populate master data
+-- create trigger to automate setting `updated_at` field when `streams` records are updated
+CREATE TRIGGER set_timestamp
+BEFORE UPDATE ON streams
+FOR EACH ROW
+EXECUTE PROCEDURE triggerSetTS();
+
+-- populate master data - start
 INSERT INTO file_store_types (file_store_type_name)
 VALUES
     ('AWS'),
@@ -78,8 +99,9 @@ VALUES
     ('snappy'),
     ('gzip'),
     ('lzo');
+-- populate master data - end
 
--- create functions
+-- create API handler functions - start
 CREATE OR REPLACE FUNCTION getStream(stream_id_arg VARCHAR)
     RETURNS TABLE (
         stream_id uuid,
@@ -329,6 +351,7 @@ BEGIN
         ORDER BY ct.compression_type_id ASC;
 END;
 $$ LANGUAGE plpgsql;
+-- create API handler functions - end
 
 -- grant user rtdl all privileges in the database rtdl_db
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO rtdl;

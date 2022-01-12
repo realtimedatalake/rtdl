@@ -14,6 +14,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// default database connection settings
 const (
 	db_host_def     = "rtdl-db"
 	db_port_def     = 5433
@@ -22,6 +23,10 @@ const (
 	db_dbname_def   = "rtdl_db"
 )
 
+// create the `psqlCon` string used to connect to the database
+var psqlCon string
+
+// database and json structs to facilitate marshalling data
 type fileStoreType struct {
 	FileStoreTypeID   int    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
 	FileStoreTypeName string `db:"file_store_type_name" json:"file_store_type_name,omitempty"`
@@ -67,16 +72,26 @@ type stream_sql struct {
 	Credentials       sql.NullString `db:"credentials" json:"credentials,omitempty"`
 }
 
+//	FUNCTION
+// 	main
+//	created by Gavin
+//	on 20220109
+//	last updated 20220111
+//	by Gavin
+//	Description:	main exposes port 80 and creates endpoints that point to handler
+//					functions to facilitate managment of data streams into your data
+//					lake.
 func main() {
 
 	// connection string
-	psqlconn := getDBConnectionString()
+	setDBConnectionString()
+
 	// open database
-	db, err := sqlx.Open("postgres", psqlconn)
+	db, err := sqlx.Open("postgres", psqlCon)
 	if err != nil {
 		CheckError(err)
 	}
-	// close database
+	// defer database close
 	defer db.Close()
 
 	// Add handler functions
@@ -104,7 +119,7 @@ func getStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
-				log.Fatalln(err)
+				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
@@ -203,7 +218,7 @@ func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
-				log.Fatalln(err)
+				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
@@ -226,6 +241,9 @@ func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			}
 			wrt.WriteHeader(http.StatusOK)
 			wrt.Write(resp)
+
+			// Refresh the cache on the `ingest` service
+			refreshIngestCache()
 		case http.MethodGet:
 		case http.MethodPut:
 		case http.MethodDelete:
@@ -243,7 +261,7 @@ func updateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
-				log.Fatalln(err)
+				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
@@ -266,6 +284,9 @@ func updateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			}
 			wrt.WriteHeader(http.StatusOK)
 			wrt.Write(resp)
+
+			// Refresh the cache on the `ingest` service
+			refreshIngestCache()
 		case http.MethodGet:
 		case http.MethodPost:
 		case http.MethodDelete:
@@ -283,7 +304,7 @@ func deleteStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
-				log.Fatalln(err)
+				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
@@ -308,6 +329,9 @@ func deleteStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 				}
 				wrt.WriteHeader(http.StatusOK)
 				wrt.Write(jsonData)
+
+				// Refresh the cache on the `ingest` service
+				refreshIngestCache()
 			} else {
 				http.Error(wrt, "`stream_id` is required", http.StatusUnprocessableEntity)
 			}
@@ -328,7 +352,7 @@ func activateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request)
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
-				log.Fatalln(err)
+				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
@@ -353,6 +377,9 @@ func activateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request)
 				}
 				wrt.WriteHeader(http.StatusOK)
 				wrt.Write(jsonData)
+
+				// Refresh the cache on the `ingest` service
+				refreshIngestCache()
 			} else {
 				http.Error(wrt, "`stream_id` is required", http.StatusUnprocessableEntity)
 			}
@@ -373,7 +400,7 @@ func deactivateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Reques
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
-				log.Fatalln(err)
+				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
@@ -398,6 +425,9 @@ func deactivateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Reques
 				}
 				wrt.WriteHeader(http.StatusOK)
 				wrt.Write(jsonData)
+
+				// Refresh the cache on the `ingest` service
+				refreshIngestCache()
 			} else {
 				http.Error(wrt, "`stream_id` is required", http.StatusUnprocessableEntity)
 			}
@@ -495,7 +525,15 @@ func getAllCompressionTypesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.
 ////////// HANDLER FUNCTIONS - End //////////
 
 ////////// HELPER FUNCTIONS - Start //////////
-func getDBConnectionString() (psqlconn string) {
+//	FUNCTION
+// 	setDBConnectionString
+//	created by Gavin
+//	on 20220109
+//	last updated 20220111
+//	by Gavin
+//	Description:	Sets the `psqlCon` global variable. Looks up environment variables
+//					and defaults if none are present.
+func setDBConnectionString() {
 	var db_host, db_port, db_user, db_password, db_dbname = db_host_def, db_port_def, db_user_def, db_password_def, db_dbname_def
 	var db_host_env, db_user_env, db_password_env, db_dbname_env = os.Getenv("RTDL_DB_HOST"), os.Getenv("RTDL_DB_USER"), os.Getenv("RTDL_DB_PASSWORD"), os.Getenv("RTDL_DB_DBNAME")
 	db_port_env, err := strconv.Atoi(os.Getenv("RTDL_DB_PORT"))
@@ -518,10 +556,34 @@ func getDBConnectionString() (psqlconn string) {
 	if db_dbname_env != "" {
 		db_dbname = db_dbname_env
 	}
-	psqlconn = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", db_host, db_port, db_user, db_password, db_dbname)
-	return
+	psqlCon = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", db_host, db_port, db_user, db_password, db_dbname)
 }
 
+////////// HELPER FUNCTIONS - Start //////////
+//	FUNCTION
+// 	refreshIngestCacher
+//	created by Gavin
+//	on 20220111
+//	last updated 20220111
+//	by Gavin
+//	Description:	Calls the `refreshCache` endpoint on the `ingest` service
+func refreshIngestCache() {
+	refreshCacheResp, err := http.Get("http://ingest:8080/refreshCache")
+	if err != nil {
+		CheckError(err)
+	}
+	if refreshCacheResp != nil {
+
+	}
+}
+
+//	FUNCTION
+// 	buildQueryString_createStream
+//	created by Gavin
+//	on 20220109
+//	last updated 20220111
+//	by Gavin
+//	Description:	Builds the query string used by the `createStream` function
 func buildQueryString_createStream(reqStream stream_json) (queryStr string) {
 	queryStr = "select * from createStream("
 	if reqStream.StreamAltID != "" {
@@ -578,6 +640,13 @@ func buildQueryString_createStream(reqStream stream_json) (queryStr string) {
 	return queryStr
 }
 
+//	FUNCTION
+// 	buildQueryString_updateStream
+//	created by Gavin
+//	on 20220109
+//	last updated 20220111
+//	by Gavin
+//	Description:	Builds the query string used by the `updateStream` function
 func buildQueryString_updateStream(reqStream stream_json) (queryStr string) {
 	queryStr = "select * from updateStream("
 	if reqStream.StreamID != "" {
@@ -643,6 +712,7 @@ func buildQueryString_updateStream(reqStream stream_json) (queryStr string) {
 func CheckError(err error) {
 	if err != nil {
 		panic(err)
+		log.Fatalln(err)
 	}
 }
 
