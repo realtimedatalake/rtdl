@@ -182,6 +182,8 @@ services:
       POSTGRES_USER: rtdl
       POSTGRES_PASSWORD: rtdl
       POSTGRES_DBNAME: rtdl_db
+    volumes:
+      - ./storage/rtdl-data_store:/app/datastore
     depends_on:
       catalog-db:
         condition: service_healthy      

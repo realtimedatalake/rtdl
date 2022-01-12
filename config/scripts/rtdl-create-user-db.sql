@@ -83,6 +83,7 @@ EXECUTE PROCEDURE triggerSetTS();
 -- populate master data - start
 INSERT INTO file_store_types (file_store_type_name)
 VALUES
+    ('Local'),
     ('AWS'),
     ('GCP');
 
