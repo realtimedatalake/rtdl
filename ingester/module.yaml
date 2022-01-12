@@ -25,7 +25,7 @@ spec:
   address: kafka:9092
   deliverySemantic:
     type: exactly-once
-    transactionTimeout: 15min
+    transactionTimeout: 1min
   consumerGroupId: my-group-id
   startupPosition:
     type: earliest
@@ -41,4 +41,4 @@ spec:
   address: kafka:9092
   deliverySemantic:
     type: exactly-once
-    transactionTimeout: 15min
+    transactionTimeout: 1min

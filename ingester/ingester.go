@@ -1,24 +1,12 @@
-// Licensed to the Apache Software Foundation (ASF) under one
-// or more contributor license agreements.  See the NOTICE file
-// distributed with this work for additional information
-// regarding copyright ownership.  The ASF licenses this file
-// to you under the Apache License, Version 2.0 (the
-// "License"); you may not use this file except in compliance
-// with the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+//stateful function that reads messages from Kafka topic and writes to data lake
+//event messages are put on to Kafka by the ingest REST endpoint
 
 package main
 
 import (
 	"os"
 	"fmt"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -27,7 +15,16 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/jmoiron/sqlx"
 	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
+	"github.com/xitongsys/parquet-go-source/local"
+	"github.com/xitongsys/parquet-go/writer"
+	
 )
+
+
+//Incoming message would have 
+// - a source key to identify the stream
+// - a message type that can be used to indicate the message purpose
+// - generic payload
 
 type IncomingMessage struct {
 
@@ -36,6 +33,10 @@ type IncomingMessage struct {
 	Payload map[string]interface{} `json:"payload"`
 }
 
+
+//struct representation of stream configuration
+// AlternateStreamId is applicable where the stream is being fed from an external system and the alternate id 
+// represents the unique identifier for that system
 type Config struct {
 	StreamId string `db:"stream_id"`
 	AlternateStreamId string `db:"stream_ald_id"`
@@ -50,6 +51,7 @@ type Config struct {
 
 var configs []Config
 
+//name variables for stateful function
 var (
 	
 	IngestTypeName     = statefun.TypeNameFrom("com.rtdl.sf/ingest")
@@ -57,9 +59,12 @@ var (
 	IncomingMessageType    = statefun.MakeJsonType(statefun.TypeNameFrom("com.rtdl.sf/IncomingMessage"))
 )
 
+
+//loads all stream configurations 
 func loadConfig() error {
 
-
+	//directly load data from PostgreSQL
+	//connection parameters read from docker-compose.yml, defaults mentioned here
 	pghost := getEnv("POSTGRES_HOST","localhost")
 	pgport, err := strconv.Atoi(getEnv("POSTGRES_PORT","5432"))
 	if err != nil {
@@ -74,21 +79,21 @@ func loadConfig() error {
 	db, err := sqlx.Connect("postgres", dsn)
 	
 	if err != nil {
-		fmt.Println("Failed to open a DB connection: ", err)
+		log.Println("Failed to open a DB connection: ", err)
 		return err
 	}
 	
 
 	configSql := "SELECT * FROM streams"
 
-	db.Select(&configs, configSql)
+	db.Select(&configs, configSql) //populate stream configurations into array of stream config structs
 	if err != nil {
-		fmt.Println("Failed to execute query: ", err)
+		log.Println("Failed to execute query: ", err)
 		return err
 	}
 	
 	defer db.Close()
-	fmt.Println("No. of config records retrieved : " + strconv.Itoa(len(configs)))
+	log.Println("No. of config records retrieved : " + strconv.Itoa(len(configs)))
 	return nil
 }
 
@@ -103,6 +108,7 @@ func getEnv(key, defaultValue string) string {
     return value
 }
 
+//map between Go and Parquet data types
 func getParquetDataType(dataType string) string {
 
 	switch dataType {
@@ -124,10 +130,13 @@ func getParquetDataType(dataType string) string {
 
 }
 
+//use reflection to study incoming generic payload and construct schema necessary for Parquet
+//payload is passed recursively through the function to break down till the elemental level
+
 func generateSchema(payload map[string]interface{}, messageType string, jsonSchema string) string {
 
 	if jsonSchema == "" {
-		jsonSchema = `{"Tag": "name=` + messageType +`, repititiontype=REQUIRED",`
+		jsonSchema = `{"Tag": "name=` + messageType +`, repetitiontype=REQUIRED",`
 		jsonSchema += `"Fields": [`
 	}
 	
@@ -135,41 +144,41 @@ func generateSchema(payload map[string]interface{}, messageType string, jsonSche
 
 	for key,value := range(payload) {
 	
-		jsonSchema += `{"Tag": "name=` + key + `, type=`
+		jsonSchema += `{"Tag": "name=` + key 
 		
 		dataType := reflect.TypeOf(value).String()
-		fmt.Println(fmt.Sprintf("%s is %s",key, dataType))
+		//log.Println(fmt.Sprintf("%s is %s",key, dataType))
 		
 		
-		
+		//special processing for nested object structures
 		if strings.HasPrefix(dataType, "map[string]interface") {
 			
-			jsonSchema += `MAP, repititiontype=REQUIRED", "Fields" : [`
-			jsonSchema = generateSchema(value.(map[string]interface{}), messageType, jsonSchema)
+			jsonSchema += `, repetitiontype=REQUIRED", "Fields" : [`
+			jsonSchema = generateSchema(value.(map[string]interface{}), messageType, jsonSchema) //need recursion
+			jsonSchema = strings.TrimRight(jsonSchema,",") //remove trailing comma
 			jsonSchema += `]},`
 			
-		} else if strings.HasPrefix(dataType, "[]interface") {
+		} else if strings.HasPrefix(dataType, "[]interface") { //special processing for arrays as well
 		
-			jsonSchema += `LIST, repititiontype=REQUIRED", "Fields" : [`
+			jsonSchema += `, type=LIST, repetitiontype=REQUIRED", "Fields" : [`
 			arrayItemDataType := reflect.TypeOf(value.([]interface{})[0]).String()
-			if strings.HasPrefix(arrayItemDataType, "map[string]interface") {
+			if strings.HasPrefix(arrayItemDataType, "map[string]interface") { //if array consists of objects then same have to be recursed
 				 
 				jsonSchema = generateSchema(value.([]interface{})[0].(map[string]interface{}),messageType, jsonSchema)
 				
-			} else {
+			} else { //arrays composed of native data types can be handled directly
 			
 				jsonSchema += `{"Tag": "name=element, type=` + getParquetDataType(reflect.TypeOf(value.([]interface{})[0]).String())
-				jsonSchema += `, repititiontype=REQUIRED"},`
+				jsonSchema += `, repetitiontype=REQUIRED"},`
 			}
+			jsonSchema = strings.TrimRight(jsonSchema,",")
 			jsonSchema += `]},`
-		} else {
+		} else { //native data type
 			
-			jsonSchema += getParquetDataType(dataType)	
-			jsonSchema += `, repititiontype=REQUIRED"},`
+			jsonSchema += `, type=` + getParquetDataType(dataType)	
+			jsonSchema += `, repetitiontype=REQUIRED"},`
 			
 		}
-		
-		
 		
 		
 	}
@@ -179,28 +188,61 @@ func generateSchema(payload map[string]interface{}, messageType string, jsonSche
 }
 
 
+//main stateful function
 func Ingest(ctx statefun.Context, message statefun.Message) error {
 	var request IncomingMessage
 	if err := message.As(IncomingMessageType, &request); err != nil {
 		return fmt.Errorf("failed to deserialize incoming message: %w", err)
 	}
 	
-	if request.MessageType == "rtdl_205" {
+	if request.MessageType == "rtdl_205" { //this is internal message for refershing configuration cache
 	
 		err := loadConfig()
 	
 		if err!= nil {
-			fmt.Println(err)
+			log.Println(err)
 			return err
 		}
 
 		return nil
 	}
-	fmt.Println(generateSchema(request.Payload,request.MessageType, "")+"]}")
-
-	payload, _ := json.Marshal(request.Payload)	
+	//log.Println(generateSchema(request.Payload,request.MessageType, "")+"]}")
 	
+	schema := strings.TrimRight(generateSchema(request.Payload,request.MessageType, ""),",")+"]}"
+	
+	
+	
+	log.Println(schema)
 
+	payload, _ := json.Marshal(request.Payload)	//convert generic payload structure to JSON string
+	
+	//write
+	fw, err := local.NewLocalFileWriter("json.parquet")
+	
+	
+	if err != nil {
+		log.Println("Can't create file", err)
+		return err
+	}
+	
+	pw, err := writer.NewJSONWriter(schema, fw, 4)
+	if err != nil {
+		log.Println("Can't create json writer", err)
+		return err
+	}
+	
+	if err = pw.Write(payload); err != nil {
+			log.Println("Write error", err)
+	}
+
+	if err = pw.WriteStop(); err != nil {
+		log.Println("WriteStop error", err)
+	}
+	log.Println("Write Finished")
+	fw.Close()
+	
+	//initial implementation to test out data flow
+	//not required once actual Parquet writing logic has been implemented
 	ctx.SendEgress(statefun.KafkaEgressBuilder{
 		Target: KafkaEgressTypeName,
 		Topic:  "egress",
@@ -208,7 +250,7 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 		Value:  []byte(payload),
 	})
 	
-	fmt.Println("egress message written")
+	log.Println("egress message written")
 
 	return nil
 }
@@ -217,16 +259,19 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 
 func main() {
 
-
+	//load configuration at the outset
+	//should panic if unable to do source
 	err := loadConfig()
 	
 		
 	if err!= nil {
-		fmt.Println(err)
+		panic(err)
 	}
 
+	
 	builder := statefun.StatefulFunctionsBuilder()					
 	
+	//only the one function in the chain now
 	_ = builder.WithSpec(statefun.StatefulFunctionSpec{
 		FunctionType: IngestTypeName,
 		Function:     statefun.StatefulFunctionPointer(Ingest),
