@@ -12,9 +12,10 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-
+	"time"
 	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
 	"github.com/jmoiron/sqlx"
+	"database/sql"
 	_ "github.com/lib/pq"
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/writer"
@@ -35,18 +36,47 @@ type IncomingMessage struct {
 // AlternateStreamId is applicable where the stream is being fed from an external system and the alternate id
 // represents the unique identifier for that system
 type Config struct {
-	StreamId          string `db:"stream_id"`
-	AlternateStreamId string `db:"stream_ald_id"`
-	Active            bool   `db:"active"`
-	FileStoreTypeId   int64  `db:"file_store_type_id"`
-	Region            string `db:"region"`
-	BucketName        string `db:"bucket_name"`
-	FolderName        string `db:"folder_name"`
-	IamArn            string `db:"iam_arn"`
-	Credentials       string `db:"credentials"`
+	StreamId          sql.NullString `db:"stream_id" default:""` 
+	AlternateStreamId sql.NullString `db:"stream_alt_id" default:""`
+	Active            sql.NullBool   `db:"active"`
+	MessageType	      sql.NullString `db:"message_type" default:""`
+	FileStoreTypeId   sql.NullInt64  `db:"file_store_type_id"`
+	Region            sql.NullString `db:"region" default:""`
+	BucketName        sql.NullString `db:"bucket_name" default:""`
+	FolderName        sql.NullString `db:"folder_name" default:""`
+	PartitionTimeId	  sql.NullInt64  `db:"partition_time_id"`
+	CompressionTypeId sql.NullInt64  `db:"compression_type_id"`
+	IamArn            sql.NullString `db:"iam_arn" default:""`
+	Credentials       sql.NullString `db:"credentials" default:""`
+	CreatedAt		  time.Time `db:"created_at"`
+	UpdatedAt		  time.Time `db:"updated_at"`
 }
 
 var configs []Config
+
+//struct represenation of file store types
+type FileStoreType struct {
+	FileStoreTypeId		int64 	`db:"file_store_type_id"`
+	FileStoreTypeName	string 	`db:"file_store_type_name"`
+}
+
+var fileStoreTypes []FileStoreType
+
+//struct representation of partition times
+type PartitionTime struct {
+	PartitionTimeId		int64	`db:"partition_time_id"`
+	PartitionTimeName	string	`db:"partition_time_name"`
+}
+
+var partitionTimes []PartitionTime 
+
+type CompressionType struct {
+	CompressionTypeId	int64	`db:"compression_type_id"`
+	CompressionTypeName	string	`db:"compression_type_name"`
+}
+
+var compressionTypes []CompressionType
+
 
 //name variables for stateful function
 var (
@@ -80,11 +110,34 @@ func loadConfig() error {
 
 	configSql := "SELECT * FROM streams"
 
-	db.Select(&configs, configSql) //populate stream configurations into array of stream config structs
+	err = db.Select(&configs, configSql) //populate stream configurations into array of stream config structs
 	if err != nil {
 		log.Println("Failed to execute query: ", err)
 		return err
 	}
+	
+	fileStoreTypeSql := "SELECT * FROM file_store_types"
+	err = db.Select(&fileStoreTypes, fileStoreTypeSql) //populate supported file store types
+	if err != nil {
+		log.Println("Failed to execute query: ", err)
+		return err
+	}
+
+
+	partitionTimesSql := "SELECT * FROM partition_times"
+	err = db.Select(&partitionTimes, partitionTimesSql) //populate supported file store types
+	if err != nil {
+		log.Println("Failed to execute query: ", err)
+		return err
+	}
+
+	compressionTypesSql := "SELECT * from compression_types"
+	err = db.Select(&compressionTypes, compressionTypesSql)
+	if err != nil {
+		log.Println("Failed to execute query: ", err)
+		return err
+	}
+	
 
 	defer db.Close()
 	log.Println("No. of config records retrieved : " + strconv.Itoa(len(configs)))
@@ -175,6 +228,164 @@ func generateSchema(payload map[string]interface{}, messageType string, jsonSche
 
 }
 
+
+
+func generateSubFolderName(messageType string, configRecord Config) string {
+
+	var subFolderName string
+
+	for _, partitionTimeRecord := range partitionTimes { //need to find out the write partition
+	
+		if partitionTimeRecord.PartitionTimeId == configRecord.PartitionTimeId.Int64 { //match found
+			
+		
+			switch partitionTimeRecord.PartitionTimeName {
+			
+			case "Hourly":
+			
+				subFolderName = messageType + "_" + time.Now().Format("2006-01-02-15")
+			
+			case "Daily":
+				subFolderName = messageType + "_" + time.Now().Format("2006-01-02")
+				
+			case "Weekly":
+				year, week := time.Now().ISOWeek()
+				subFolderName = messageType + "_" + string(year) + "-" + string(week)
+				
+			case "Monthly":
+				subFolderName = messageType + "_" + time.Now().Format("2006-01")
+				
+			case "Quarterly":
+				quarter := int((time.Now().Month()+2)/3)
+				subFolderName = messageType + "_" + time.Now().Format("2006") + "-" + string(quarter)
+			}
+			
+		}
+	
+	}
+
+	
+	return subFolderName
+}
+
+//Write local Parquet
+func WriteLocalParquet(messageType string, schema string, payload []byte, configRecord Config) error {
+
+	
+	//write
+	folderName := configRecord.FolderName.String
+	if folderName == "" { //default
+		folderName = "datastore"
+	}
+	
+	folderName += "/" + generateSubFolderName(messageType, configRecord)
+	
+	err := os.MkdirAll(folderName, os.ModePerm)
+	if err != nil {
+		log.Println("Can't create output directory", err)
+		return err
+	}
+
+	//construct the timestamp string
+	t := time.Now()
+	year := t.Year()
+    month := t.Month()
+    day := t.Day()
+    hour := t.Hour()
+    min := t.Minute()
+    sec := t.Second()
+    nanosec := t.Nanosecond()
+	
+	fileName := folderName + "/" + strconv.Itoa(year) + "-" + strconv.Itoa(int(month)) + "-" + strconv.Itoa(day) + "_" + strconv.Itoa(hour) + ":" + strconv.Itoa(min) + ":" + strconv.Itoa(sec) + "." + strconv.Itoa(nanosec)
+	
+	fw, err := local.NewLocalFileWriter(fileName)
+	
+	/*
+	fw, err := (&local.LocalFile{}).Open(fileName) //check if file exists
+	if err != nil {
+		fw, err = (&local.LocalFile{}).Create(fileName) //create if not exists
+	}
+	*/	
+
+	if err != nil {
+		log.Println("Can't create file", err)
+		return err
+	}
+
+	pw, err := writer.NewJSONWriter(schema, fw, 4)
+	if err != nil {
+		log.Println("Can't create json writer", err)
+		return err
+	}
+
+	if err = pw.Write(payload); err != nil {
+		log.Println("Write error", err)
+		return err
+	}
+
+	if err = pw.WriteStop(); err != nil {
+		log.Println("WriteStop error", err)
+		return err
+	}
+	log.Println("Write Finished")
+	fw.Close()
+	return nil
+
+}
+
+func WriteAWSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
+
+	log.Println("AWS Parquet writing implementation pending")
+	return nil
+}
+
+func WriteGCPParquet(messageType string, schema string, payload []byte, configRecord Config) error {
+
+	log.Println("GCP Parquet writing implementation pending")
+	return nil
+}
+
+
+//Parquet writing logic
+func writeParquet(request IncomingMessage) error {
+	
+	
+
+	//log.Println(generateSchema(request.Payload,request.MessageType, "")+"]}")
+
+	schema := strings.TrimRight(generateSchema(request.Payload, request.MessageType, ""), ",") + "]}"
+
+	log.Println(schema)
+
+	payload, _ := json.Marshal(request.Payload) //convert generic payload structure to JSON string
+	
+	//first retrieve relevant destination information from config array
+	for _, configRecord := range configs {		
+		
+		if (configRecord.StreamId.String == request.SourceKey && configRecord.MessageType.String == request.MessageType) { //config found with matching stream id and message type
+			
+			for _, fileStoreTypeRecord := range fileStoreTypes { //similar logic for file store types
+			
+				if fileStoreTypeRecord.FileStoreTypeId == configRecord.FileStoreTypeId.Int64 {
+				
+					switch fileStoreTypeRecord.FileStoreTypeName {
+					case "Local":
+						return WriteLocalParquet(request.MessageType, schema, payload, configRecord)
+					case "AWS":
+						return WriteAWSParquet(request.MessageType, schema, payload, configRecord)
+					case "GCP":
+						return WriteGCPParquet(request.MessageType, schema, payload, configRecord)
+						
+					}
+				}
+			
+			}
+		}
+
+	}
+	return nil
+}
+
 //main stateful function
 func Ingest(ctx statefun.Context, message statefun.Message) error {
 	var request IncomingMessage
@@ -193,42 +404,15 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 
 		return nil
 	}
-	//log.Println(generateSchema(request.Payload,request.MessageType, "")+"]}")
-
-	schema := strings.TrimRight(generateSchema(request.Payload, request.MessageType, ""), ",") + "]}"
-
-	log.Println(schema)
-
+	
+	err := writeParquet(request)
+	if err != nil {
+	
+		log.Println("error writing Parquet", err)
+	
+	}
+	
 	payload, _ := json.Marshal(request.Payload) //convert generic payload structure to JSON string
-
-	//write
-	err := os.MkdirAll("datastore", os.ModePerm)
-	if err != nil {
-		log.Println("Can't create output directory", err)
-		return err
-	}
-
-	fw, err := local.NewLocalFileWriter("datastore/json.parquet")
-	if err != nil {
-		log.Println("Can't create file", err)
-		return err
-	}
-
-	pw, err := writer.NewJSONWriter(schema, fw, 4)
-	if err != nil {
-		log.Println("Can't create json writer", err)
-		return err
-	}
-
-	if err = pw.Write(payload); err != nil {
-		log.Println("Write error", err)
-	}
-
-	if err = pw.WriteStop(); err != nil {
-		log.Println("WriteStop error", err)
-	}
-	log.Println("Write Finished")
-	fw.Close()
 
 	//initial implementation to test out data flow
 	//not required once actual Parquet writing logic has been implemented
