@@ -4,6 +4,8 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -19,6 +21,11 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/writer"
+	"github.com/xitongsys/parquet-go/source"
+	"github.com/aws/aws-sdk-go/aws"
+    "github.com/aws/aws-sdk-go/aws/session"
+    "github.com/aws/aws-sdk-go/service/s3"
+	
 )
 
 //Incoming message would have
@@ -85,6 +92,16 @@ var (
 	IncomingMessageType = statefun.MakeJsonType(statefun.TypeNameFrom("com.rtdl.sf/IncomingMessage"))
 )
 
+// getEnv get key environment variable if exist otherwise return defalutValue
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if len(value) == 0 {
+		return defaultValue
+	}
+	return value
+}
+
+
 //loads all stream configurations
 func loadConfig() error {
 
@@ -144,14 +161,6 @@ func loadConfig() error {
 	return nil
 }
 
-// getEnv get key environment variable if exist otherwise return defalutValue
-func getEnv(key, defaultValue string) string {
-	value := os.Getenv(key)
-	if len(value) == 0 {
-		return defaultValue
-	}
-	return value
-}
 
 //map between Go and Parquet data types
 func getParquetDataType(dataType string) string {
@@ -268,6 +277,50 @@ func generateSubFolderName(messageType string, configRecord Config) string {
 	return subFolderName
 }
 
+//generate the leaf level file name
+func generateLeafLevelFileName() string {
+
+	//construct the timestamp string
+	t := time.Now()
+	year := t.Year()
+    month := t.Month()
+    day := t.Day()
+    hour := t.Hour()
+    min := t.Minute()
+    sec := t.Second()
+    nanosec := t.Nanosecond()
+	
+	return strconv.Itoa(year) + strconv.Itoa(int(month)) + strconv.Itoa(day) + "_" + strconv.Itoa(hour) + strconv.Itoa(min) + strconv.Itoa(sec) + strconv.Itoa(nanosec) + ".parquet"
+
+}
+
+//writer-agnostic function to actually write to file
+func WriteToFile(schema string, fw source.ParquetFile, payload []byte) error {
+
+	log.Println("payload : ",string(payload))
+	 
+	pw, err := writer.NewJSONWriter(schema, fw, 4)
+	if err != nil {
+		log.Println("Can't create json writer", err)
+		return err
+	}
+
+	if err = pw.Write(payload); err != nil {
+		log.Println("Write error", err)
+		return err
+	}
+	
+
+	if err = pw.WriteStop(); err != nil {
+		log.Println("WriteStop error", err)
+		return err
+	}
+	log.Println("Write Finished")
+	fw.Close()
+	return nil
+
+}
+
 //Write local Parquet
 func WriteLocalParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
@@ -286,57 +339,99 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 		return err
 	}
 
-	//construct the timestamp string
-	t := time.Now()
-	year := t.Year()
-    month := t.Month()
-    day := t.Day()
-    hour := t.Hour()
-    min := t.Minute()
-    sec := t.Second()
-    nanosec := t.Nanosecond()
+
 	
-	fileName := folderName + "/" + strconv.Itoa(year) + "-" + strconv.Itoa(int(month)) + "-" + strconv.Itoa(day) + "_" + strconv.Itoa(hour) + ":" + strconv.Itoa(min) + ":" + strconv.Itoa(sec) + "." + strconv.Itoa(nanosec)
+	fileName := folderName + "/" + generateLeafLevelFileName()
 	
 	fw, err := local.NewLocalFileWriter(fileName)
 	
-	/*
-	fw, err := (&local.LocalFile{}).Open(fileName) //check if file exists
-	if err != nil {
-		fw, err = (&local.LocalFile{}).Create(fileName) //create if not exists
-	}
-	*/	
 
 	if err != nil {
 		log.Println("Can't create file", err)
 		return err
 	}
-
-	pw, err := writer.NewJSONWriter(schema, fw, 4)
-	if err != nil {
-		log.Println("Can't create json writer", err)
-		return err
-	}
-
-	if err = pw.Write(payload); err != nil {
-		log.Println("Write error", err)
-		return err
-	}
-
-	if err = pw.WriteStop(); err != nil {
-		log.Println("WriteStop error", err)
-		return err
-	}
-	log.Println("Write Finished")
-	fw.Close()
-	return nil
+	
+	
+	return WriteToFile(schema, fw, payload)
 
 }
 
 func WriteAWSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
-	log.Println("AWS Parquet writing implementation pending")
-	return nil
+	var key string
+	
+	subFolderName := generateSubFolderName(messageType, configRecord)
+	leafLevelFileName := generateLeafLevelFileName()
+	
+	if configRecord.Region.String == "" {
+		return errors.New("AWS Region cannot be null or empty")
+	}
+	
+	region := configRecord.Region.String
+	//set the region
+	os.Setenv("AWS_REGION",strings.TrimSpace(region))
+	
+	//log.Println("AWS Parquet writing implementation pending")
+	bucketName := configRecord.BucketName.String
+	if bucketName == "" {
+		return errors.New("S3 bucket name cannot be null or empty")
+	}
+	
+	if configRecord.FolderName.String != "" {
+	
+		key = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
+	
+	} else {
+	
+		key = subFolderName + "/" + leafLevelFileName
+	}
+	
+	fw, err := local.NewLocalFileWriter(leafLevelFileName)	
+	err = WriteToFile(schema, fw, payload) //write temporary local file
+	if err != nil {
+		log.Println("Unable to write temporary local file", err)
+		return err
+	}
+	
+	
+	awsSession, err := session.NewSession()
+    if err != nil {
+        log.Println("Failed to create AWS Session ", err)
+		return err
+    }
+	
+	tempFile, err1 := os.Open(leafLevelFileName) //open temporary local file
+	if err1 != nil {
+		log.Println("Unable to open temporary local file", err1)
+		return err1
+	}
+	
+	defer tempFile.Close()
+	
+	// Get file size and read the file content into a buffer
+    fileInfo, _ := tempFile.Stat()
+    var size int64 = fileInfo.Size()
+    buffer := make([]byte, size)
+    tempFile.Read(buffer)
+	
+	// Config settings: this is where we choose the bucket, filename, content-type etc.
+    // of the file we're uploading.
+    _, err = s3.New(awsSession).PutObject(&s3.PutObjectInput{
+        Bucket:               aws.String(bucketName),
+        Key:                  aws.String(key),
+        //ACL:                  aws.String("private"),
+        Body:                 bytes.NewReader(buffer),
+        //ContentLength:        aws.Int64(size),
+        //ContentType:          aws.String(http.DetectContentType(buffer)),
+        //ContentDisposition:   aws.String("attachment"),
+        //ServerSideEncryption: aws.String("AES256"),
+    })
+	
+	os.Remove(leafLevelFileName) //remove the temp file
+	
+	return err
+	
+
 }
 
 func WriteGCPParquet(messageType string, schema string, payload []byte, configRecord Config) error {

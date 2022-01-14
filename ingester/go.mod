@@ -22,6 +22,7 @@ require (
 	github.com/apache/arrow/go/arrow v0.0.0-20211112161151-bc219186db40 // indirect
 	github.com/apache/flink-statefun/statefun-sdk-go/v3 v3.1.1
 	github.com/apache/thrift v0.15.0 // indirect
+	github.com/aws/aws-sdk-go v1.42.34 // indirect
 	github.com/go-pg/pg v8.0.7+incompatible // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
