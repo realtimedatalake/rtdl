@@ -64,8 +64,9 @@ CREATE TABLE IF NOT EXISTS streams (
   folder_name VARCHAR NOT NULL,
   partition_time_id INTEGER DEFAULT 1,
   compression_type_id INTEGER DEFAULT 1,
-  iam_arn VARCHAR,
-  credentials VARCHAR,
+  aws_access_key_id VARCHAR,
+  aws_secret_access_key VARCHAR,
+  gcp_json_credentials VARCHAR,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (stream_id),
@@ -115,13 +116,14 @@ CREATE OR REPLACE FUNCTION getStream(stream_id_arg VARCHAR)
         folder_name VARCHAR,
         partition_time_id INTEGER,
         compression_type_id INTEGER,
-        iam_arn VARCHAR,
-        credentials VARCHAR
+        aws_access_key_id VARCHAR,
+        aws_secret_access_key VARCHAR,
+        gcp_json_credentials VARCHAR
     )
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.iam_arn, s.credentials
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.aws_access_key_id, s.aws_secret_access_key, s.gcp_json_credentials
         FROM streams s
         WHERE s.stream_id = (stream_id_arg)::uuid
         ORDER BY s.stream_id ASC;
@@ -140,13 +142,14 @@ CREATE OR REPLACE FUNCTION getAllStreams()
         folder_name VARCHAR,
         partition_time_id INTEGER,
         compression_type_id INTEGER,
-        iam_arn VARCHAR,
-        credentials VARCHAR
+        aws_access_key_id VARCHAR,
+        aws_secret_access_key VARCHAR,
+        gcp_json_credentials VARCHAR
     )
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.iam_arn, s.credentials
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.aws_access_key_id, s.aws_secret_access_key, s.gcp_json_credentials
         FROM streams s
         ORDER BY s.stream_id ASC;
 END;
@@ -164,20 +167,21 @@ CREATE OR REPLACE FUNCTION getAllActiveStreams()
         folder_name VARCHAR,
         partition_time_id INTEGER,
         compression_type_id INTEGER,
-        iam_arn VARCHAR,
-        credentials VARCHAR
+        aws_access_key_id VARCHAR,
+        aws_secret_access_key VARCHAR,
+        gcp_json_credentials VARCHAR
     )
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.iam_arn, s.credentials
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.aws_access_key_id, s.aws_secret_access_key, s.gcp_json_credentials
         FROM streams s
         WHERE s.active = TRUE
         ORDER BY s.stream_id ASC;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION createStream(stream_alt_id_arg VARCHAR, active_arg BOOLEAN, message_type_arg VARCHAR, file_store_type_id_arg INTEGER, region_arg VARCHAR, bucket_name_arg VARCHAR, folder_name_arg VARCHAR, partition_time_id_arg INTEGER, compression_type_id_arg INTEGER, iam_arn_arg VARCHAR, credentials_arg VARCHAR)
+CREATE OR REPLACE FUNCTION createStream(stream_alt_id_arg VARCHAR, active_arg BOOLEAN, message_type_arg VARCHAR, file_store_type_id_arg INTEGER, region_arg VARCHAR, bucket_name_arg VARCHAR, folder_name_arg VARCHAR, partition_time_id_arg INTEGER, compression_type_id_arg INTEGER, aws_access_key_id_arg VARCHAR, aws_secret_access_key_arg VARCHAR, gcp_json_credentials_arg VARCHAR)
     RETURNS TABLE (
         stream_id uuid,
         stream_alt_id VARCHAR,
@@ -189,20 +193,21 @@ CREATE OR REPLACE FUNCTION createStream(stream_alt_id_arg VARCHAR, active_arg BO
         folder_name VARCHAR,
         partition_time_id INTEGER,
         compression_type_id INTEGER,
-        iam_arn VARCHAR,
-        credentials VARCHAR
+        aws_access_key_id VARCHAR,
+        aws_secret_access_key VARCHAR,
+        gcp_json_credentials VARCHAR
     )
 AS $$
 BEGIN
     RETURN QUERY
-        INSERT INTO streams  (stream_alt_id, active, message_type, file_store_type_id, region, bucket_name, folder_name, partition_time_id, compression_type_id, iam_arn, credentials)
+        INSERT INTO streams  (stream_alt_id, active, message_type, file_store_type_id, region, bucket_name, folder_name, partition_time_id, compression_type_id, aws_access_key_id, aws_secret_access_key, gcp_json_credentials)
         VALUES
-            (stream_alt_id_arg, active_arg, message_type_arg, file_store_type_id_arg, region_arg, bucket_name_arg, folder_name_arg, partition_time_id_arg, compression_type_id_arg, iam_arn_arg, credentials_arg)
-        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.iam_arn, streams.credentials;
+            (stream_alt_id_arg, active_arg, message_type_arg, file_store_type_id_arg, region_arg, bucket_name_arg, folder_name_arg, partition_time_id_arg, compression_type_id_arg, aws_access_key_id_arg, aws_secret_access_key_arg, gcp_json_credentials_arg)
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION updateStream(stream_id_arg VARCHAR, stream_alt_id_arg VARCHAR, active_arg BOOLEAN, message_type_arg VARCHAR, file_store_type_id_arg INTEGER, region_arg VARCHAR, bucket_name_arg VARCHAR, folder_name_arg VARCHAR, partition_time_id_arg INTEGER, compression_type_id_arg INTEGER, iam_arn_arg VARCHAR, credentials_arg VARCHAR)
+CREATE OR REPLACE FUNCTION updateStream(stream_id_arg VARCHAR, stream_alt_id_arg VARCHAR, active_arg BOOLEAN, message_type_arg VARCHAR, file_store_type_id_arg INTEGER, region_arg VARCHAR, bucket_name_arg VARCHAR, folder_name_arg VARCHAR, partition_time_id_arg INTEGER, compression_type_id_arg INTEGER, aws_access_key_id_arg VARCHAR, aws_secret_access_key_arg VARCHAR, gcp_json_credentials_arg VARCHAR)
     RETURNS TABLE (
         stream_id uuid,
         stream_alt_id VARCHAR,
@@ -214,8 +219,9 @@ CREATE OR REPLACE FUNCTION updateStream(stream_id_arg VARCHAR, stream_alt_id_arg
         folder_name VARCHAR,
         partition_time_id INTEGER,
         compression_type_id INTEGER,
-        iam_arn VARCHAR,
-        credentials VARCHAR
+        aws_access_key_id VARCHAR,
+        aws_secret_access_key VARCHAR,
+        gcp_json_credentials VARCHAR
     )
 AS $$
 BEGIN
@@ -230,10 +236,11 @@ BEGIN
             folder_name = folder_name_arg,
             partition_time_id = partition_time_id_arg,
             compression_type_id = compression_type_id_arg,
-            iam_arn = iam_arn_arg,
-            credentials = credentials_arg
+            aws_access_key_id = aws_access_key_id_arg,
+            aws_secret_access_key = aws_secret_access_key_arg,
+            gcp_json_credentials = gcp_json_credentials_arg
         WHERE streams.stream_id = (stream_id_arg)::uuid
-        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.iam_arn, streams.credentials;
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -249,15 +256,16 @@ CREATE OR REPLACE FUNCTION deleteStream(stream_id_arg VARCHAR)
         folder_name VARCHAR,
         partition_time_id INTEGER,
         compression_type_id INTEGER,
-        iam_arn VARCHAR,
-        credentials VARCHAR
+        aws_access_key_id VARCHAR,
+        aws_secret_access_key VARCHAR,
+        gcp_json_credentials VARCHAR
     )
 AS $$
 BEGIN
     RETURN QUERY
         DELETE FROM streams
         WHERE streams.stream_id = (stream_id_arg)::uuid
-        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.iam_arn, streams.credentials;
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -273,8 +281,9 @@ CREATE OR REPLACE FUNCTION activateStream(stream_id_arg VARCHAR)
         folder_name VARCHAR,
         partition_time_id INTEGER,
         compression_type_id INTEGER,
-        iam_arn VARCHAR,
-        credentials VARCHAR
+        aws_access_key_id VARCHAR,
+        aws_secret_access_key VARCHAR,
+        gcp_json_credentials VARCHAR
     )
 AS $$
 BEGIN
@@ -282,7 +291,7 @@ BEGIN
         UPDATE streams
         SET active = TRUE
         WHERE streams.stream_id = (stream_id_arg)::uuid
-        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.iam_arn, streams.credentials;
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -298,8 +307,9 @@ CREATE OR REPLACE FUNCTION deactivateStream(stream_id_arg VARCHAR)
         folder_name VARCHAR,
         partition_time_id INTEGER,
         compression_type_id INTEGER,
-        iam_arn VARCHAR,
-        credentials VARCHAR
+        aws_access_key_id VARCHAR,
+        aws_secret_access_key VARCHAR,
+        gcp_json_credentials VARCHAR
     )
 AS $$
 BEGIN
@@ -307,7 +317,7 @@ BEGIN
         UPDATE streams
         SET active = FALSE
         WHERE streams.stream_id = (stream_id_arg)::uuid
-        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.iam_arn, streams.credentials;
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials;
 END;
 $$ LANGUAGE plpgsql;
 

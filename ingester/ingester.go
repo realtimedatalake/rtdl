@@ -5,8 +5,9 @@ package main
 
 import (
 	"bytes"
-	"errors"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,17 +16,16 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/jmoiron/sqlx"
-	"database/sql"
 	_ "github.com/lib/pq"
 	"github.com/xitongsys/parquet-go-source/local"
-	"github.com/xitongsys/parquet-go/writer"
 	"github.com/xitongsys/parquet-go/source"
-	"github.com/aws/aws-sdk-go/aws"
-    "github.com/aws/aws-sdk-go/aws/session"
-    "github.com/aws/aws-sdk-go/service/s3"
-	
+	"github.com/xitongsys/parquet-go/writer"
 )
 
 //Incoming message would have
@@ -40,50 +40,50 @@ type IncomingMessage struct {
 }
 
 //struct representation of stream configuration
-// AlternateStreamId is applicable where the stream is being fed from an external system and the alternate id
+// StreamAltID is applicable where the stream is being fed from an external system and the alternate id
 // represents the unique identifier for that system
 type Config struct {
-	StreamId          sql.NullString `db:"stream_id" default:""` 
-	AlternateStreamId sql.NullString `db:"stream_alt_id" default:""`
-	Active            sql.NullBool   `db:"active"`
-	MessageType	      sql.NullString `db:"message_type" default:""`
-	FileStoreTypeId   sql.NullInt64  `db:"file_store_type_id"`
-	Region            sql.NullString `db:"region" default:""`
-	BucketName        sql.NullString `db:"bucket_name" default:""`
-	FolderName        sql.NullString `db:"folder_name" default:""`
-	PartitionTimeId	  sql.NullInt64  `db:"partition_time_id"`
-	CompressionTypeId sql.NullInt64  `db:"compression_type_id"`
-	IamArn            sql.NullString `db:"iam_arn" default:""`
-	Credentials       sql.NullString `db:"credentials" default:""`
-	CreatedAt		  time.Time `db:"created_at"`
-	UpdatedAt		  time.Time `db:"updated_at"`
+	StreamId           sql.NullString `db:"stream_id" default:""`
+	StreamAltID        sql.NullString `db:"stream_alt_id" default:""`
+	Active             sql.NullBool   `db:"active"`
+	MessageType        sql.NullString `db:"message_type" default:""`
+	FileStoreTypeId    sql.NullInt64  `db:"file_store_type_id"`
+	Region             sql.NullString `db:"region" default:""`
+	BucketName         sql.NullString `db:"bucket_name" default:""`
+	FolderName         sql.NullString `db:"folder_name" default:""`
+	PartitionTimeId    sql.NullInt64  `db:"partition_time_id"`
+	CompressionTypeId  sql.NullInt64  `db:"compression_type_id"`
+	AWSAcessKeyID      sql.NullString `db:"aws_access_key_id" default:""`
+	AWSSecretAcessKey  sql.NullString `db:"aws_secret_access_key" default:""`
+	GCPJsonCredentials sql.NullString `db:"gcp_json_credentials" default:""`
+	CreatedAt          time.Time      `db:"created_at"`
+	UpdatedAt          time.Time      `db:"updated_at"`
 }
 
 var configs []Config
 
 //struct represenation of file store types
 type FileStoreType struct {
-	FileStoreTypeId		int64 	`db:"file_store_type_id"`
-	FileStoreTypeName	string 	`db:"file_store_type_name"`
+	FileStoreTypeId   int64  `db:"file_store_type_id"`
+	FileStoreTypeName string `db:"file_store_type_name"`
 }
 
 var fileStoreTypes []FileStoreType
 
 //struct representation of partition times
 type PartitionTime struct {
-	PartitionTimeId		int64	`db:"partition_time_id"`
-	PartitionTimeName	string	`db:"partition_time_name"`
+	PartitionTimeId   int64  `db:"partition_time_id"`
+	PartitionTimeName string `db:"partition_time_name"`
 }
 
-var partitionTimes []PartitionTime 
+var partitionTimes []PartitionTime
 
 type CompressionType struct {
-	CompressionTypeId	int64	`db:"compression_type_id"`
-	CompressionTypeName	string	`db:"compression_type_name"`
+	CompressionTypeId   int64  `db:"compression_type_id"`
+	CompressionTypeName string `db:"compression_type_name"`
 }
 
 var compressionTypes []CompressionType
-
 
 //name variables for stateful function
 var (
@@ -100,7 +100,6 @@ func getEnv(key, defaultValue string) string {
 	}
 	return value
 }
-
 
 //loads all stream configurations
 func loadConfig() error {
@@ -132,14 +131,13 @@ func loadConfig() error {
 		log.Println("Failed to execute query: ", err)
 		return err
 	}
-	
+
 	fileStoreTypeSql := "SELECT * FROM file_store_types"
 	err = db.Select(&fileStoreTypes, fileStoreTypeSql) //populate supported file store types
 	if err != nil {
 		log.Println("Failed to execute query: ", err)
 		return err
 	}
-
 
 	partitionTimesSql := "SELECT * FROM partition_times"
 	err = db.Select(&partitionTimes, partitionTimesSql) //populate supported file store types
@@ -154,13 +152,11 @@ func loadConfig() error {
 		log.Println("Failed to execute query: ", err)
 		return err
 	}
-	
 
 	defer db.Close()
 	log.Println("No. of config records retrieved : " + strconv.Itoa(len(configs)))
 	return nil
 }
-
 
 //map between Go and Parquet data types
 func getParquetDataType(dataType string) string {
@@ -237,43 +233,39 @@ func generateSchema(payload map[string]interface{}, messageType string, jsonSche
 
 }
 
-
-
 func generateSubFolderName(messageType string, configRecord Config) string {
 
 	var subFolderName string
 
 	for _, partitionTimeRecord := range partitionTimes { //need to find out the write partition
-	
+
 		if partitionTimeRecord.PartitionTimeId == configRecord.PartitionTimeId.Int64 { //match found
-			
-		
+
 			switch partitionTimeRecord.PartitionTimeName {
-			
+
 			case "Hourly":
-			
+
 				subFolderName = messageType + "_" + time.Now().Format("2006-01-02-15")
-			
+
 			case "Daily":
 				subFolderName = messageType + "_" + time.Now().Format("2006-01-02")
-				
+
 			case "Weekly":
 				year, week := time.Now().ISOWeek()
 				subFolderName = messageType + "_" + string(year) + "-" + string(week)
-				
+
 			case "Monthly":
 				subFolderName = messageType + "_" + time.Now().Format("2006-01")
-				
+
 			case "Quarterly":
-				quarter := int((time.Now().Month()+2)/3)
+				quarter := int((time.Now().Month() + 2) / 3)
 				subFolderName = messageType + "_" + time.Now().Format("2006") + "-" + string(quarter)
 			}
-			
+
 		}
-	
+
 	}
 
-	
 	return subFolderName
 }
 
@@ -283,13 +275,13 @@ func generateLeafLevelFileName() string {
 	//construct the timestamp string
 	t := time.Now()
 	year := t.Year()
-    month := t.Month()
-    day := t.Day()
-    hour := t.Hour()
-    min := t.Minute()
-    sec := t.Second()
-    nanosec := t.Nanosecond()
-	
+	month := t.Month()
+	day := t.Day()
+	hour := t.Hour()
+	min := t.Minute()
+	sec := t.Second()
+	nanosec := t.Nanosecond()
+
 	return strconv.Itoa(year) + strconv.Itoa(int(month)) + strconv.Itoa(day) + "_" + strconv.Itoa(hour) + strconv.Itoa(min) + strconv.Itoa(sec) + strconv.Itoa(nanosec) + ".parquet"
 
 }
@@ -297,8 +289,8 @@ func generateLeafLevelFileName() string {
 //writer-agnostic function to actually write to file
 func WriteToFile(schema string, fw source.ParquetFile, payload []byte) error {
 
-	log.Println("payload : ",string(payload))
-	 
+	log.Println("payload : ", string(payload))
+
 	pw, err := writer.NewJSONWriter(schema, fw, 4)
 	if err != nil {
 		log.Println("Can't create json writer", err)
@@ -309,7 +301,6 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte) error {
 		log.Println("Write error", err)
 		return err
 	}
-	
 
 	if err = pw.WriteStop(); err != nil {
 		log.Println("WriteStop error", err)
@@ -324,34 +315,29 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte) error {
 //Write local Parquet
 func WriteLocalParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
-	
 	//write
 	folderName := configRecord.FolderName.String
 	if folderName == "" { //default
 		folderName = "datastore"
 	}
-	
+
 	folderName += "/" + generateSubFolderName(messageType, configRecord)
-	
+
 	err := os.MkdirAll(folderName, os.ModePerm)
 	if err != nil {
 		log.Println("Can't create output directory", err)
 		return err
 	}
 
-
-	
 	fileName := folderName + "/" + generateLeafLevelFileName()
-	
+
 	fw, err := local.NewLocalFileWriter(fileName)
-	
 
 	if err != nil {
 		log.Println("Can't create file", err)
 		return err
 	}
-	
-	
+
 	return WriteToFile(schema, fw, payload)
 
 }
@@ -359,78 +345,76 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 func WriteAWSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
 	var key string
-	
+
 	subFolderName := generateSubFolderName(messageType, configRecord)
 	leafLevelFileName := generateLeafLevelFileName()
-	
+
 	if configRecord.Region.String == "" {
 		return errors.New("AWS Region cannot be null or empty")
 	}
-	
+
 	region := configRecord.Region.String
 	//set the region
-	os.Setenv("AWS_REGION",strings.TrimSpace(region))
-	
+	os.Setenv("AWS_REGION", strings.TrimSpace(region))
+
 	//log.Println("AWS Parquet writing implementation pending")
 	bucketName := configRecord.BucketName.String
 	if bucketName == "" {
 		return errors.New("S3 bucket name cannot be null or empty")
 	}
-	
+
 	if configRecord.FolderName.String != "" {
-	
+
 		key = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
-	
+
 	} else {
-	
+
 		key = subFolderName + "/" + leafLevelFileName
 	}
-	
-	fw, err := local.NewLocalFileWriter(leafLevelFileName)	
+
+	fw, err := local.NewLocalFileWriter(leafLevelFileName)
 	err = WriteToFile(schema, fw, payload) //write temporary local file
 	if err != nil {
 		log.Println("Unable to write temporary local file", err)
 		return err
 	}
-	
-	
+
 	awsSession, err := session.NewSession()
-    if err != nil {
-        log.Println("Failed to create AWS Session ", err)
+	if err != nil {
+		log.Println("Failed to create AWS Session ", err)
 		return err
-    }
-	
+	}
+
 	tempFile, err1 := os.Open(leafLevelFileName) //open temporary local file
 	if err1 != nil {
 		log.Println("Unable to open temporary local file", err1)
 		return err1
 	}
-	
+
 	defer tempFile.Close()
-	
+
 	// Get file size and read the file content into a buffer
-    fileInfo, _ := tempFile.Stat()
-    var size int64 = fileInfo.Size()
-    buffer := make([]byte, size)
-    tempFile.Read(buffer)
-	
+	fileInfo, _ := tempFile.Stat()
+	var size int64 = fileInfo.Size()
+	buffer := make([]byte, size)
+	tempFile.Read(buffer)
+
 	// Config settings: this is where we choose the bucket, filename, content-type etc.
-    // of the file we're uploading.
-    _, err = s3.New(awsSession).PutObject(&s3.PutObjectInput{
-        Bucket:               aws.String(bucketName),
-        Key:                  aws.String(key),
-        //ACL:                  aws.String("private"),
-        Body:                 bytes.NewReader(buffer),
-        //ContentLength:        aws.Int64(size),
-        //ContentType:          aws.String(http.DetectContentType(buffer)),
-        //ContentDisposition:   aws.String("attachment"),
-        //ServerSideEncryption: aws.String("AES256"),
-    })
-	
+	// of the file we're uploading.
+	_, err = s3.New(awsSession).PutObject(&s3.PutObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key),
+		//ACL:                  aws.String("private"),
+		Body: bytes.NewReader(buffer),
+		//ContentLength:        aws.Int64(size),
+		//ContentType:          aws.String(http.DetectContentType(buffer)),
+		//ContentDisposition:   aws.String("attachment"),
+		//ServerSideEncryption: aws.String("AES256"),
+	})
+
 	os.Remove(leafLevelFileName) //remove the temp file
-	
+
 	return err
-	
 
 }
 
@@ -440,11 +424,8 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 	return nil
 }
 
-
 //Parquet writing logic
 func writeParquet(request IncomingMessage) error {
-	
-	
 
 	//log.Println(generateSchema(request.Payload,request.MessageType, "")+"]}")
 
@@ -453,16 +434,16 @@ func writeParquet(request IncomingMessage) error {
 	log.Println(schema)
 
 	payload, _ := json.Marshal(request.Payload) //convert generic payload structure to JSON string
-	
+
 	//first retrieve relevant destination information from config array
-	for _, configRecord := range configs {		
-		
-		if (configRecord.StreamId.String == request.SourceKey && configRecord.MessageType.String == request.MessageType) { //config found with matching stream id and message type
-			
+	for _, configRecord := range configs {
+
+		if configRecord.StreamId.String == request.SourceKey && configRecord.MessageType.String == request.MessageType { //config found with matching stream id and message type
+
 			for _, fileStoreTypeRecord := range fileStoreTypes { //similar logic for file store types
-			
+
 				if fileStoreTypeRecord.FileStoreTypeId == configRecord.FileStoreTypeId.Int64 {
-				
+
 					switch fileStoreTypeRecord.FileStoreTypeName {
 					case "Local":
 						return WriteLocalParquet(request.MessageType, schema, payload, configRecord)
@@ -470,10 +451,10 @@ func writeParquet(request IncomingMessage) error {
 						return WriteAWSParquet(request.MessageType, schema, payload, configRecord)
 					case "GCP":
 						return WriteGCPParquet(request.MessageType, schema, payload, configRecord)
-						
+
 					}
 				}
-			
+
 			}
 		}
 
@@ -499,14 +480,14 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 
 		return nil
 	}
-	
+
 	err := writeParquet(request)
 	if err != nil {
-	
+
 		log.Println("error writing Parquet", err)
-	
+
 	}
-	
+
 	payload, _ := json.Marshal(request.Payload) //convert generic payload structure to JSON string
 
 	//initial implementation to test out data flow

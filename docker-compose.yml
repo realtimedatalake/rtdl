@@ -173,6 +173,7 @@ services:
     build:
       context: ./ingester
     platform: linux/amd64
+    image: rtdl/flink-stateful-function
     container_name: rtdl_process-statefun-functions
     expose:
       - 8082

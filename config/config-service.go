@@ -43,33 +43,35 @@ type compressionType struct {
 }
 
 type stream_json struct {
-	StreamID          string `db:"stream_id" json:"stream_id,omitempty"`
-	StreamAltID       string `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
-	Active            bool   `db:"active" json:"active,omitempty"`
-	MessageType       string `db:"message_type" json:"message_type,omitempty"`
-	FileStoreTypeID   int    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
-	Region            string `db:"region" json:"region,omitempty"`
-	BucketName        string `db:"bucket_name" json:"bucket_name,omitempty"`
-	FolderName        string `db:"folder_name" json:"folder_name,omitempty"`
-	PartitionTimeID   int    `db:"partition_time_id" json:"partition_time_id,omitempty"`
-	CompressionTypeID int    `db:"compression_type_id" json:"compression_type_id,omitempty"`
-	IamARN            string `db:"iam_arn" json:"iam_arn,omitempty"`
-	Credentials       string `db:"credentials" json:"credentials,omitempty"`
+	StreamID           string `db:"stream_id" json:"stream_id,omitempty"`
+	StreamAltID        string `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
+	Active             bool   `db:"active" json:"active,omitempty"`
+	MessageType        string `db:"message_type" json:"message_type,omitempty"`
+	FileStoreTypeID    int    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
+	Region             string `db:"region" json:"region,omitempty"`
+	BucketName         string `db:"bucket_name" json:"bucket_name,omitempty"`
+	FolderName         string `db:"folder_name" json:"folder_name,omitempty"`
+	PartitionTimeID    int    `db:"partition_time_id" json:"partition_time_id,omitempty"`
+	CompressionTypeID  int    `db:"compression_type_id" json:"compression_type_id,omitempty"`
+	AWSAcessKeyID      string `db:"aws_access_key_id" json:"aws_access_key_id,omitempty"`
+	AWSSecretAcessKey  string `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
+	GCPJsonCredentials string `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
 }
 
 type stream_sql struct {
-	StreamID          sql.NullString `db:"stream_id" json:"stream_id,omitempty"`
-	StreamAltID       sql.NullString `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
-	Active            sql.NullBool   `db:"active" json:"active,omitempty"`
-	MessageType       sql.NullString `db:"message_type" json:"message_type,omitempty"`
-	FileStoreTypeID   sql.NullInt64  `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
-	Region            sql.NullString `db:"region" json:"region,omitempty"`
-	BucketName        sql.NullString `db:"bucket_name" json:"bucket_name,omitempty"`
-	FolderName        sql.NullString `db:"folder_name" json:"folder_name,omitempty"`
-	PartitionTimeID   sql.NullInt64  `db:"partition_time_id" json:"partition_time_id,omitempty"`
-	CompressionTypeID sql.NullInt64  `db:"compression_type_id" json:"compression_type_id,omitempty"`
-	IamARN            sql.NullString `db:"iam_arn" json:"iam_arn,omitempty"`
-	Credentials       sql.NullString `db:"credentials" json:"credentials,omitempty"`
+	StreamID           sql.NullString `db:"stream_id" json:"stream_id,omitempty"`
+	StreamAltID        sql.NullString `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
+	Active             sql.NullBool   `db:"active" json:"active,omitempty"`
+	MessageType        sql.NullString `db:"message_type" json:"message_type,omitempty"`
+	FileStoreTypeID    sql.NullInt64  `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
+	Region             sql.NullString `db:"region" json:"region,omitempty"`
+	BucketName         sql.NullString `db:"bucket_name" json:"bucket_name,omitempty"`
+	FolderName         sql.NullString `db:"folder_name" json:"folder_name,omitempty"`
+	PartitionTimeID    sql.NullInt64  `db:"partition_time_id" json:"partition_time_id,omitempty"`
+	CompressionTypeID  sql.NullInt64  `db:"compression_type_id" json:"compression_type_id,omitempty"`
+	AWSAcessKeyID      sql.NullString `db:"aws_access_key_id" json:"aws_access_key_id,omitempty"`
+	AWSSecretAcessKey  sql.NullString `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
+	GCPJsonCredentials sql.NullString `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
 }
 
 //	FUNCTION
@@ -626,13 +628,18 @@ func buildQueryString_createStream(reqStream stream_json) (queryStr string) {
 		reqStream.CompressionTypeID = 1
 	}
 	queryStr = queryStr + strconv.Itoa(reqStream.CompressionTypeID) + ", "
-	if reqStream.IamARN != "" {
-		queryStr = queryStr + "'" + reqStream.IamARN + "', "
+	if reqStream.AWSAcessKeyID != "" {
+		queryStr = queryStr + "'" + reqStream.AWSAcessKeyID + "', "
 	} else {
 		queryStr = queryStr + "NULL, "
 	}
-	if reqStream.Credentials != "" {
-		queryStr = queryStr + "'" + reqStream.Credentials + "')"
+	if reqStream.AWSSecretAcessKey != "" {
+		queryStr = queryStr + "'" + reqStream.AWSSecretAcessKey + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+	if reqStream.GCPJsonCredentials != "" {
+		queryStr = queryStr + "'" + reqStream.GCPJsonCredentials + "')"
 	} else {
 		queryStr = queryStr + "NULL)"
 	}
@@ -695,13 +702,18 @@ func buildQueryString_updateStream(reqStream stream_json) (queryStr string) {
 		reqStream.CompressionTypeID = 1
 	}
 	queryStr = queryStr + strconv.Itoa(reqStream.CompressionTypeID) + ", "
-	if reqStream.IamARN != "" {
-		queryStr = queryStr + "'" + reqStream.IamARN + "', "
+	if reqStream.AWSAcessKeyID != "" {
+		queryStr = queryStr + "'" + reqStream.AWSAcessKeyID + "', "
 	} else {
 		queryStr = queryStr + "NULL, "
 	}
-	if reqStream.Credentials != "" {
-		queryStr = queryStr + "'" + reqStream.Credentials + "')"
+	if reqStream.AWSSecretAcessKey != "" {
+		queryStr = queryStr + "'" + reqStream.AWSSecretAcessKey + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+	if reqStream.GCPJsonCredentials != "" {
+		queryStr = queryStr + "'" + reqStream.GCPJsonCredentials + "')"
 	} else {
 		queryStr = queryStr + "NULL)"
 	}
