@@ -76,8 +76,9 @@ service.
     * folder_name VARCHAR NOT NULL,
     * partition_time_id INTEGER DEFAULT 1,
     * compression_type_id INTEGER DEFAULT 1,
-    * iam_arn VARCHAR,
-    * credentials VARCHAR,
+    * aws_access_key_id VARCHAR,
+    * aws_secret_access_key VARCHAR,
+    * gcp_json_credentials VARCHAR,
     * created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     * updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     * PRIMARY KEY (stream_id),
@@ -86,7 +87,7 @@ service.
     * FOREIGN KEY(compression_type_id) REFERENCES compression_types(compression_type_id)
 
 ### ingest service
-Written in Go
+Written in Go. Writes json payload to the kafka service.
 
 ### kafka services
 Two services.
