@@ -11,6 +11,12 @@
 3. Run `docker compose up -d` every time after.
     * `docker compose down` to stop.
 
+**Note:** To start from scratch, first run the below commands from the rtdl root folder.
+```
+% rm -rf storage/
+% docker image rm rtdl/rtdl-config rtdl/rtdl-ingest rtdl/flink-stateful-function
+``` 
+
 
 ## Architecture
 rtdl has a multi-service architecture composed of tested and trusted open source tools 
