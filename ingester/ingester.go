@@ -20,12 +20,14 @@ import (
 	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/source"
 	"github.com/xitongsys/parquet-go/writer"
+	
 )
 
 //Incoming message would have
@@ -353,9 +355,10 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 		return errors.New("AWS Region cannot be null or empty")
 	}
 
-	region := configRecord.Region.String
-	//set the region
-	os.Setenv("AWS_REGION", strings.TrimSpace(region))
+	region := strings.TrimSpace(configRecord.Region.String)
+	awsAccessKeyId := strings.TrimSpace(configRecord.AWSAcessKeyID.String)
+	awsSecretAccessKey := strings.TrimSpace(configRecord.AWSSecretAcessKey.String)
+	
 
 	//log.Println("AWS Parquet writing implementation pending")
 	bucketName := configRecord.BucketName.String
@@ -379,7 +382,10 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 		return err
 	}
 
-	awsSession, err := session.NewSession()
+	awsSession, err := session.NewSession(&aws.Config{
+											Region: aws.String(region),
+											Credentials: credentials.NewStaticCredentials(awsAccessKeyId,awsSecretAccessKey,""),
+	})
 	if err != nil {
 		log.Println("Failed to create AWS Session ", err)
 		return err

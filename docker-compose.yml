@@ -183,8 +183,6 @@ services:
       POSTGRES_USER: rtdl
       POSTGRES_PASSWORD: rtdl
       POSTGRES_DBNAME: rtdl_db
-      AWS_ACCESS_KEY_ID: "access key id"
-      AWS_SECRET_ACCESS_KEY: "secret access key"
     volumes:
       - ./storage/rtdl-data_store:/app/datastore
     depends_on:
