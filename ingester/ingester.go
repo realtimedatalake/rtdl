@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -16,7 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
+	"io"
 	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -27,6 +28,10 @@ import (
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/source"
 	"github.com/xitongsys/parquet-go/writer"
+	"golang.org/x/oauth2/google"
+	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+	"google.golang.org/api/option"
+	"cloud.google.com/go/storage"
 	
 )
 
@@ -419,6 +424,7 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 	})
 
 	os.Remove(leafLevelFileName) //remove the temp file
+	log.Println("Finished uploading file to S3")
 
 	return err
 
@@ -426,7 +432,76 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 
 func WriteGCPParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
-	log.Println("GCP Parquet writing implementation pending")
+	var path string
+	
+	subFolderName := generateSubFolderName(messageType, configRecord)
+	leafLevelFileName := generateLeafLevelFileName()
+	
+	//replace all \n	with \\n to preserve them
+	jsonCreds := strings.Replace(configRecord.GCPJsonCredentials.String,"\n","\\n",-1) 
+	//jsonCreds := configRecord.GCPJsonCredentials.String
+	
+	//create client
+	ctx := context.Background()
+	creds, err := google.CredentialsFromJSON(ctx, []byte(jsonCreds), secretmanager.DefaultAuthScopes()...)
+	if err != nil {
+		log.Println("Error creating GCP credentials", err)
+		return err
+	}
+	
+	client, err := storage.NewClient(ctx, option.WithCredentials(creds))
+	if err != nil {
+		log.Println("Error creating GCP client", err)
+		return err
+	}
+	defer client.Close()
+	
+	bucketName := configRecord.BucketName.String
+	if bucketName == "" {
+		return errors.New("GCS bucket name cannot be null or empty")
+	}
+	
+	if configRecord.FolderName.String != "" {
+
+		path = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
+
+	} else {
+
+		path = subFolderName + "/" + leafLevelFileName
+	}
+
+	fw, err := local.NewLocalFileWriter(leafLevelFileName)
+	err = WriteToFile(schema, fw, payload) //write temporary local file
+	if err != nil {
+		log.Println("Unable to write temporary local file", err)
+		return err
+	}
+
+	tempFile, err1 := os.Open(leafLevelFileName) //open temporary local file
+	if err1 != nil {
+		log.Println("Unable to open temporary local file", err1)
+		return err1
+	}
+
+	defer tempFile.Close()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*50)
+	defer cancel()
+
+	// Upload an object with storage.Writer.
+	writer := client.Bucket(bucketName).Object(path).NewWriter(ctx)
+	if _, err = io.Copy(writer, tempFile); err != nil {
+		log.Println("Error uploading file", err)
+		return err
+	}
+	if err := writer.Close(); err != nil {
+		log.Println("Error closing writer", err)
+		return err
+	}
+	
+	os.Remove(leafLevelFileName) //remove the temp file
+
+	log.Println("Finished uploading file to GCS")
 	return nil
 }
 
