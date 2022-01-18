@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -17,11 +18,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"io"
+
+	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+	"cloud.google.com/go/storage"
 	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -29,11 +32,20 @@ import (
 	"github.com/xitongsys/parquet-go/source"
 	"github.com/xitongsys/parquet-go/writer"
 	"golang.org/x/oauth2/google"
-	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"google.golang.org/api/option"
-	"cloud.google.com/go/storage"
-	
 )
+
+// default database connection settings
+const (
+	db_host_def     = "rtdl-db"
+	db_port_def     = 5433
+	db_user_def     = "rtdl"
+	db_password_def = "rtdl"
+	db_dbname_def   = "rtdl_db"
+)
+
+// create the `psqlCon` string used to connect to the database
+var psqlCon string
 
 //Incoming message would have
 // - a source key to identify the stream
@@ -113,19 +125,26 @@ func loadConfig() error {
 
 	//directly load data from PostgreSQL
 	//connection parameters read from docker-compose.yml, defaults mentioned here
-	pghost := getEnv("POSTGRES_HOST", "localhost")
-	pgport, err := strconv.Atoi(getEnv("POSTGRES_PORT", "5432"))
-	if err != nil {
-		pgport = 5432
-	}
-	pguser := getEnv("POSTGRES_USER", "postgres")
-	pgpassword := getEnv("POSTGRES_PASSWORD", "postgres")
-	pgdbname := getEnv("POSTGRES_DBNAME", "postgres")
+	// pghost := getEnv("POSTGRES_HOST", "rtdl-db")
+	// pgport, err := strconv.Atoi(getEnv("POSTGRES_PORT", "5433"))
+	// if err != nil {
+	// 	pgport = 5433
+	// }
+	// pguser := getEnv("POSTGRES_USER", "rtdl")
+	// pgpassword := getEnv("POSTGRES_PASSWORD", "rtdl")
+	// pgdbname := getEnv("POSTGRES_DBNAME", "rtdl-db")
 
-	dsn := fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable", pguser, pgpassword, pghost, pgport, pgdbname)
+	// dsn := fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable", pguser, pgpassword, pghost, pgport, pgdbname)
 
-	db, err := sqlx.Connect("postgres", dsn)
+	// db, err := sqlx.Connect("postgres", psqlCon)
 
+	// if err != nil {
+	// 	log.Println("Failed to open a DB connection: ", err)
+	// 	return err
+	// }
+
+	// open database
+	db, err := sqlx.Open("postgres", psqlCon)
 	if err != nil {
 		log.Println("Failed to open a DB connection: ", err)
 		return err
@@ -163,6 +182,41 @@ func loadConfig() error {
 	defer db.Close()
 	log.Println("No. of config records retrieved : " + strconv.Itoa(len(configs)))
 	return nil
+}
+
+//	FUNCTION
+// 	setDBConnectionString
+//	created by Gavin
+//	on 20220109
+//	last updated 20220111
+//	by Gavin
+//	Description:	(Copied from config-service.go)
+//					Sets the `psqlCon` global variable. Looks up environment variables
+//					and defaults if none are present.
+func setDBConnectionString() {
+	var db_host, db_port, db_user, db_password, db_dbname = db_host_def, db_port_def, db_user_def, db_password_def, db_dbname_def
+	var db_host_env, db_user_env, db_password_env, db_dbname_env = os.Getenv("RTDL_DB_HOST"), os.Getenv("RTDL_DB_USER"), os.Getenv("RTDL_DB_PASSWORD"), os.Getenv("RTDL_DB_DBNAME")
+	db_port_env, err := strconv.Atoi(os.Getenv("RTDL_DB_PORT"))
+	if err != nil {
+		db_port_env = 0
+	}
+
+	if db_host_env != "" {
+		db_host = db_host_env
+	}
+	if db_port_env != 0 {
+		db_port = db_port_env
+	}
+	if db_user_env != "" {
+		db_user = db_user_env
+	}
+	if db_password_env != "" {
+		db_password = db_password_env
+	}
+	if db_dbname_env != "" {
+		db_dbname = db_dbname_env
+	}
+	psqlCon = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", db_host, db_port, db_user, db_password, db_dbname)
 }
 
 //map between Go and Parquet data types
@@ -363,7 +417,6 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 	region := strings.TrimSpace(configRecord.Region.String)
 	awsAccessKeyId := strings.TrimSpace(configRecord.AWSAcessKeyID.String)
 	awsSecretAccessKey := strings.TrimSpace(configRecord.AWSSecretAcessKey.String)
-	
 
 	//log.Println("AWS Parquet writing implementation pending")
 	bucketName := configRecord.BucketName.String
@@ -388,8 +441,8 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 	}
 
 	awsSession, err := session.NewSession(&aws.Config{
-											Region: aws.String(region),
-											Credentials: credentials.NewStaticCredentials(awsAccessKeyId,awsSecretAccessKey,""),
+		Region:      aws.String(region),
+		Credentials: credentials.NewStaticCredentials(awsAccessKeyId, awsSecretAccessKey, ""),
 	})
 	if err != nil {
 		log.Println("Failed to create AWS Session ", err)
@@ -433,14 +486,14 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 func WriteGCPParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
 	var path string
-	
+
 	subFolderName := generateSubFolderName(messageType, configRecord)
 	leafLevelFileName := generateLeafLevelFileName()
-	
+
 	//replace all \n	with \\n to preserve them
-	jsonCreds := strings.Replace(configRecord.GCPJsonCredentials.String,"\n","\\n",-1) 
+	jsonCreds := strings.Replace(configRecord.GCPJsonCredentials.String, "\n", "\\n", -1)
 	//jsonCreds := configRecord.GCPJsonCredentials.String
-	
+
 	//create client
 	ctx := context.Background()
 	creds, err := google.CredentialsFromJSON(ctx, []byte(jsonCreds), secretmanager.DefaultAuthScopes()...)
@@ -448,19 +501,19 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 		log.Println("Error creating GCP credentials", err)
 		return err
 	}
-	
+
 	client, err := storage.NewClient(ctx, option.WithCredentials(creds))
 	if err != nil {
 		log.Println("Error creating GCP client", err)
 		return err
 	}
 	defer client.Close()
-	
+
 	bucketName := configRecord.BucketName.String
 	if bucketName == "" {
 		return errors.New("GCS bucket name cannot be null or empty")
 	}
-	
+
 	if configRecord.FolderName.String != "" {
 
 		path = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
@@ -498,7 +551,7 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 		log.Println("Error closing writer", err)
 		return err
 	}
-	
+
 	os.Remove(leafLevelFileName) //remove the temp file
 
 	log.Println("Finished uploading file to GCS")
@@ -586,6 +639,9 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 }
 
 func main() {
+
+	// connection string
+	setDBConnectionString()
 
 	//load configuration at the outset
 	//should panic if unable to do source

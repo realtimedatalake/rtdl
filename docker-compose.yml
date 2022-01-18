@@ -69,7 +69,11 @@ services:
     ports:
       - 80:80
     environment:
+      RTDL_DB_HOST: rtdl-db
       RTDL_DB_PORT: 5432
+      RTDL_DB_USER: rtdl
+      RTDL_DB_PASSWORD: rtdl
+      RTDL_DB_DBNAME: rtdl_db
     depends_on:
       rtdl-db:
         condition: service_healthy
@@ -178,11 +182,11 @@ services:
     expose:
       - 8082
     environment:
-      POSTGRES_HOST: rtdl-db
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: rtdl
-      POSTGRES_PASSWORD: rtdl
-      POSTGRES_DBNAME: rtdl_db
+      RTDL_DB_HOST: rtdl-db
+      RTDL_DB_PORT: 5432
+      RTDL_DB_USER: rtdl
+      RTDL_DB_PASSWORD: rtdl
+      RTDL_DB_DBNAME: rtdl_db
     volumes:
       - ./storage/rtdl-data_store:/app/datastore
     depends_on:
