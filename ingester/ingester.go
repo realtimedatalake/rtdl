@@ -377,20 +377,24 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte) error {
 func WriteLocalParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
 	//write
+	path := "datastore" //root will always be datastore
+	
 	folderName := configRecord.FolderName.String
-	if folderName == "" { //default
-		folderName = "datastore"
+	if folderName != "" { //default
+		path += "/" + folderName
 	}
 
-	folderName += "/" + generateSubFolderName(messageType, configRecord)
+	path += "/" + generateSubFolderName(messageType, configRecord)
 
-	err := os.MkdirAll(folderName, os.ModePerm)
+	err := os.MkdirAll(path, os.ModePerm)
 	if err != nil {
 		log.Println("Can't create output directory", err)
 		return err
 	}
 
-	fileName := folderName + "/" + generateLeafLevelFileName()
+	fileName := path + "/" + generateLeafLevelFileName()
+	
+	log.Println("Local path:", fileName)
 
 	fw, err := local.NewLocalFileWriter(fileName)
 
