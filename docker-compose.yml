@@ -116,7 +116,6 @@ services:
   kafka:
     platform: linux/amd64
     #image: wurstmeister/kafka:2.12-2.3.0
-    #image: dipanjanb/kafka-m1:0.1
     image: bitnami/kafka:latest
     container_name: rtdl_kafka
     expose:
@@ -177,7 +176,7 @@ services:
     build:
       context: ./ingester
     platform: linux/amd64
-    image: rtdl/flink-stateful-function
+    image: rtdl/process-statefun-functions
     container_name: rtdl_process-statefun-functions
     expose:
       - 8082
