@@ -29,4 +29,25 @@
         <name>javax.jdo.option.ConnectionPassword</name>
         <value>rtdl</value>
     </property>
+
+    <property>
+        <name>fs.s3a.access.key</name>
+        <value>[YOUR_ACCESS_KEY]</value>
+    </property>
+    <property>
+        <name>fs.s3a.secret.key</name>
+        <value>[YOUR_SECRET_KEY]</value>
+    </property>
+    <!--    <property>-->
+    <!--        <name>fs.s3a.endpoint</name>-->
+    <!--        <value>[WANTED_ENDPOINT]</value>-->
+    <!--    </property>-->
+    <property>
+        <name>fs.s3a.path.style.access</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>fs.s3a.impl</name>
+        <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+    </property>
 </configuration>
