@@ -683,11 +683,44 @@ func main() {
 		panic(err)
 	}
 	
-	client, err := hmsclient.Open("catalog", 9083)
-	if err != nil {
-		log.Fatal(err)
+	
+	//need to have backoff-retry for HMS
+	var backoffSchedule = []time.Duration{
+	5 * time.Second,
+	15 * time.Second,
+	14 * time.Second,
 	}
-	fmt.Println(client.GetAllDatabases())
+	
+	var hiveClient *hmsclient.MetastoreClient
+	
+	for _ = range backoffSchedule {
+
+		hiveClient, err = hmsclient.Open("catalog", 9083)
+
+		if err == nil {
+			break
+		}
+
+	}
+	
+	if hiveClient == nil {
+		
+		log.Fatal("unable to connect to Hive Metastore")
+	
+	}
+	
+	database, err := hiveClient.GetDatabase("rtdl_hive_default") //default Hive DB
+	
+	if database == nil {
+	
+		err  = hiveClient.CreateDatabase(&hmsclient.Database{Name: "rtdl_hive_default", Location: "/warehouse/tablespace/external/hive/"})
+		if err != nil {
+		
+			log.Fatal(err)
+		
+		}
+		
+	}
 
 	builder := statefun.StatefulFunctionsBuilder()
 

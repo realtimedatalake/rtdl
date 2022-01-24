@@ -50,13 +50,4 @@
         <name>fs.s3a.impl</name>
         <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
     </property>
-	<property>
-	    <name>hive.metastore.schema.verification</name>
-		<value>false</value>
-	</property>
-	<property>
-		<name>datanucleus.schema.autoCreateTables</name>
-		<value>true</value>
-		
-	</property>
 </configuration>
