@@ -54,7 +54,7 @@ var psqlCon string
 
 type IncomingMessage struct {
 	SourceKey   string                 `json:"source_key"`
-	MessageType string                 `json:"message_type"`
+	MessageType string                 `json:"message_type,omitempty"`
 	Payload     map[string]interface{} `json:"payload"`
 }
 
@@ -306,21 +306,21 @@ func generateSubFolderName(messageType string, configRecord Config) string {
 
 			case "Hourly":
 
-				subFolderName = messageType + "_" + time.Now().Format("2006-01-02-15")
+				subFolderName = messageType + "/" + time.Now().Format("2006-01-02-15")
 
 			case "Daily":
-				subFolderName = messageType + "_" + time.Now().Format("2006-01-02")
+				subFolderName = messageType + "/" + time.Now().Format("2006-01-02")
 
 			case "Weekly":
 				year, week := time.Now().ISOWeek()
-				subFolderName = messageType + "_" + string(year) + "-" + string(week)
+				subFolderName = messageType + "/" + string(year) + "-" + string(week)
 
 			case "Monthly":
-				subFolderName = messageType + "_" + time.Now().Format("2006-01")
+				subFolderName = messageType + "/" + time.Now().Format("2006-01")
 
 			case "Quarterly":
 				quarter := int((time.Now().Month() + 2) / 3)
-				subFolderName = messageType + "_" + time.Now().Format("2006") + "-" + string(quarter)
+				subFolderName = messageType + "/" + time.Now().Format("2006") + "-" + string(quarter)
 			}
 
 		}
@@ -566,17 +566,44 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 func writeParquet(request IncomingMessage) error {
 
 	//log.Println(generateSchema(request.Payload,request.MessageType, "")+"]}")
-
-	schema := strings.TrimRight(generateSchema(request.Payload, request.MessageType, ""), ",") + "]}"
-
-	log.Println(schema)
+	
+	//message type precedence order will be 1."type" within request.Payload 2."message_type" within incoming message 3. Config Record MessageType
+	//a default value will also be kept
+	
+	var messageType string = "rtdl_default"
+	
 
 	payload, _ := json.Marshal(request.Payload) //convert generic payload structure to JSON string
 
 	//first retrieve relevant destination information from config array
 	for _, configRecord := range configs {
 
-		if configRecord.StreamId.String == request.SourceKey && configRecord.MessageType.String == request.MessageType { //config found with matching stream id and message type
+		if configRecord.StreamId.String == request.SourceKey { //config found with matching stream id and message type
+		
+			//least precendence - config record message_type
+			if configRecord.MessageType.String != "" {
+			
+				messageType = configRecord.MessageType.String
+			} 
+		
+			//higher precendence message_type within message
+			if request.MessageType != "" {
+	
+				messageType = request.MessageType
+			}
+			
+			
+			//highest precedence - type inside main payload
+			if payloadType, found := request.Payload["type"]; found {
+				if typeString, ok := payloadType.(string); ok {
+				
+					messageType = typeString
+				}
+			}
+			
+			schema := strings.TrimRight(generateSchema(request.Payload, messageType, ""), ",") + "]}"
+
+			log.Println(schema)
 
 			for _, fileStoreTypeRecord := range fileStoreTypes { //similar logic for file store types
 
@@ -584,11 +611,11 @@ func writeParquet(request IncomingMessage) error {
 
 					switch fileStoreTypeRecord.FileStoreTypeName {
 					case "Local":
-						return WriteLocalParquet(request.MessageType, schema, payload, configRecord)
+						return WriteLocalParquet(messageType, schema, payload, configRecord)
 					case "AWS":
-						return WriteAWSParquet(request.MessageType, schema, payload, configRecord)
+						return WriteAWSParquet(messageType, schema, payload, configRecord)
 					case "GCP":
-						return WriteGCPParquet(request.MessageType, schema, payload, configRecord)
+						return WriteGCPParquet(messageType, schema, payload, configRecord)
 
 					}
 				}
