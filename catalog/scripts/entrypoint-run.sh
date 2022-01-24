@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 export CLASSPATH=`echo $CLASSPATH| sed 's/\/slf4j\-log4j12\-1\.7\.30\.jar//g'`
 

@@ -185,7 +185,8 @@ services:
     volumes:
       - ./catalog/scripts/entrypoint-init.sh:/entrypoint.sh
       - ./catalog/conf/metastore-site.postgres.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
-    entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
+    user: root
+    entrypoint: bash -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && bash -c /entrypoint.sh"
     depends_on:
       catalog-db:
         condition: service_healthy

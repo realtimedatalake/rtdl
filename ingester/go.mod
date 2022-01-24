@@ -24,6 +24,7 @@ require (
 	cloud.google.com/go/iam v0.1.0 // indirect
 	cloud.google.com/go/secretmanager v1.0.0 // indirect
 	cloud.google.com/go/storage v1.18.2 // indirect
+	github.com/akolb1/gometastore v0.0.0-20211122182549-3be600732d4b // indirect
 	github.com/apache/arrow/go/arrow v0.0.0-20211112161151-bc219186db40 // indirect
 	github.com/apache/flink-statefun/statefun-sdk-go/v3 v3.1.1
 	github.com/apache/thrift v0.15.0 // indirect

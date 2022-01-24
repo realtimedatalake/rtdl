@@ -195,6 +195,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started
+      catalog:
+        condition: service_started
   ##### Processing Services - End #####
 
 
@@ -267,7 +269,8 @@ services:
     volumes:
       - ./catalog/scripts/entrypoint-run.sh:/entrypoint.sh
       - ./catalog/conf/metastore-site.postgres.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
-    entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
+    user: root
+    command: bash -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && bash -c /entrypoint.sh"
     depends_on:
       catalog-db:
         condition: service_healthy

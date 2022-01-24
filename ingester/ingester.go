@@ -33,6 +33,7 @@ import (
 	"github.com/xitongsys/parquet-go/writer"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
+	"github.com/akolb1/gometastore/hmsclient"
 )
 
 // default database connection settings
@@ -681,6 +682,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	
+	client, err := hmsclient.Open("catalog", 9083)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(client.GetAllDatabases())
 
 	builder := statefun.StatefulFunctionsBuilder()
 
