@@ -254,14 +254,27 @@ func generateSchema(payload map[string]interface{}, messageType string, jsonSche
 	}
 
 	for key, value := range payload {
-
-		jsonSchema += `{"Tag": "name=` + key
+	
+	
+		if value == nil {
+		
+			continue //skip nulls
+		}
 
 		dataType := reflect.TypeOf(value).String()
-		//log.Println(fmt.Sprintf("%s is %s",key, dataType))
 
 		//special processing for nested object structures
 		if strings.HasPrefix(dataType, "map[string]interface") {
+		
+			if len(value.(map[string]interface{})) == 0 {
+			
+				continue //skip empty structs
+			
+			}
+		
+		
+			jsonSchema += `{"Tag": "name=` + key
+
 
 			jsonSchema += `, repetitiontype=REQUIRED", "Fields" : [`
 			jsonSchema = generateSchema(value.(map[string]interface{}), messageType, jsonSchema) //need recursion
@@ -269,29 +282,40 @@ func generateSchema(payload map[string]interface{}, messageType string, jsonSche
 			jsonSchema += `]},`
 
 		} else if strings.HasPrefix(dataType, "[]interface") { //special processing for arrays as well
+		
+		
+			if len(value.([]interface{})) > 0 { //to be generated only for non-empty arrays
 
-			jsonSchema += `, type=LIST, repetitiontype=REQUIRED", "Fields" : [`
-			arrayItemDataType := reflect.TypeOf(value.([]interface{})[0]).String()
-			if strings.HasPrefix(arrayItemDataType, "map[string]interface") { //if array consists of objects then same have to be recursed
+				jsonSchema += `{"Tag": "name=` + key
 
-				jsonSchema = generateSchema(value.([]interface{})[0].(map[string]interface{}), messageType, jsonSchema)
+		
+				jsonSchema += `, type=LIST, repetitiontype=REQUIRED", "Fields" : [`
+				arrayItemDataType := reflect.TypeOf(value.([]interface{})[0]).String()
+				if strings.HasPrefix(arrayItemDataType, "map[string]interface") { //if array consists of objects then same have to be recursed
+					jsonSchema = generateSchema(value.([]interface{})[0].(map[string]interface{}), messageType, jsonSchema)
 
-			} else { //arrays composed of native data types can be handled directly
-
-				jsonSchema += `{"Tag": "name=element, type=` + getParquetDataType(reflect.TypeOf(value.([]interface{})[0]).String())
-				jsonSchema += `, repetitiontype=REQUIRED"},`
+				} else { //arrays composed of native data types can be handled directly
+					jsonSchema += `{"Tag": "name=element, type=` + getParquetDataType(reflect.TypeOf(value.([]interface{})[0]).String())
+					jsonSchema += `, repetitiontype=REQUIRED"},`
+				}
+				jsonSchema = strings.TrimRight(jsonSchema, ",")
+				jsonSchema += `]},`
+			
 			}
-			jsonSchema = strings.TrimRight(jsonSchema, ",")
-			jsonSchema += `]},`
+			
+
 		} else { //native data type
+		
+			jsonSchema += `{"Tag": "name=` + key
+
 
 			jsonSchema += `, type=` + getParquetDataType(dataType)
 			jsonSchema += `, repetitiontype=REQUIRED"},`
 
 		}
 
-	}
-
+	}	
+	
 	return jsonSchema
 
 }
@@ -352,7 +376,7 @@ func generateLeafLevelFileName() string {
 //writer-agnostic function to actually write to file
 func WriteToFile(schema string, fw source.ParquetFile, payload []byte) error {
 
-	log.Println("payload : ", string(payload))
+	//log.Println("Schema : ", schema)
 
 	pw, err := writer.NewJSONWriter(schema, fw, 4)
 	if err != nil {
