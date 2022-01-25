@@ -292,8 +292,10 @@ func generateSchema(payload map[string]interface{}, messageType string, jsonSche
 				jsonSchema += `, type=LIST, repetitiontype=REQUIRED", "Fields" : [`
 				arrayItemDataType := reflect.TypeOf(value.([]interface{})[0]).String()
 				if strings.HasPrefix(arrayItemDataType, "map[string]interface") { //if array consists of objects then same have to be recursed
-					jsonSchema = generateSchema(value.([]interface{})[0].(map[string]interface{}), messageType, jsonSchema)
-
+					jsonSchema += `{"Tag": "name=element, repetitiontype=REQUIRED", "Fields" : [`
+					jsonSchema = generateSchema(value.([]interface{})[0].(map[string]interface{}), messageType, jsonSchema)					
+					jsonSchema = strings.TrimRight(jsonSchema, ",")
+					jsonSchema += `]},`
 				} else { //arrays composed of native data types can be handled directly
 					jsonSchema += `{"Tag": "name=element, type=` + getParquetDataType(reflect.TypeOf(value.([]interface{})[0]).String())
 					jsonSchema += `, repetitiontype=REQUIRED"},`

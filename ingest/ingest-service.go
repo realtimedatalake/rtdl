@@ -87,9 +87,6 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 
 		}
 
-		log.Println("Sending : ",string(body))
-		
-		
 		// to produce messages
 		partition := 0
 
