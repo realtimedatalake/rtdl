@@ -23,12 +23,9 @@ kind: io.statefun.kafka.v1/ingress
 spec:
   id: com.rtdl.sf/ingress
   address: kafka:9092
-  deliverySemantic:
-    type: exactly-once
-    transactionTimeout: 1min
-  consumerGroupId: my-group-id
+  consumerGroupId: ingress-group
   startupPosition:
-    type: earliest
+    type: latest
   topics:
     - topic: ingress
       valueType: com.rtdl.sf/IncomingMessage
@@ -41,4 +38,4 @@ spec:
   address: kafka:9092
   deliverySemantic:
     type: exactly-once
-    transactionTimeout: 1min
+    transactionTimeout: 5sec

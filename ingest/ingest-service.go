@@ -8,9 +8,17 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"encoding/json"
 
 	kafka "github.com/segmentio/kafka-go"
 )
+
+type OutgoingMessage struct {
+	StreamId   string                  `json:"stream_id,omitempty"`
+	StreamAltId string				   `json:"stream_alt_id,omitempty"`
+	MessageType string                 `json:"message_type,omitempty"`
+	Payload     map[string]interface{} `json:"payload"`
+}
 
 //handler function for incoming REST calls
 //based on processingType - either payload is passed on as-is to Kafka or 
@@ -19,21 +27,69 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 
 		var body []byte
-		var err1 error
+		var err error
+		
 
 		//normal ingestion request
 		if processingType == "ingest" {
-			body, err1 = ioutil.ReadAll(req.Body)
-			if err1 != nil {
-				log.Fatalln(err1)
+			body, err = ioutil.ReadAll(req.Body)
+			if err != nil {
+				log.Println(err)
+				return
+			} 
+			
+			log.Println("Received : ",string(body))
+			outgoingMessage := new(OutgoingMessage)
+			
+			//first need to study message to check if it has stream_id or writeKey. one is necessary
+			var message map[string] interface {}
+			
+			err2 := json.Unmarshal(body, &message)
+			
+			if err2 != nil {
+				log.Println(err2)
+				return
+			} 
+			
+			if message["writeKey"] == nil { //no writeKey
+			
+				if message["stream_id"] != nil { //no stream_id
+
+					outgoingMessage.StreamId = message["stream_id"].(string)									
+				}
+			
+			} else {
+			
+				outgoingMessage.StreamAltId = message["writeKey"].(string) //put writKey to stream_alt_id				
 			}
+			
+			if message["type"] != nil { //use type from message
+			
+				outgoingMessage.MessageType = message["type"].(string)
+			
+			}
+			
+			//finally put the original message inside payload
+			outgoingMessage.Payload = message
+			
+			//and create json
+			body, err = json.Marshal(outgoingMessage)
+			
+			if err != nil {
+
+				log.Println(err)
+
+			}			
 
 		} else { //cache refresh request
 
-			body = []byte(`{"source_key":"","message_type":"rtdl_205","payload":{}}`)
+			body = []byte(`{"stream_id":"","message_type":"rtdl_205","payload":{}}`)
 
 		}
 
+		log.Println("Sending : ",string(body))
+		
+		
 		// to produce messages
 		partition := 0
 

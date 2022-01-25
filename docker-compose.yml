@@ -128,6 +128,8 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       ALLOW_PLAINTEXT_LISTENER: yes
+      KAFKA_LOG_RETENTION_MS: 1000
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 1500
     depends_on:
       - kafka-zookeeper
     restart: always

@@ -33,7 +33,7 @@ import (
 	"github.com/xitongsys/parquet-go/writer"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
-	"github.com/akolb1/gometastore/hmsclient"
+	//"github.com/akolb1/gometastore/hmsclient"
 )
 
 // default database connection settings
@@ -54,17 +54,18 @@ var psqlCon string
 // - generic payload
 
 type IncomingMessage struct {
-	SourceKey   string                 `json:"source_key"`
+	StreamId   string                  `json:"stream_id,omitempty"`
+	StreamAltId string				   `json:"stream_alt_id,omitempty"`
 	MessageType string                 `json:"message_type,omitempty"`
 	Payload     map[string]interface{} `json:"payload"`
 }
 
 //struct representation of stream configuration
-// StreamAltID is applicable where the stream is being fed from an external system and the alternate id
+// StreamAltId is applicable where the stream is being fed from an external system and the alternate id
 // represents the unique identifier for that system
 type Config struct {
 	StreamId           sql.NullString `db:"stream_id" default:""`
-	StreamAltID        sql.NullString `db:"stream_alt_id" default:""`
+	StreamAltId        sql.NullString `db:"stream_alt_id" default:""`
 	Active             sql.NullBool   `db:"active"`
 	MessageType        sql.NullString `db:"message_type" default:""`
 	FileStoreTypeId    sql.NullInt64  `db:"file_store_type_id"`
@@ -575,51 +576,73 @@ func writeParquet(request IncomingMessage) error {
 	
 
 	payload, _ := json.Marshal(request.Payload) //convert generic payload structure to JSON string
+	
+	var matchingConfig Config
 
 	//first retrieve relevant destination information from config array
+
 	for _, configRecord := range configs {
-
-		if configRecord.StreamId.String == request.SourceKey { //config found with matching stream id and message type
 		
-			//least precendence - config record message_type
-			if configRecord.MessageType.String != "" {
-			
-				messageType = configRecord.MessageType.String
-			} 
+		if request.StreamAltId != "" { //use stream_alt_id
 		
-			//higher precendence message_type within message
-			if request.MessageType != "" {
-	
-				messageType = request.MessageType
-			}
+			if configRecord.StreamAltId.String == request.StreamAltId {
 			
-			
-			//highest precedence - type inside main payload
-			if payloadType, found := request.Payload["type"]; found {
-				if typeString, ok := payloadType.(string); ok {
+				matchingConfig = configRecord
+				break
 				
-					messageType = typeString
-				}
+			}
+		
+		} else if request.StreamId != "" {
+		
+			if configRecord.StreamId.String == request.StreamId {
+			
+				matchingConfig = configRecord
+				break
+				
 			}
 			
-			schema := strings.TrimRight(generateSchema(request.Payload, messageType, ""), ",") + "]}"
+		
+		}
+	
+	
+	}
+		
+	//least precendence - config record message_type
+	if matchingConfig.MessageType.String != "" {
+	
+		messageType = matchingConfig.MessageType.String
+	} 
 
-			log.Println(schema)
+	//higher precendence message_type within message
+	if request.MessageType != "" {
 
-			for _, fileStoreTypeRecord := range fileStoreTypes { //similar logic for file store types
+		messageType = request.MessageType
+	}
+	
+	
+	//highest precedence - type inside main payload
+	if payloadType, found := request.Payload["type"]; found {
+		if typeString, ok := payloadType.(string); ok {
+		
+			messageType = typeString
+		}
+	}
+	
+	schema := strings.TrimRight(generateSchema(request.Payload, messageType, ""), ",") + "]}"
 
-				if fileStoreTypeRecord.FileStoreTypeId == configRecord.FileStoreTypeId.Int64 {
+	log.Println(schema)
 
-					switch fileStoreTypeRecord.FileStoreTypeName {
-					case "Local":
-						return WriteLocalParquet(messageType, schema, payload, configRecord)
-					case "AWS":
-						return WriteAWSParquet(messageType, schema, payload, configRecord)
-					case "GCP":
-						return WriteGCPParquet(messageType, schema, payload, configRecord)
+	for _, fileStoreTypeRecord := range fileStoreTypes { //similar logic for file store types
 
-					}
-				}
+		if fileStoreTypeRecord.FileStoreTypeId == matchingConfig.FileStoreTypeId.Int64 {
+
+			switch fileStoreTypeRecord.FileStoreTypeName {
+			case "Local":
+				return WriteLocalParquet(messageType, schema, payload, matchingConfig)
+			case "AWS":
+				return WriteAWSParquet(messageType, schema, payload, matchingConfig)
+			case "GCP":
+				return WriteGCPParquet(messageType, schema, payload, matchingConfig)
 
 			}
 		}
@@ -683,7 +706,7 @@ func main() {
 		panic(err)
 	}
 	
-	
+	/*
 	//need to have backoff-retry for HMS
 	var backoffSchedule = []time.Duration{
 	5 * time.Second,
@@ -721,6 +744,7 @@ func main() {
 		}
 		
 	}
+	*/
 
 	builder := statefun.StatefulFunctionsBuilder()
 
