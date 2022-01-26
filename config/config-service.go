@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -43,19 +44,19 @@ type compressionType struct {
 }
 
 type stream_json struct {
-	StreamID           string `db:"stream_id" json:"stream_id,omitempty"`
-	StreamAltID        string `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
-	Active             bool   `db:"active" json:"active,omitempty"`
-	MessageType        string `db:"message_type" json:"message_type,omitempty"`
-	FileStoreTypeID    int    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
-	Region             string `db:"region" json:"region,omitempty"`
-	BucketName         string `db:"bucket_name" json:"bucket_name,omitempty"`
-	FolderName         string `db:"folder_name" json:"folder_name,omitempty"`
-	PartitionTimeID    int    `db:"partition_time_id" json:"partition_time_id,omitempty"`
-	CompressionTypeID  int    `db:"compression_type_id" json:"compression_type_id,omitempty"`
-	AWSAcessKeyID      string `db:"aws_access_key_id" json:"aws_access_key_id,omitempty"`
-	AWSSecretAcessKey  string `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
-	GCPJsonCredentials string `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
+	StreamID           string                 `db:"stream_id" json:"stream_id,omitempty"`
+	StreamAltID        string                 `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
+	Active             bool                   `db:"active" json:"active,omitempty"`
+	MessageType        string                 `db:"message_type" json:"message_type,omitempty"`
+	FileStoreTypeID    int                    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
+	Region             string                 `db:"region" json:"region,omitempty"`
+	BucketName         string                 `db:"bucket_name" json:"bucket_name,omitempty"`
+	FolderName         string                 `db:"folder_name" json:"folder_name,omitempty"`
+	PartitionTimeID    int                    `db:"partition_time_id" json:"partition_time_id,omitempty"`
+	CompressionTypeID  int                    `db:"compression_type_id" json:"compression_type_id,omitempty"`
+	AWSAcessKeyID      string                 `db:"aws_access_key_id" json:"aws_access_key_id,omitempty"`
+	AWSSecretAcessKey  string                 `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
+	GCPJsonCredentials map[string]interface{} `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
 }
 
 type stream_sql struct {
@@ -638,8 +639,8 @@ func buildQueryString_createStream(reqStream stream_json) (queryStr string) {
 	} else {
 		queryStr = queryStr + "NULL, "
 	}
-	if reqStream.GCPJsonCredentials != "" {
-		queryStr = queryStr + "'" + reqStream.GCPJsonCredentials + "')"
+	if reqStream.GCPJsonCredentials != nil {
+		queryStr = queryStr + "'" + strings.Replace(strings.Replace(fmt.Sprintf("%v", reqStream.GCPJsonCredentials), "map[", "{", 1), "]", "}", 1) + "')"
 	} else {
 		queryStr = queryStr + "NULL)"
 	}
@@ -712,8 +713,8 @@ func buildQueryString_updateStream(reqStream stream_json) (queryStr string) {
 	} else {
 		queryStr = queryStr + "NULL, "
 	}
-	if reqStream.GCPJsonCredentials != "" {
-		queryStr = queryStr + "'" + reqStream.GCPJsonCredentials + "')"
+	if reqStream.GCPJsonCredentials != nil {
+		queryStr = queryStr + "'" + strings.Replace(strings.Replace(fmt.Sprintf("%v", reqStream.GCPJsonCredentials), "map[", "{", 1), "]", "}", 1) + "')"
 	} else {
 		queryStr = queryStr + "NULL)"
 	}
