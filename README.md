@@ -19,6 +19,7 @@ configured in your stream. rtdl can write files locally, to AWS S3, and to GCP C
     * This will make connecting into a whole ecosystem of analytics, BI, and data science tools 
     much easier
   * Adding support for Azure Blob Storage
+  * Add support for more compressions - currently default Snappy compression is supported
 
 
 ## Quickstart
@@ -47,18 +48,19 @@ All API calls used to interact with rtdl have Postman examples in our [postman-r
     easy to build your data lake with existing Segment instrumentation. Enter your ingest endpoint
     as the `ccUrl` value and rtdl will handle the payload. Make sure you enter your writeKey in the 
     `stream_alt_id` of your `stream` configuration (below).
-    * Alternatively, you can send any json you in the format below and rtdl will add it to your lake.
+    * Alternatively, you can send ***any*** json with just ```stream_id``` in the payload and rtdl will add it to your lake.
       ```
       {
           "stream_id":"837a8d07-cd06-4e17-bcd8-aef0b5e48d31",
-          "message_type":"test-msg-local",
-          "payload":{
-              "name":"user1",
-              "array":[1,2,3],
-              "properties":{"age":20}
-          }
+          "name":"user1",
+          "array":[1,2,3],
+          "properties":{"age":20}
       }
       ```
+	You can optionally add ```message_type``` should you choose to override the ```message_type``` specified while creating the stream.
+	rtdl will default to a message type ```rtdl_default``` if message type is absent in both stream definition and actual message
+	
+	
 4.  Create/read/update/delete `stream` configurations that define a source data stream into 
     your data lake and the destination data store as well as configure folder partitioning and 
     file compression. It also allows for activating/deactivating a stream.
@@ -95,6 +97,38 @@ used to lookup master data necessary for creating successful `stream` records li
   * /getAllFileStoreTypes -- GET
   * /getAllPartitionTimes -- GET
   * /getAllCompressionTypes -- GET
+  
+  Sample payload for creating Parquet file in AWS S3
+  ```	
+  {
+	"active": true,
+    "message_type": "test-msg-aws",
+	"file_store_type_id": 2,
+	"region": "us-east-1",
+	"bucket_name": "testBucketAWS",
+	"folder_name": "testFolderAWS",
+    "partition_time_id": 1,
+    "compression_type_id": 1,
+	"aws_access_key_id": "[aws_access_key_id]",
+    "aws_secret_access_key": "[aws_secret_access_key]"
+  }
+  ```
+  
+  ```file_store_type_id``` - 1 for Local, 2 for AWS, 3 for GCS
+  ```partiion_time_id``` - 1 - HOURLY, 2 - DAILY, 3 - WEEKLY, 4 - MONTHLY, 5 - QAURTERLY
+  
+  For cloud storage - final file path would be 
+  ```<bucket>/<folder>/<message type>/<time partition>/*.parquet```
+  
+  ```time partition``` part can look like 
+	```2021-06-15-13```(Hourly), 
+	```2021-06-15```(Daily),
+	```2021-48```(Weekly - ISOWeek), 
+	```2021-06```(Monthly),
+	```2021-02```(Quarterly)
+	
+  The leaf-level file would have timestamp upto milliseconds as the file name
+  
 
 #### rtdl-db
 YugabyteDB or PostgreSQL (both configurations included in the docker compose files). This service 

@@ -31,6 +31,8 @@ spec:
       valueType: com.rtdl.sf/IncomingMessage
       targets:
         - com.rtdl.sf/ingest
+  properties:
+    
 ---
 kind: io.statefun.kafka.v1/egress
 spec:
