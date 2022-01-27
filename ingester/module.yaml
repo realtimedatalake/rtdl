@@ -26,12 +26,12 @@ spec:
   consumerGroupId: ingress-group
   startupPosition:
     type: latest
+
   topics:
     - topic: ingress
       valueType: com.rtdl.sf/IncomingMessage
       targets:
         - com.rtdl.sf/ingest
-  properties:
     
 ---
 kind: io.statefun.kafka.v1/egress

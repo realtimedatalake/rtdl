@@ -31,6 +31,7 @@ import (
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/source"
 	"github.com/xitongsys/parquet-go/writer"
+	"github.com/xitongsys/parquet-go/parquet"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	//"github.com/akolb1/gometastore/hmsclient"
@@ -125,25 +126,15 @@ func getEnv(key, defaultValue string) string {
 //loads all stream configurations
 func loadConfig() error {
 
+	//temp variables - to be assigned to parent level variables on successful load
+	var tempConfigs []Config
+	var tempFileStoreTypes []FileStoreType
+	var tempPartitionTimes []PartitionTime
+	var tempCompressionTypes []CompressionType
+	
 	//directly load data from PostgreSQL
-	//connection parameters read from docker-compose.yml, defaults mentioned here
-	// pghost := getEnv("POSTGRES_HOST", "rtdl-db")
-	// pgport, err := strconv.Atoi(getEnv("POSTGRES_PORT", "5433"))
-	// if err != nil {
-	// 	pgport = 5433
-	// }
-	// pguser := getEnv("POSTGRES_USER", "rtdl")
-	// pgpassword := getEnv("POSTGRES_PASSWORD", "rtdl")
-	// pgdbname := getEnv("POSTGRES_DBNAME", "rtdl-db")
-
-	// dsn := fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable", pguser, pgpassword, pghost, pgport, pgdbname)
-
-	// db, err := sqlx.Connect("postgres", psqlCon)
-
-	// if err != nil {
-	// 	log.Println("Failed to open a DB connection: ", err)
-	// 	return err
-	// }
+	
+	
 
 	// open database
 	db, err := sqlx.Open("postgres", psqlCon)
@@ -154,32 +145,40 @@ func loadConfig() error {
 
 	configSql := "SELECT * FROM streams"
 
-	err = db.Select(&configs, configSql) //populate stream configurations into array of stream config structs
+	err = db.Select(&tempConfigs, configSql) //populate stream configurations into array of stream config structs
 	if err != nil {
 		log.Println("Failed to execute query: ", err)
 		return err
 	}
+	
+	configs = tempConfigs
 
 	fileStoreTypeSql := "SELECT * FROM file_store_types"
-	err = db.Select(&fileStoreTypes, fileStoreTypeSql) //populate supported file store types
+	err = db.Select(&tempFileStoreTypes, fileStoreTypeSql) //populate supported file store types
 	if err != nil {
 		log.Println("Failed to execute query: ", err)
 		return err
 	}
+	
+	fileStoreTypes = tempFileStoreTypes
 
 	partitionTimesSql := "SELECT * FROM partition_times"
-	err = db.Select(&partitionTimes, partitionTimesSql) //populate supported file store types
+	err = db.Select(&tempPartitionTimes, partitionTimesSql) //populate supported file store types
 	if err != nil {
 		log.Println("Failed to execute query: ", err)
 		return err
 	}
+	
+	partitionTimes = tempPartitionTimes
 
 	compressionTypesSql := "SELECT * from compression_types"
-	err = db.Select(&compressionTypes, compressionTypesSql)
+	err = db.Select(&tempCompressionTypes, compressionTypesSql)
 	if err != nil {
 		log.Println("Failed to execute query: ", err)
 		return err
 	}
+	
+	compressionTypes = tempCompressionTypes
 
 	defer db.Close()
 	log.Println("No. of config records retrieved : " + strconv.Itoa(len(configs)))
@@ -341,7 +340,7 @@ func generateSubFolderName(messageType string, configRecord Config) string {
 
 			case "Weekly":
 				year, week := time.Now().ISOWeek()
-				subFolderName = messageType + "/" + string(year) + "-" + string(week)
+				subFolderName = messageType + "/" + strconv.Itoa(year) + "-" + strconv.Itoa(week)
 
 			case "Monthly":
 				subFolderName = messageType + "/" + time.Now().Format("2006-01")
@@ -376,7 +375,7 @@ func generateLeafLevelFileName() string {
 }
 
 //writer-agnostic function to actually write to file
-func WriteToFile(schema string, fw source.ParquetFile, payload []byte) error {
+func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRecord Config) error {
 
 	//log.Println("Schema : ", schema)
 
@@ -385,6 +384,24 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte) error {
 		log.Println("Can't create json writer", err)
 		return err
 	}
+	
+	//set compression
+	
+	compressionType := configRecord.CompressionTypeId.Int64
+
+	if compressionType > 0 && compressionType < 4 { //supported compression type
+		
+			switch compressionType {
+			case 1:
+				pw.CompressionType = parquet.CompressionCodec_SNAPPY
+			case 2:
+				pw.CompressionType = parquet.CompressionCodec_GZIP
+			case 3:
+				pw.CompressionType = parquet.CompressionCodec_LZO				
+			
+			} 
+	}
+
 
 	if err = pw.Write(payload); err != nil {
 		log.Println("Write error", err)
@@ -431,7 +448,7 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 		return err
 	}
 
-	return WriteToFile(schema, fw, payload)
+	return WriteToFile(schema, fw, payload, configRecord)
 
 }
 
@@ -466,7 +483,7 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 	}
 
 	fw, err := local.NewLocalFileWriter(leafLevelFileName)
-	err = WriteToFile(schema, fw, payload) //write temporary local file
+	err = WriteToFile(schema, fw, payload, configRecord) //write temporary local file
 	if err != nil {
 		log.Println("Unable to write temporary local file", err)
 		return err
@@ -556,7 +573,7 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 	}
 
 	fw, err := local.NewLocalFileWriter(leafLevelFileName)
-	err = WriteToFile(schema, fw, payload) //write temporary local file
+	err = WriteToFile(schema, fw, payload, configRecord) //write temporary local file
 	if err != nil {
 		log.Println("Unable to write temporary local file", err)
 		return err
@@ -600,7 +617,6 @@ func writeParquet(request IncomingMessage) error {
 	
 	var messageType string = "rtdl_default"
 	
-
 	payload, _ := json.Marshal(request.Payload) //convert generic payload structure to JSON string
 	
 	var matchingConfig Config
@@ -608,7 +624,7 @@ func writeParquet(request IncomingMessage) error {
 	//first retrieve relevant destination information from config array
 
 	for _, configRecord := range configs {
-		
+					
 		if request.StreamAltId != "" { //use stream_alt_id
 		
 			if configRecord.StreamAltId.String == request.StreamAltId {
@@ -620,6 +636,7 @@ func writeParquet(request IncomingMessage) error {
 		
 		} else if request.StreamId != "" {
 		
+			
 			if configRecord.StreamId.String == request.StreamId {
 			
 				matchingConfig = configRecord
@@ -656,7 +673,7 @@ func writeParquet(request IncomingMessage) error {
 	
 	schema := strings.TrimRight(generateSchema(request.Payload, messageType, ""), ",") + "]}"
 
-	log.Println(schema)
+	//log.Println(schema)
 
 	for _, fileStoreTypeRecord := range fileStoreTypes { //similar logic for file store types
 

@@ -175,8 +175,8 @@ services:
       - kafka
 
   statefun-functions:
-    # build:
-    #   context: ./ingester
+    build:
+        context: ./ingester
     platform: linux/amd64
     image: rtdl/process-statefun-functions:latest
     container_name: rtdl_process-statefun-functions
