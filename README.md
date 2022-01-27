@@ -98,7 +98,7 @@ used to lookup master data necessary for creating successful `stream` records li
   * /getAllPartitionTimes -- GET
   * /getAllCompressionTypes -- GET
   
-  Sample payload for creating Parquet file in AWS S3
+  Sample ```createStream``` payload for creating Parquet file in AWS S3
   ```	
   {
 	"active": true,
