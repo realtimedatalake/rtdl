@@ -34,7 +34,7 @@ import (
 	"github.com/xitongsys/parquet-go/parquet"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
-	//"github.com/akolb1/gometastore/hmsclient"
+	"github.com/akolb1/gometastore/hmsclient"
 )
 
 // default database connection settings
@@ -114,6 +114,8 @@ var (
 	IncomingMessageType = statefun.MakeJsonType(statefun.TypeNameFrom("com.rtdl.sf/IncomingMessage"))
 )
 
+var hiveClient *hmsclient.MetastoreClient
+
 // getEnv get key environment variable if exist otherwise return defalutValue
 func getEnv(key, defaultValue string) string {
 	value := os.Getenv(key)
@@ -124,7 +126,7 @@ func getEnv(key, defaultValue string) string {
 }
 
 //loads all stream configurations
-func loadConfig() error {
+func LoadConfig() error {
 
 	//temp variables - to be assigned to parent level variables on successful load
 	var tempConfigs []Config
@@ -703,7 +705,7 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 
 	if request.MessageType == "rtdl_205" { //this is internal message for refershing configuration cache
 
-		err := loadConfig()
+		err := LoadConfig()
 
 		if err != nil {
 			log.Println(err)
@@ -736,6 +738,59 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 	return nil
 }
 
+func ConnectHMS() error {
+
+	var counter = 0
+	
+	var err error
+	
+	var database *hmsclient.Database
+	
+	for {
+	
+		hiveClient, err = hmsclient.Open("catalog", 9083)
+
+		if err == nil {
+			break
+		}
+		
+		time.Sleep(5 * time.Second) //retry after 5 seconds
+		
+		counter++
+		
+		if counter > 5 {
+		
+			return errors.New("unable to connect to Hive Meta Store")
+		}
+	
+	
+	}
+	
+	database, err = hiveClient.GetDatabase("rtdl_hive_default") //default Hive DB
+	
+	if database == nil {
+	
+		database := &hmsclient.Database{Name: "rtdl_hive_default", Location: "/warehouse/tablespace/external/hive/"}
+		err  = hiveClient.CreateDatabase(database)
+		if err != nil {
+
+			return err
+			
+		}
+		
+		log.Println("database created")
+		
+	} else {
+	
+		log.Println("database connected")
+	
+	}
+	
+	
+	return nil
+	
+}
+
 func main() {
 
 	// connection string
@@ -743,51 +798,17 @@ func main() {
 
 	//load configuration at the outset
 	//should panic if unable to do source
-	err := loadConfig()
+	err := LoadConfig()
 
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	
-	/*
-	//need to have backoff-retry for HMS
-	var backoffSchedule = []time.Duration{
-	5 * time.Second,
-	15 * time.Second,
-	14 * time.Second,
+	err = ConnectHMS()
+	if err != nil {
+		log.Fatal(err)
 	}
-	
-	var hiveClient *hmsclient.MetastoreClient
-	
-	for _ = range backoffSchedule {
 
-		hiveClient, err = hmsclient.Open("catalog", 9083)
-
-		if err == nil {
-			break
-		}
-
-	}
-	
-	if hiveClient == nil {
-		
-		log.Fatal("unable to connect to Hive Metastore")
-	
-	}
-	
-	database, err := hiveClient.GetDatabase("rtdl_hive_default") //default Hive DB
-	
-	if database == nil {
-	
-		err  = hiveClient.CreateDatabase(&hmsclient.Database{Name: "rtdl_hive_default", Location: "/warehouse/tablespace/external/hive/"})
-		if err != nil {
-		
-			log.Fatal(err)
-		
-		}
-		
-	}
-	*/
 
 	builder := statefun.StatefulFunctionsBuilder()
 
