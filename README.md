@@ -19,7 +19,6 @@ configured in your stream. rtdl can write files locally, to AWS S3, and to GCP C
     * This will make connecting into a whole ecosystem of analytics, BI, and data science tools 
     much easier
   * Adding support for Azure Blob Storage
-  * Add support for more compressions - currently default Snappy compression is supported
 
 
 ## Quickstart
@@ -116,6 +115,7 @@ used to lookup master data necessary for creating successful `stream` records li
   
   ```file_store_type_id``` - 1 for Local, 2 for AWS, 3 for GCS
   ```partiion_time_id``` - 1 - HOURLY, 2 - DAILY, 3 - WEEKLY, 4 - MONTHLY, 5 - QAURTERLY
+  ```compression_type_id``` - 1 - SNAPPY (Default), 2 - GZIP, 3 - LZO 
   
   For cloud storage - final file path would be 
   ```<bucket>/<folder>/<message type>/<time partition>/*.parquet```
