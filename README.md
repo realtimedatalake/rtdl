@@ -4,22 +4,69 @@ with a source (from a tool like Segment) and a cloud storage destination, and rt
 a real-time data lake in Parquet format cataloged in Apache Hive Metastore – so you can access 
 your real-time data with common BI and ML tools. You provide the streams, rtdl builds your lake.
 
+## V0.0.1 - Current status -- what works and what doesn't
+
+### What works?
+rtdl is not full-features yet, but it is currently functional. You can configure streams that 
+ingest json from an rtdl endpoint, process them into Parquet, and save the files to a destination 
+configured in your stream. rtdl can write files locally, to AWS S3, and to GCP Cloud Storage.
+
+### What doesn't work/what's next on the roadmap?
+  * Add CONTRIBUTING.md and a contributor license agreement
+  * Cataloging data in Hive Metastore
+    * This will let you use your data with a much broader range of data tools.
+  * Adding Presto to the stack
+    * This will make connecting into a whole ecosystem of analytics, BI, and data science tools 
+    much easier
+  * Adding support for Azure Blob Storage
+
+
 ## Quickstart
-1. Run `docker compose -f docker-compose.init.yml up -d`.
+### Initialize the rtdl services
+1.  Run `docker compose -f docker-compose.init.yml up -d`.
     * **Note:** This configuration should be fault-tolerant, but if any containers or 
-    processes fail when running this, run `docker compose -f docker-compose.init.yml down` 
-    and retry.
+      processes fail when running this, run `docker compose -f docker-compose.init.yml down` 
+      and retry.
 2.  After containers `rtdl_rtdl-db-init`, `rtdl_catalog-db-init`, and `rtdl_catalog-init` 
     exit and complete with `EXITED (0)`, kill and delete the rtdl container set by running 
     `docker compose -f docker-compose.init.yml down`
-3. Run `docker compose up -d` every time after.
+3.  Run `docker compose up -d` every time after.
     * `docker compose down` to stop.
 
-**Note:** To start from scratch, first run the below commands from the rtdl root folder.
-```
-% rm -rf storage/
-% docker image rm rtdl/rtdl-config rtdl/rtdl-ingest rtdl/process-stateful-function
-``` 
+### Interact with rtdl services and create a data lake
+All API calls used to interact with rtdl have Postman examples in our [postman-rtdl-public repo](https://github.com/realtimedatalake/postman-rtdl-public).
+1.  If you are building your data lake on AWS or GCP, configure your storage buckets and access 
+    by following the [RudderStack docs for AWS S3](https://www.rudderstack.com/docs/destinations/storage-platforms/amazon-s3/) or the [Segment docs for Google Cloud Storage](https://segment.com/docs/connections/storage/catalog/google-cloud-storage/). 
+    * For AWS S3 storage, you will need your bucket name, your AWS access key id, and your AWS
+      secret access key.
+    * For GCP Cloud Storage, you will need your credentials in flattened json (remove all the 
+      newlines).
+3.  Instrument your website with [analytics-next-cc] - our fork of [Segment's Analytics.js 2.0](https://segment.com/docs/connections/sources/catalog/libraries/website/javascript/) 
+    that let's you cc all of the events you send to Segment to rtdl's ingest endpoint. Its 
+    snippet is a drop-in replacement of Analytics.js 2.0/Analytics.js. Using this makes it really 
+    easy to build your data lake with existing Segment instrumentation. Enter your ingest endpoint
+    as the `ccUrl` value and rtdl will handle the payload. Make sure you enter your writeKey in the 
+    `stream_alt_id` of your `stream` configuration (below).
+    * Alternatively, you can send any json you in the format below and rtdl will add it to your lake.
+      ```
+      {
+          "stream_id":"837a8d07-cd06-4e17-bcd8-aef0b5e48d31",
+          "message_type":"test-msg-local",
+          "payload":{
+              "name":"user1",
+              "array":[1,2,3],
+              "properties":{"age":20}
+          }
+      }
+      ```
+4.  Create/read/update/delete `stream` configurations that define a source data stream into 
+    your data lake and the destination data store as well as configure folder partitioning and 
+    file compression. It also allows for activating/deactivating a stream.
+    * For any json data being sent to the ingest endpoint, the generated `stream_id` or the 
+      manually input `stream_alt_id` values are required in the payload.
+
+**Note:** To start from scratch, first run `rm -rf storage/` from the rtdl root folder.
+
 
 ## Architecture
 rtdl has a multi-service architecture composed of tested and trusted open source tools 
@@ -110,16 +157,16 @@ configuration – a job manager service with paired task manager and stateful fu
   * statefun-manager - Apache Flink Stateful Functions manager service
   * statefun-worker - Apache Flink Stateful Functions task manager service
   * statefun-functions - Apache Flink Stateful function written in Go named `ingester`. Reads JSON 
-  payloads posted to Kafka, processes and stores the data in Parque format based on the configuration 
-  in the associated streams record.
+    payloads posted to Kafka, processes and stores the data in Parque format based on the configuration 
+    in the associated streams record.
     * **Environment Variables:** RTDL_DB_HOST, RTDL_DB_USER, RTDL_DB_PASSWORD, RTDL_DB_DBNAME
 
 ### catalog services
 Apache Hive Standalone Metastore containerized and backed by a PostgreSQL-compatible database.
   * catalog - Apache Hive Standalone Metastore service built from the most recent release of the [Hive 
-  Standalone Metastore on on Maven](https://repo1.maven.org/maven2/org/apache/hive/hive-standalone-metastore/).
+    Standalone Metastore on on Maven](https://repo1.maven.org/maven2/org/apache/hive/hive-standalone-metastore/).
   * catalog-db - YugabyteDB or PostgreSQL (both configurations included in the docker compose files). This 
-  service stores all of the data required by Apache Hive Standalone Metastore.
+    service stores all of the data required by Apache Hive Standalone Metastore.
     * **Database Name:** rtdl_catalog_db
     * **Username:** rtdl
     * **Password:** rtdl

@@ -118,7 +118,7 @@ services:
 
   # catalog:
   #   platform: linux/amd64
-  #   image: rtdl/hive-metastore
+  #   image: rtdl/hive-metastore:latest
   #   container_name: rtdl_catalog-init
   #   expose:
   #     - 9083
@@ -176,7 +176,7 @@ services:
   
   catalog:
     platform: linux/amd64
-    image: rtdl/hive-metastore
+    image: rtdl/hive-metastore:latest
     container_name: rtdl_catalog-init
     expose:
       - 9083
