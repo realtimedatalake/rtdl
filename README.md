@@ -7,7 +7,7 @@ your real-time data with common BI and ML tools. You provide the streams, rtdl b
 ## V0.0.1 - Current status -- what works and what doesn't
 
 ### What works?
-rtdl is not full-features yet, but it is currently functional. You can configure streams that 
+rtdl is not full-featured yet, but it is currently functional. You can configure streams that 
 ingest json from an rtdl endpoint, process them into Parquet, and save the files to a destination 
 configured in your stream. rtdl can write files locally, to AWS S3, and to GCP Cloud Storage.
 
