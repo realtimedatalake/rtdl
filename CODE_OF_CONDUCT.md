@@ -1,5 +1,7 @@
 
-# Contributor Covenant Code of Conduct
+# rtdl Code of Conduct
+*A direct adaptation of the [Contributor Covenant](https://www.contributor-covenant.org/), 
+version [2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html)*
 
 ## Our Pledge
 
