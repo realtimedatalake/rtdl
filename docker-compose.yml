@@ -188,6 +188,9 @@ services:
       RTDL_DB_USER: rtdl
       RTDL_DB_PASSWORD: rtdl
       RTDL_DB_DBNAME: rtdl_db
+      LOCAL_DATA_STORE: /C/Users/dipanjan/rtdl/storage/rtdl-data_store
+      METASTORE_HOST: catalog
+      METSTORE_PORT: 9083
     volumes:
       - ./storage/rtdl-data_store:/app/datastore
     depends_on:

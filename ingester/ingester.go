@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
+	"net"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/storage"
 	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
@@ -34,7 +34,10 @@ import (
 	"github.com/xitongsys/parquet-go/parquet"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
-	"github.com/akolb1/gometastore/hmsclient"
+	"github.com/akolb1/gometastore/hmsclient"	
+	"github.com/akolb1/gometastore/hmsclient/thrift/gen-go/hive_metastore"
+	"github.com/apache/thrift/lib/go/thrift"
+	
 )
 
 // default database connection settings
@@ -44,6 +47,20 @@ const (
 	db_user_def     = "rtdl"
 	db_password_def = "rtdl"
 	db_dbname_def   = "rtdl_db"
+)
+
+//Thirft related constants
+const (
+	bufferSize = 1024 * 1024
+)
+
+//Hive database constants
+const (
+	hiveDatabaseName = "rtdl_hive_default"
+	hiveDatabaseLocation = "/warehouse/tablespace/external/hive/"
+	hiveParquetInputFormat = "parquet.hive.DeprecatedParquetInputFormat"
+	hiveParquetOutputFormat = "parquet.hive.DeprecatedParquetOutputFormat"
+	hiveParquetSerDe = "parquet.hive.serde.ParquetHiveSerDe"
 )
 
 // create the `psqlCon` string used to connect to the database
@@ -116,8 +133,8 @@ var (
 
 var hiveClient *hmsclient.MetastoreClient
 
-// getEnv get key environment variable if exist otherwise return defalutValue
-func getEnv(key, defaultValue string) string {
+// GetEnv get key environment variable if exist otherwise return defalutValue
+func GetEnv(key, defaultValue string) string {
 	value := os.Getenv(key)
 	if len(value) == 0 {
 		return defaultValue
@@ -420,6 +437,8 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRec
 
 }
 
+
+
 //Write local Parquet
 func WriteLocalParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
@@ -450,7 +469,81 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 		return err
 	}
 
-	return WriteToFile(schema, fw, payload, configRecord)
+
+	err = WriteToFile(schema, fw, payload, configRecord)
+	
+	if err == nil { //file write successful, update HMS
+	
+		hiveTableName := messageType + "_Local"
+		
+		hiveTableName = strings.ReplaceAll(hiveTableName,"-","_") //to avoid invalid object error
+
+		hiveTable, err1 := hiveClient.GetTable(hiveDatabaseName, hiveTableName)
+		
+		if err1 != nil { //table entry not present
+		
+			log.Println("Table entry not in catalog")		
+
+			//build table definition
+			hiveTableBuilder := hmsclient.NewTableBuilder(hiveDatabaseName, hiveTableName).AsExternal()
+			hiveTableBuilder = hiveTableBuilder.WithInputFormat(hiveParquetInputFormat).WithOutputFormat(hiveParquetOutputFormat)
+			hiveTableBuilder = hiveTableBuilder.WithSerde(hiveParquetSerDe).WithLocation(os.Getenv("LOCAL_DATA_STORE") + "/" + fileName)
+			hiveTable = hiveTableBuilder.Build()
+								
+			err = hiveClient.CreateTable(hiveTable) //create table with definition
+			
+			if err != nil {
+			
+				log.Println("Error creating Hive table", err)
+				return err
+			
+			}
+		
+		} else { //table found
+		
+			socket, err := thrift.NewTSocket(net.JoinHostPort(GetEnv("METASTORE_HOST", "catalog"), GetEnv("METASTORE_PORT", "9083")))
+			if err != nil {
+				log.Println("Error creating Thrift socket")
+				return errors.New("Error creating Thrift socket")
+			}
+			transportFactory := thrift.NewTBufferedTransportFactory(bufferSize)
+			protocolFactory := thrift.NewTBinaryProtocolFactoryDefault()
+			transport, err := transportFactory.GetTransport(socket)
+			if err != nil {
+				log.Println("Error initializing Thrift transport ", err)
+				return errors.New("Error initializing Thrift transport")
+			}
+
+			iprot := protocolFactory.GetProtocol(transport)
+			oprot := protocolFactory.GetProtocol(transport)
+			
+			err = transport.Open()
+			
+			if err != nil {
+			
+				log.Println("Error creating Thrift connection to Hive Metastore ", err)
+				return errors.New("Error creating Thrift client for Hive Metastore")
+			
+			}
+			c := hive_metastore.NewThriftHiveMetastoreClient(thrift.NewTStandardClient(iprot, oprot))
+			if c == nil {
+				log.Println("Error creating Thrift client for Hive Metastore")
+				return errors.New("Error creating Thrift client for Hive Metastore")
+			}
+			
+			fieldSchemas, err2 := c.GetFields(context.Background(),hiveDatabaseName, hiveTableName)
+			if err2 != nil {
+				log.Println("Error retrieving table field information from Hive Metastore ", err2)
+				return errors.New("Error retrieving table field information from Hive Metastore")
+			
+			}
+
+			log.Println("num of fields : ", strconv.Itoa(len(fieldSchemas)))
+			
+		}
+	}
+	
+	return nil
 
 }
 
@@ -526,6 +619,7 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 		//ContentDisposition:   aws.String("attachment"),
 		//ServerSideEncryption: aws.String("AES256"),
 	})
+	
 
 	os.Remove(leafLevelFileName) //remove the temp file
 	log.Println("Finished uploading file to S3")
@@ -766,11 +860,11 @@ func ConnectHMS() error {
 	
 	}
 	
-	database, err = hiveClient.GetDatabase("rtdl_hive_default") //default Hive DB
+	database, err = hiveClient.GetDatabase(hiveDatabaseName) //default Hive DB
 	
 	if database == nil {
 	
-		database := &hmsclient.Database{Name: "rtdl_hive_default", Location: "/warehouse/tablespace/external/hive/"}
+		database := &hmsclient.Database{Name: hiveDatabaseName, Location: hiveDatabaseLocation}
 		err  = hiveClient.CreateDatabase(database)
 		if err != nil {
 
@@ -778,20 +872,14 @@ func ConnectHMS() error {
 			
 		}
 		
-		log.Println("database created")
-		
-	} else {
-	
-		log.Println("database connected")
-	
-	}
-	
+	} 
 	
 	return nil
 	
 }
 
 func main() {
+
 
 	// connection string
 	setDBConnectionString()
