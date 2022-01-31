@@ -346,8 +346,7 @@ services:
   #    - datanode
   
   presto-hive-hadoop:
-    build:
-      context: ./presto-hive-hadoop   
+    image: presto-hive-hadoop
     container_name: rtdl_presto-hive-hadoop
     expose:
       - 8080
