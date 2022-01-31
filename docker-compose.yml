@@ -88,9 +88,9 @@ services:
     image: rtdl/rtdl-ingest:latest
     container_name: rtdl_ingest
     expose:
-      - 8080
+      - 9090
     ports:
-      - 8080:8080
+      - 9090:9090
     environment:
       KAFKA_URL: kafka:9092
       KAFKA_TOPIC: ingress
@@ -189,18 +189,18 @@ services:
       RTDL_DB_PASSWORD: rtdl
       RTDL_DB_DBNAME: rtdl_db
       LOCAL_DATA_STORE: /C/Users/dipanjan/rtdl/storage/rtdl-data_store
-      METASTORE_HOST: catalog
+      METASTORE_HOST: presto-hive-hadoop
       METSTORE_PORT: 9083
     volumes:
       - ./storage/rtdl-data_store:/app/datastore
     depends_on:
-      catalog-db:
-        condition: service_healthy      
+      #catalog-db:
+        #condition: service_healthy      
       rtdl-db:
         condition: service_healthy
       kafka:
         condition: service_started
-      catalog:
+      presto-hadoop-hive:
         condition: service_started
   ##### Processing Services - End #####
 
@@ -244,40 +244,112 @@ services:
   ### For YBDB - End ###
 
   ### For Postgres - Start ###
-  catalog-db:
-    platform: linux/amd64
-    image: postgres:latest
-    container_name: rtdl_catalog-db
-    volumes:
-      - ./storage/rtdl-catalog-db_data:/var/lib/postgresql/data
-    expose:
-      - 5432
+  #catalog-db:
+  #  platform: linux/amd64
+  #  image: postgres:latest
+  #  container_name: rtdl_catalog-db
+  #  volumes:
+  #    - ./storage/rtdl-catalog-db_data:/var/lib/postgresql/data
+  #  expose:
+  #    - 5432
     # ports:
     #   - 5432:5432
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U postgres"]
-        interval: 10s
-        timeout: 5s
-        retries: 12
+  #  environment:
+  #    POSTGRES_USER: postgres
+  #    POSTGRES_PASSWORD: postgres
+  #  healthcheck:
+  #      test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #      interval: 10s
+  #      timeout: 5s
+  #      retries: 12
 
-  catalog:
-    platform: linux/amd64
-    image: rtdl/hive-metastore:latest
-    container_name: rtdl_catalog
-    expose:
-      - 9083
-    ports:
-      - 9083:9083
-    volumes:
-      - ./catalog/scripts/entrypoint-run.sh:/entrypoint.sh
-      - ./catalog/conf/metastore-site.postgres.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
-    user: root
-    command: bash -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && bash -c /entrypoint.sh"
-    depends_on:
-      catalog-db:
-        condition: service_healthy
+  #catalog:
+  #  platform: linux/amd64
+  #  image: rtdl/hive-metastore:latest
+  #  container_name: rtdl_catalog
+  #  expose:
+  #    - 9083
+  #  ports:
+  #    - 9084:9083
+  #  volumes:
+  #    - ./catalog/scripts/entrypoint-run.sh:/entrypoint.sh
+  #    - ./catalog/conf/metastore-site.postgres.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
+  #  user: root
+  #  command: bash -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && bash -c /entrypoint.sh"
+  #  depends_on:
+  #    catalog-db:
+  #      condition: service_healthy
   ### For Postgres - End ###
   ##### Catalog Services - End #####
+
+  #namenode:
+  #  image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
+  #  container_name: namenode
+  #  volumes:
+  #    - ./storage/hdfs/namenode:/hadoop/dfs/name
+  #  environment:
+  #    - CLUSTER_NAME=hive
+  #  env_file:
+  #    - ./hadoop-hive.env
+  #  ports:
+  #    - "50070:50070"
+
+  #datanode:
+  #  image: bde2020/hadoop-datanode:2.0.0-hadoop2.7.4-java8
+  #  container_name: datanode
+  #  volumes:
+  #    - ./storage/hdfs/datanode:/hadoop/dfs/data
+  #  env_file:
+  #    - ./hadoop-hive.env
+  #  environment:
+  #    SERVICE_PRECONDITION: "namenode:50070"
+  #  depends_on:
+  #    - namenode
+  #  ports:
+  #    - "50075:50075"
+
+  #hive-server:
+  #  image: bde2020/hive:2.3.2-postgresql-metastore
+  #  container_name: hive-server
+  #  env_file:
+  #    - ./hadoop-hive.env
+  #  environment:
+  #    HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore-postgresql/metastore"
+  #    SERVICE_PRECONDITION: "hive-metastore:9083"
+  #  depends_on:
+  #    - hive-metastore
+  #  ports:
+  #    - "10000:10000"
+
+  #hive-metastore:
+  #  image: bde2020/hive:2.3.2-postgresql-metastore
+  #  container_name: hive-metastore
+  #  volumes:
+  #    - ./catalog/jars/parquet-hive-1.2.5.jar:/opt/hive/lib/parquet-hive-1.2.5.jar
+  #    - ./catalog/jars/hive-serde-0.13.1.jar:/opt/hive/lib/hive-serde-0.13.1.jar
+  #  env_file:
+  #    - ./hadoop-hive.env
+  #  command: /opt/hive/bin/hive --service metastore
+  #  environment:
+  #    SERVICE_PRECONDITION: "namenode:50070 datanode:50075 hive-metastore-postgresql:5432"
+  #  depends_on:
+  #    - hive-metastore-postgresql
+  #  ports:
+  #    - "9083:9083"
+      
+  #hive-metastore-postgresql:
+  #  image: bde2020/hive-metastore-postgresql:2.3.0
+  #  container_name: hive-metastore-postgresql
+  #  volumes:
+  #    - ./storage/metastore-postgresql/postgresql/data:/var/lib/postgresql/data
+  #  depends_on:
+  #    - datanode
+  
+  presto-hive-hadoop:
+    build:
+      context: ./presto-hive-hadoop   
+    container_name: rtdl_presto-hive-hadoop
+    expose:
+      - 8080
+      - 9083
+      

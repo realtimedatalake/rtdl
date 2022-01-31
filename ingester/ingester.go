@@ -438,6 +438,81 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRec
 }
 
 
+func UpdateHMS(messageType string, fileStoreType string, location string) error {
+
+	hiveTableName := messageType + fileStoreType
+	
+	hiveTableName = strings.ReplaceAll(hiveTableName,"-","_") //to avoid invalid object error
+
+	hiveTable, err := hiveClient.GetTable(hiveDatabaseName, hiveTableName)
+	
+	if err != nil { //table entry not present
+	
+		log.Println("Table entry not in catalog")		
+
+		//build table definition
+		hiveTableBuilder := hmsclient.NewTableBuilder(hiveDatabaseName, hiveTableName).AsExternal()
+		hiveTableBuilder = hiveTableBuilder.WithInputFormat(hiveParquetInputFormat).WithOutputFormat(hiveParquetOutputFormat)
+		hiveTableBuilder = hiveTableBuilder.WithSerde(hiveParquetSerDe).WithLocation(location)
+		hiveTable = hiveTableBuilder.Build()
+							
+		err = hiveClient.CreateTable(hiveTable) //create table with definition
+		
+		if err != nil {
+		
+			log.Println("Error creating Hive table", err)
+			return err
+		
+		}
+	
+	} else { //table found
+	
+		socket, err := thrift.NewTSocket(net.JoinHostPort(GetEnv("METASTORE_HOST", "catalog"), GetEnv("METASTORE_PORT", "9083")))
+		if err != nil {
+			log.Println("Error creating Thrift socket")
+			return errors.New("Error creating Thrift socket")
+		}
+		transportFactory := thrift.NewTBufferedTransportFactory(bufferSize)
+		protocolFactory := thrift.NewTBinaryProtocolFactoryDefault()
+		transport, err := transportFactory.GetTransport(socket)
+		if err != nil {
+			log.Println("Error initializing Thrift transport ", err)
+			return errors.New("Error initializing Thrift transport")
+		}
+
+		iprot := protocolFactory.GetProtocol(transport)
+		oprot := protocolFactory.GetProtocol(transport)
+		
+		err = transport.Open()
+		
+		if err != nil {
+		
+			log.Println("Error creating Thrift connection to Hive Metastore ", err)
+			return errors.New("Error creating Thrift client for Hive Metastore")
+		
+		}
+		c := hive_metastore.NewThriftHiveMetastoreClient(thrift.NewTStandardClient(iprot, oprot))
+		if c == nil {
+			log.Println("Error creating Thrift client for Hive Metastore")
+			return errors.New("Error creating Thrift client for Hive Metastore")
+		}
+		
+		fieldSchemas, err2 := c.GetSchema(context.Background(),hiveDatabaseName, hiveTableName)
+		if err2 != nil {
+			log.Println("Error retrieving table field information from Hive Metastore ", err2)
+			return errors.New("Error retrieving table field information from Hive Metastore")
+		
+		}
+
+		log.Println("num of fields : ", strconv.Itoa(len(fieldSchemas)))
+		
+	}
+	
+	return nil
+
+
+}
+
 
 //Write local Parquet
 func WriteLocalParquet(messageType string, schema string, payload []byte, configRecord Config) error {
@@ -474,73 +549,8 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 	
 	if err == nil { //file write successful, update HMS
 	
-		hiveTableName := messageType + "_Local"
-		
-		hiveTableName = strings.ReplaceAll(hiveTableName,"-","_") //to avoid invalid object error
-
-		hiveTable, err1 := hiveClient.GetTable(hiveDatabaseName, hiveTableName)
-		
-		if err1 != nil { //table entry not present
-		
-			log.Println("Table entry not in catalog")		
-
-			//build table definition
-			hiveTableBuilder := hmsclient.NewTableBuilder(hiveDatabaseName, hiveTableName).AsExternal()
-			hiveTableBuilder = hiveTableBuilder.WithInputFormat(hiveParquetInputFormat).WithOutputFormat(hiveParquetOutputFormat)
-			hiveTableBuilder = hiveTableBuilder.WithSerde(hiveParquetSerDe).WithLocation(os.Getenv("LOCAL_DATA_STORE") + "/" + fileName)
-			hiveTable = hiveTableBuilder.Build()
-								
-			err = hiveClient.CreateTable(hiveTable) //create table with definition
-			
-			if err != nil {
-			
-				log.Println("Error creating Hive table", err)
-				return err
-			
-			}
-		
-		} else { //table found
-		
-			socket, err := thrift.NewTSocket(net.JoinHostPort(GetEnv("METASTORE_HOST", "catalog"), GetEnv("METASTORE_PORT", "9083")))
-			if err != nil {
-				log.Println("Error creating Thrift socket")
-				return errors.New("Error creating Thrift socket")
-			}
-			transportFactory := thrift.NewTBufferedTransportFactory(bufferSize)
-			protocolFactory := thrift.NewTBinaryProtocolFactoryDefault()
-			transport, err := transportFactory.GetTransport(socket)
-			if err != nil {
-				log.Println("Error initializing Thrift transport ", err)
-				return errors.New("Error initializing Thrift transport")
-			}
-
-			iprot := protocolFactory.GetProtocol(transport)
-			oprot := protocolFactory.GetProtocol(transport)
-			
-			err = transport.Open()
-			
-			if err != nil {
-			
-				log.Println("Error creating Thrift connection to Hive Metastore ", err)
-				return errors.New("Error creating Thrift client for Hive Metastore")
-			
-			}
-			c := hive_metastore.NewThriftHiveMetastoreClient(thrift.NewTStandardClient(iprot, oprot))
-			if c == nil {
-				log.Println("Error creating Thrift client for Hive Metastore")
-				return errors.New("Error creating Thrift client for Hive Metastore")
-			}
-			
-			fieldSchemas, err2 := c.GetFields(context.Background(),hiveDatabaseName, hiveTableName)
-			if err2 != nil {
-				log.Println("Error retrieving table field information from Hive Metastore ", err2)
-				return errors.New("Error retrieving table field information from Hive Metastore")
-			
-			}
-
-			log.Println("num of fields : ", strconv.Itoa(len(fieldSchemas)))
-			
-		}
+		return UpdateHMS(messageType,"Local",os.Getenv("LOCAL_DATA_STORE") + "/" + fileName)
+	
 	}
 	
 	return nil
@@ -623,8 +633,14 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 
 	os.Remove(leafLevelFileName) //remove the temp file
 	log.Println("Finished uploading file to S3")
-
-	return err
+	
+	
+	if err == nil {
+	
+		return UpdateHMS(messageType,"S3","s3://"+bucketName+"/"+key)
+	} else {
+		return err
+	}
 
 }
 
@@ -699,8 +715,9 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 
 	os.Remove(leafLevelFileName) //remove the temp file
 
+
 	log.Println("Finished uploading file to GCS")
-	return nil
+	return UpdateHMS(messageType,"GCS","http://storage.googleapis.com/"+bucketName+"/"+path)
 }
 
 //Parquet writing logic
@@ -842,7 +859,13 @@ func ConnectHMS() error {
 	
 	for {
 	
-		hiveClient, err = hmsclient.Open("catalog", 9083)
+		metastoreHost := GetEnv("METASTORE_HOST","catalog")
+		metastorePort, err1 := strconv.Atoi(GetEnv("METASTORE_PORT","9083"))
+		if err1 != nil {
+		
+			return errors.New("Configuration error : Metastore port cannot be non-numeric")
+		}
+		hiveClient, err = hmsclient.Open(metastoreHost, metastorePort)
 
 		if err == nil {
 			break

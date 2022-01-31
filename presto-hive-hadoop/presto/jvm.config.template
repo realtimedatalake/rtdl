@@ -1,0 +1,10 @@
+-server
+-Xmx{JAVA_HEAP_SIZE}
+-XX:+UseG1GC
+-XX:+UseGCOverheadLimit
+-XX:+ExplicitGCInvokesConcurrent
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:+ExitOnOutOfMemoryError
+-XX:ReservedCodeCacheSize=150M
+-DHADOOP_USER_NAME=hive
+-Duser.timezone=UTC

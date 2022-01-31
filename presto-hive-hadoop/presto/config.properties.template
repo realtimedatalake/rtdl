@@ -1,0 +1,12 @@
+node.id=presto-master
+node.environment=test
+
+coordinator=true
+node-scheduler.include-coordinator=true
+http-server.http.port=8080
+query.max-memory={QUERY_MAX_MEMORY}
+query.max-memory-per-node={QUERY_MAX_MEMORY_PER_NODE}
+query.max-total-memory-per-node={QUERY_MAX_TOTAL_MEMORY_PER_NODE}
+memory.heap-headroom-per-node={HEAP_HEADROOM_PER_NODE}
+discovery-server.enabled=true
+discovery.uri=http://localhost:8080
