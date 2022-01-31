@@ -533,6 +533,7 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 		return err
 	}
 
+	location := os.Getenv("LOCAL_DATA_STORE") + "/" + path
 	fileName := path + "/" + generateLeafLevelFileName()
 	
 	log.Println("Local path:", fileName)
@@ -549,7 +550,7 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 	
 	if err == nil { //file write successful, update HMS
 	
-		return UpdateHMS(messageType,"Local",os.Getenv("LOCAL_DATA_STORE") + "/" + fileName)
+		return UpdateHMS(messageType,"Local", location)
 	
 	}
 	
@@ -560,6 +561,7 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 func WriteAWSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
 	var key string
+	var location string
 
 	subFolderName := generateSubFolderName(messageType, configRecord)
 	leafLevelFileName := generateLeafLevelFileName()
@@ -581,10 +583,12 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 	if configRecord.FolderName.String != "" {
 
 		key = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
+		location = configRecord.FolderName.String + "/" + subFolderName
 
 	} else {
 
 		key = subFolderName + "/" + leafLevelFileName
+		location = subFolderName
 	}
 
 	fw, err := local.NewLocalFileWriter(leafLevelFileName)
@@ -637,7 +641,7 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 	
 	if err == nil {
 	
-		return UpdateHMS(messageType,"S3","s3://"+bucketName+"/"+key)
+		return UpdateHMS(messageType,"S3","s3://"+bucketName+"/"+location)
 	} else {
 		return err
 	}
@@ -647,6 +651,7 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 func WriteGCPParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
 	var path string
+	var location string
 
 	subFolderName := generateSubFolderName(messageType, configRecord)
 	leafLevelFileName := generateLeafLevelFileName()
@@ -678,10 +683,11 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 	if configRecord.FolderName.String != "" {
 
 		path = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
-
+		location = configRecord.FolderName.String + "/" + subFolderName
 	} else {
 
 		path = subFolderName + "/" + leafLevelFileName
+		location = subFolderName
 	}
 
 	fw, err := local.NewLocalFileWriter(leafLevelFileName)
@@ -717,7 +723,7 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 
 
 	log.Println("Finished uploading file to GCS")
-	return UpdateHMS(messageType,"GCS","http://storage.googleapis.com/"+bucketName+"/"+path)
+	return UpdateHMS(messageType,"GCS","gs://"+bucketName+"/"+location)
 }
 
 //Parquet writing logic

@@ -20,6 +20,16 @@ type OutgoingMessage struct {
 	Payload     map[string]interface{} `json:"payload"`
 }
 
+// GetEnv get key environment variable if exist otherwise return defalutValue
+func GetEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if len(value) == 0 {
+		return defaultValue
+	}
+	return value
+}
+
+
 //handler function for incoming REST calls
 //based on processingType - either payload is passed on as-is to Kafka or 
 //specific message, asking stateful function to reload configuration cache, is put on Kafka 
@@ -128,5 +138,5 @@ func main() {
 	http.HandleFunc("/refreshCache", producerHandler(kafkaURL, topic, "refresh-cache"))
 
 	// Run the web server.
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":"+GetEnv("LISTENER_PORT","8080"), nil))
 }

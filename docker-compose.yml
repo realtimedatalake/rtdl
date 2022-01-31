@@ -82,8 +82,8 @@ services:
 
   ##### Ingest Service - Start #####
   ingest:
-    # build:
-    #   context: ./ingest
+    build:
+      context: ./ingest
     platform: linux/amd64
     image: rtdl/rtdl-ingest:latest
     container_name: rtdl_ingest
@@ -94,6 +94,7 @@ services:
     environment:
       KAFKA_URL: kafka:9092
       KAFKA_TOPIC: ingress
+      LISTENER_PORT: 9090
     depends_on:      
       - kafka
   ##### Ingest Service - End #####
