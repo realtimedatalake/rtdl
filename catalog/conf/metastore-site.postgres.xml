@@ -12,6 +12,10 @@
         <name>metastore.expression.proxy</name>
         <value>org.apache.hadoop.hive.metastore.DefaultPartitionExpressionProxy</value>
     </property>
+    <property>
+        <name>metastore.storage.schema.reader.impl</name>
+        <value>org.apache.hadoop.hive.metastore.SerDeStorageSchemaReader</value>
+    </property>
 
     <property>
         <name>javax.jdo.option.ConnectionDriverName</name>
@@ -49,10 +53,5 @@
     <property>
         <name>fs.s3a.impl</name>
         <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
-    </property>
-    <property>
-        <name>metastore.storage.schema.reader.impl</name>
-        <!-- <value>org.apache.hadoop.hive.metastore.SerDeStorageSchemaReader​</value> -->
-		<value>org.apache.hadoop.hive.metastore.DefaultStorageSchemaReader​</value>
     </property>
 </configuration>
