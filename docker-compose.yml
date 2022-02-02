@@ -94,7 +94,7 @@ services:
     environment:
       KAFKA_URL: kafka:9092
       KAFKA_TOPIC: ingress
-      LISTENER_PORT: 9090
+      LISTENER_PORT: 8080
     depends_on:      
       - kafka
   ##### Ingest Service - End #####
@@ -190,8 +190,10 @@ services:
       RTDL_DB_PASSWORD: rtdl
       RTDL_DB_DBNAME: rtdl_db
       LOCAL_DATA_STORE: /C/Users/dipanjan/rtdl/storage/rtdl-data_store
-      METASTORE_HOST: hive-metastore
-      METSTORE_PORT: 9083
+      DREMIO_HOST: dremio
+      DREMIO_PORT: 9047
+      DREMIO_USERNAME: dipanjanb
+      DREMIO_PASSWORD: ZAQ1234w!!
     volumes:
       - ./storage/rtdl-data_store:/app/datastore
     depends_on:
@@ -215,7 +217,7 @@ services:
       - 9047
       - 31010
       - 45678
-    expose:
+    ports:
       - 9047:9047
       - 31010:31010
       - 45678:45678

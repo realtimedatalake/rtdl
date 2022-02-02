@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -48,6 +49,14 @@ const (
 
 // create the `psqlCon` string used to connect to the database
 var psqlCon string
+
+// Dremio host and port
+var dremioHost string
+var dremioPort string
+
+// header for Dremio communication
+var dremioToken string
+
 
 //Incoming message would have
 // - a source key to identify the stream
@@ -186,8 +195,121 @@ func LoadConfig() error {
 	return nil
 }
 
+//generic function for Dremio request response
+func DremioReqRes (endPoint string, data []byte) (map[string] interface {}, error) {
+
+	var version string
+	var method string
+	var request *http.Request
+	var err error
+
+	if endPoint == "login" { //end point v2
+	
+		version = "apiv2"
+	
+	} else {
+	
+		version = "api/v3"
+	
+	}
+
+	url := "http://" + dremioHost + ":" + dremioPort + "/" + version + "/" + endPoint
+
+	if endPoint == "catalog" && data == nil { //Get request
+		method = "GET"
+	} else {
+		method = "POST"
+	}
+	
+	if data == nil {
+	
+		request, err = http.NewRequest(method, url, nil)
+	
+	} else {
+	
+		request, err = http.NewRequest(method, url, bytes.NewBuffer(data))
+	
+	}
+	
+	if err != nil {
+		log.Println("Error communicating with Dremio server ", err)
+		return nil, err
+		
+	}
+	
+	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	
+	if endPoint != "login" { //need to set auth header for non-login calls
+	
+		request.Header.Set("authorization", dremioToken)
+	}
+	
+	client := &http.Client{}
+	response, error := client.Do(request)
+	if error != nil {
+		return nil, error
+	}
+	defer response.Body.Close()
+
+	body, _ := ioutil.ReadAll(response.Body)
+	
+	var dremioResponse map[string] interface {}
+	
+	err = json.Unmarshal(body, &dremioResponse)
+	
+	if err != nil {
+		return nil, err
+	} 
+
+	return dremioResponse, nil
+	
+	
+}
+
+//connect to Dremio server and retrieve token for subsequent calls
+func SetDremioToken() error {
+
+	username := GetEnv("DREMIO_USERNAME", "dremio")
+	password := GetEnv("DREMIO_PASSWORD", "dremio123")
+	
+	
+	loginData := []byte(`{"userName":"` + username + `", "password":"` + password + `"}`)
+	
+	dremioResponse, err := DremioReqRes("login", loginData)
+	
+	if err != nil {
+	
+		log.Println("Error retrieving Dremio token ", err)
+		return err
+	}
+	
+	dremioToken = fmt.Sprint(dremioResponse["token"])
+	
+	return nil
+
+}
+
+//initialize Dremio connection
+func SetDremioConnection() error {
+
+	// set Dremio host and port for use in other calls	
+	dremioHost = GetEnv("DREMIO_HOST","host.docker.internal")
+	dremioPort = GetEnv("DREMIO_PORT", "9047")
+	
+	err := SetDremioToken()
+	
+	if err != nil {
+		return err
+	}
+	
+	
+	return nil
+
+}
+
+
 //	FUNCTION
-// 	setDBConnectionString
+// 	SetDBConnectionString
 //	created by Gavin
 //	on 20220109
 //	last updated 20220111
@@ -195,7 +317,7 @@ func LoadConfig() error {
 //	Description:	(Copied from config-service.go)
 //					Sets the `psqlCon` global variable. Looks up environment variables
 //					and defaults if none are present.
-func setDBConnectionString() {
+func SetDBConnectionString() {
 	var db_host, db_port, db_user, db_password, db_dbname = db_host_def, db_port_def, db_user_def, db_password_def, db_dbname_def
 	var db_host_env, db_user_env, db_password_env, db_dbname_env = os.Getenv("RTDL_DB_HOST"), os.Getenv("RTDL_DB_USER"), os.Getenv("RTDL_DB_PASSWORD"), os.Getenv("RTDL_DB_DBNAME")
 	db_port_env, err := strconv.Atoi(os.Getenv("RTDL_DB_PORT"))
@@ -419,7 +541,118 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRec
 
 }
 
+//Function for making Dremio entry
+func UpdateDremio (messageType string, sourceType string, location string, configRecord Config) error {
 
+	var sourceDef []byte
+	var sourceExists bool 
+	
+
+	desiredPath := messageType + "_" + sourceType //our source names will be <message type>_<source type>
+
+	dremioResponse, err1 := DremioReqRes("catalog",nil)
+	
+	if err1 != nil {
+	
+		log.Println("Error retrieving Dremio catalog information ", err1)
+		return err1
+	
+	}
+	
+	log.Println("Dremio catalog information retrieved")
+	
+	//iterate through catalog and find if space already exists
+	
+	catalogEntries, ok1 := dremioResponse["data"].([] interface {})
+	if !ok1 {
+	
+		return errors.New("error handling Dremio server response")
+	}
+
+
+	for _, catalogEntry := range catalogEntries {
+	
+		entry, ok2 := catalogEntry.(map[string] interface {})
+		if !ok2 {
+		
+			return errors.New("error handling Dremio server response")
+		}
+		
+		path, ok3 := entry["path"].([]interface{})
+		if !ok3 {
+		
+			return errors.New("error handling Dremio server response")
+		}
+		
+		if entry["containerType"] == "SOURCE" && path[0] == desiredPath{
+			
+			sourceExists = true
+		
+		}
+		
+	}
+	
+	if !sourceExists {
+
+		log.Println("Source does not exist for message type, creating ...")
+		
+		switch sourceType {
+		case "Local":
+			sourceDef = []byte(`{"name": "` + desiredPath + `", "type": "NAS", "config": {"path": "` + location + `"}}`)
+		case "S3":
+			sourceStringMultiLine := `{"name": "` + desiredPath + `"`
+			sourceStringMultiLine+= `, "type": "S3", "config": {"accessKey": "` + configRecord.AWSAcessKeyID.String + `"`
+			sourceStringMultiLine += `, "accessSecret": "` + configRecord.AWSSecretAcessKey.String + `"`
+			//sourceStringMultiLine += `, "externalBucketList": ["` + location + `"]`
+			sourceStringMultiLine += `, "rootPath": "/` + location + `/`
+			if configRecord.FolderName.String != "" {
+				sourceStringMultiLine += configRecord.FolderName.String + `/` 
+				
+			}
+			
+			//sourceStringMultiLine += messageType + `/"}}`
+			sourceStringMultiLine +=  `"}}`
+			sourceDef =[]byte(sourceStringMultiLine)
+
+			log.Println(sourceStringMultiLine)
+			dremioResponse, err1 = DremioReqRes("source", sourceDef)
+			
+			if err1 != nil {
+			
+				log.Println("Error creating Dremio source ", err1)
+				return err1
+			}
+			
+			log.Println(dremioResponse)
+
+
+		}
+	
+	}
+	
+	//next we have to create the dataset
+	
+	encodedId := "dremio%3A%2F"+desiredPath+"%2F"+messageType
+	datasetDefMultiLine := `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + desiredPath + `", "` + messageType + `"]`
+	
+	datasetDefMultiLine += `, "format": {"type": "Parquet"}`
+	datasetDefMultiLine += `, "type": "PHYSICAL_DATASET"`
+	datasetDefMultiLine += `}`
+	datasetDef := []byte(datasetDefMultiLine)
+
+	dremioResponse, err1 = DremioReqRes("catalog/"+encodedId, datasetDef)
+	log.Println(datasetDefMultiLine)
+	
+	if err1 != nil {
+	
+		log.Println("Error creating Dremio dataset ", err1)
+		return err1
+	}
+
+	log.Println(dremioResponse)
+	return nil
+
+}
 
 
 //Write local Parquet
@@ -441,7 +674,7 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 		return err
 	}
 
-	//location := os.Getenv("LOCAL_DATA_STORE") + "/" + path
+	location := os.Getenv("LOCAL_DATA_STORE") + "/" + path
 	fileName := path + "/" + generateLeafLevelFileName()
 	
 	log.Println("Local path:", fileName)
@@ -456,22 +689,20 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 
 	err = WriteToFile(schema, fw, payload, configRecord)
 	
-	/*
-	if err == nil { //file write successful, update HMS
+	if err == nil { //file write successful, update Dremio
 	
-		return UpdateDremio(messageType,"Local", location)
+		return UpdateDremio(messageType,"Local", location, configRecord)
 	
 	}
-	*/
 	
-	return nil
+	return err
 
 }
 
 func WriteAWSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
-	var key string
-	//var location string
+	var key string	
+	
 
 	subFolderName := generateSubFolderName(messageType, configRecord)
 	leafLevelFileName := generateLeafLevelFileName()
@@ -493,12 +724,12 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 	if configRecord.FolderName.String != "" {
 
 		key = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
-		//location = configRecord.FolderName.String + "/" + subFolderName
+		
 
 	} else {
 
 		key = subFolderName + "/" + leafLevelFileName
-		//location = subFolderName
+		
 	}
 
 	fw, err := local.NewLocalFileWriter(leafLevelFileName)
@@ -548,14 +779,11 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 	os.Remove(leafLevelFileName) //remove the temp file
 	log.Println("Finished uploading file to S3")
 	
-	/*
 	if err == nil {
 	
-		return UpdateDremio(messageType,"S3","s3://"+bucketName+"/"+location)
-	} else {
-		return err
-	}
-	*/
+		return UpdateDremio(messageType,"S3", bucketName, configRecord)
+	} 
+	
 	
 	return err
 
@@ -774,16 +1002,22 @@ func main() {
 
 
 	// connection string
-	setDBConnectionString()
+	SetDBConnectionString()
 
 	//load configuration at the outset
 	//should panic if unable to do source
 	err := LoadConfig()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Unable to load configuration ", err)
 	}
 	
+	err = SetDremioConnection()
+
+	if err != nil {
+	
+		log.Fatal("Unable to connect with Dremio ", err)
+	}
 
 	builder := statefun.StatefulFunctionsBuilder()
 
