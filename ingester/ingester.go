@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"net"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/storage"
 	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
@@ -34,9 +33,6 @@ import (
 	"github.com/xitongsys/parquet-go/parquet"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
-	"github.com/akolb1/gometastore/hmsclient"	
-	"github.com/akolb1/gometastore/hmsclient/thrift/gen-go/hive_metastore"
-	"github.com/apache/thrift/lib/go/thrift"
 	
 )
 
@@ -49,19 +45,6 @@ const (
 	db_dbname_def   = "rtdl_db"
 )
 
-//Thirft related constants
-const (
-	bufferSize = 1024 * 1024
-)
-
-//Hive database constants
-const (
-	hiveDatabaseName = "rtdl_hive_default"
-	hiveDatabaseLocation = "/warehouse/tablespace/external/hive/"
-	hiveParquetInputFormat = "parquet.hive.DeprecatedParquetInputFormat"
-	hiveParquetOutputFormat = "parquet.hive.DeprecatedParquetOutputFormat"
-	hiveParquetSerDe = "parquet.hive.serde.ParquetHiveSerDe"
-)
 
 // create the `psqlCon` string used to connect to the database
 var psqlCon string
@@ -131,7 +114,6 @@ var (
 	IncomingMessageType = statefun.MakeJsonType(statefun.TypeNameFrom("com.rtdl.sf/IncomingMessage"))
 )
 
-var hiveClient *hmsclient.MetastoreClient
 
 // GetEnv get key environment variable if exist otherwise return defalutValue
 func GetEnv(key, defaultValue string) string {
@@ -438,80 +420,6 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRec
 }
 
 
-func UpdateHMS(messageType string, fileStoreType string, location string) error {
-
-	hiveTableName := messageType + fileStoreType
-	
-	hiveTableName = strings.ReplaceAll(hiveTableName,"-","_") //to avoid invalid object error
-
-	hiveTable, err := hiveClient.GetTable(hiveDatabaseName, hiveTableName)
-	
-	if err != nil { //table entry not present
-	
-		log.Println("Table entry not in catalog")		
-
-		//build table definition
-		hiveTableBuilder := hmsclient.NewTableBuilder(hiveDatabaseName, hiveTableName).AsExternal()
-		hiveTableBuilder = hiveTableBuilder.WithInputFormat(hiveParquetInputFormat).WithOutputFormat(hiveParquetOutputFormat)
-		hiveTableBuilder = hiveTableBuilder.WithSerde(hiveParquetSerDe).WithLocation(location)
-		hiveTable = hiveTableBuilder.Build()
-							
-		err = hiveClient.CreateTable(hiveTable) //create table with definition
-		
-		if err != nil {
-		
-			log.Println("Error creating Hive table", err)
-			return err
-		
-		}
-	
-	} else { //table found
-	
-		socket, err := thrift.NewTSocket(net.JoinHostPort(GetEnv("METASTORE_HOST", "catalog"), GetEnv("METASTORE_PORT", "9083")))
-		if err != nil {
-			log.Println("Error creating Thrift socket")
-			return errors.New("Error creating Thrift socket")
-		}
-		transportFactory := thrift.NewTBufferedTransportFactory(bufferSize)
-		protocolFactory := thrift.NewTBinaryProtocolFactoryDefault()
-		transport, err := transportFactory.GetTransport(socket)
-		if err != nil {
-			log.Println("Error initializing Thrift transport ", err)
-			return errors.New("Error initializing Thrift transport")
-		}
-
-		iprot := protocolFactory.GetProtocol(transport)
-		oprot := protocolFactory.GetProtocol(transport)
-		
-		err = transport.Open()
-		
-		if err != nil {
-		
-			log.Println("Error creating Thrift connection to Hive Metastore ", err)
-			return errors.New("Error creating Thrift client for Hive Metastore")
-		
-		}
-		c := hive_metastore.NewThriftHiveMetastoreClient(thrift.NewTStandardClient(iprot, oprot))
-		if c == nil {
-			log.Println("Error creating Thrift client for Hive Metastore")
-			return errors.New("Error creating Thrift client for Hive Metastore")
-		}
-		
-		fieldSchemas, err2 := c.GetSchema(context.Background(),hiveDatabaseName, hiveTableName)
-		if err2 != nil {
-			log.Println("Error retrieving table field information from Hive Metastore ", err2)
-			return errors.New("Error retrieving table field information from Hive Metastore")
-		
-		}
-
-		log.Println("num of fields : ", strconv.Itoa(len(fieldSchemas)))
-		
-	}
-	
-	return nil
-
-
-}
 
 
 //Write local Parquet
@@ -533,7 +441,7 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 		return err
 	}
 
-	location := os.Getenv("LOCAL_DATA_STORE") + "/" + path
+	//location := os.Getenv("LOCAL_DATA_STORE") + "/" + path
 	fileName := path + "/" + generateLeafLevelFileName()
 	
 	log.Println("Local path:", fileName)
@@ -548,11 +456,13 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 
 	err = WriteToFile(schema, fw, payload, configRecord)
 	
+	/*
 	if err == nil { //file write successful, update HMS
 	
-		return UpdateHMS(messageType,"Local", location)
+		return UpdateDremio(messageType,"Local", location)
 	
 	}
+	*/
 	
 	return nil
 
@@ -561,7 +471,7 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 func WriteAWSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
 	var key string
-	var location string
+	//var location string
 
 	subFolderName := generateSubFolderName(messageType, configRecord)
 	leafLevelFileName := generateLeafLevelFileName()
@@ -583,12 +493,12 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 	if configRecord.FolderName.String != "" {
 
 		key = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
-		location = configRecord.FolderName.String + "/" + subFolderName
+		//location = configRecord.FolderName.String + "/" + subFolderName
 
 	} else {
 
 		key = subFolderName + "/" + leafLevelFileName
-		location = subFolderName
+		//location = subFolderName
 	}
 
 	fw, err := local.NewLocalFileWriter(leafLevelFileName)
@@ -638,20 +548,23 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 	os.Remove(leafLevelFileName) //remove the temp file
 	log.Println("Finished uploading file to S3")
 	
-	
+	/*
 	if err == nil {
 	
-		return UpdateHMS(messageType,"S3","s3://"+bucketName+"/"+location)
+		return UpdateDremio(messageType,"S3","s3://"+bucketName+"/"+location)
 	} else {
 		return err
 	}
+	*/
+	
+	return err
 
 }
 
 func WriteGCPParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
 	var path string
-	var location string
+	//var location string
 
 	subFolderName := generateSubFolderName(messageType, configRecord)
 	leafLevelFileName := generateLeafLevelFileName()
@@ -683,11 +596,11 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 	if configRecord.FolderName.String != "" {
 
 		path = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
-		location = configRecord.FolderName.String + "/" + subFolderName
+		//location = configRecord.FolderName.String + "/" + subFolderName
 	} else {
 
 		path = subFolderName + "/" + leafLevelFileName
-		location = subFolderName
+		//location = subFolderName
 	}
 
 	fw, err := local.NewLocalFileWriter(leafLevelFileName)
@@ -723,7 +636,8 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 
 
 	log.Println("Finished uploading file to GCS")
-	return UpdateHMS(messageType,"GCS","gs://"+bucketName+"/"+location)
+	//return UpdateDremio(messageType,"GCS","gs://"+bucketName+"/"+location)
+	return nil
 }
 
 //Parquet writing logic
@@ -855,57 +769,6 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 	return nil
 }
 
-func ConnectHMS() error {
-
-	var counter = 0
-	
-	var err error
-	
-	var database *hmsclient.Database
-	
-	for {
-	
-		metastoreHost := GetEnv("METASTORE_HOST","catalog")
-		metastorePort, err1 := strconv.Atoi(GetEnv("METASTORE_PORT","9083"))
-		if err1 != nil {
-		
-			return errors.New("Configuration error : Metastore port cannot be non-numeric")
-		}
-		hiveClient, err = hmsclient.Open(metastoreHost, metastorePort)
-
-		if err == nil {
-			break
-		}
-		
-		time.Sleep(5 * time.Second) //retry after 5 seconds
-		
-		counter++
-		
-		if counter > 5 {
-		
-			return errors.New("unable to connect to Hive Meta Store")
-		}
-	
-	
-	}
-	
-	database, err = hiveClient.GetDatabase(hiveDatabaseName) //default Hive DB
-	
-	if database == nil {
-	
-		database := &hmsclient.Database{Name: hiveDatabaseName, Location: hiveDatabaseLocation}
-		err  = hiveClient.CreateDatabase(database)
-		if err != nil {
-
-			return err
-			
-		}
-		
-	} 
-	
-	return nil
-	
-}
 
 func main() {
 
@@ -921,11 +784,6 @@ func main() {
 		log.Fatal(err)
 	}
 	
-	err = ConnectHMS()
-	if err != nil {
-		log.Fatal(err)
-	}
-
 
 	builder := statefun.StatefulFunctionsBuilder()
 

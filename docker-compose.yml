@@ -88,9 +88,9 @@ services:
     image: rtdl/rtdl-ingest:latest
     container_name: rtdl_ingest
     expose:
-      - 9090
+      - 8080
     ports:
-      - 9090:9090
+      - 8080:8080
     environment:
       KAFKA_URL: kafka:9092
       KAFKA_TOPIC: ingress
@@ -190,7 +190,7 @@ services:
       RTDL_DB_PASSWORD: rtdl
       RTDL_DB_DBNAME: rtdl_db
       LOCAL_DATA_STORE: /C/Users/dipanjan/rtdl/storage/rtdl-data_store
-      METASTORE_HOST: presto-hive-hadoop
+      METASTORE_HOST: hive-metastore
       METSTORE_PORT: 9083
     volumes:
       - ./storage/rtdl-data_store:/app/datastore
@@ -203,6 +203,24 @@ services:
         condition: service_started
       presto-hadoop-hive:
         condition: service_started
+        
+        
+  dremio:
+    platform: linux/amd64
+    image: dremio/dremio-oss
+    container_name: rtdl_dremio
+    volumes:
+      - ./storage/dremio/data:/opt/dremio/data
+    expose:
+      - 9047
+      - 31010
+      - 45678
+    expose:
+      - 9047:9047
+      - 31010:31010
+      - 45678:45678
+    
+    
   ##### Processing Services - End #####
 
 
@@ -253,8 +271,8 @@ services:
   #    - ./storage/rtdl-catalog-db_data:/var/lib/postgresql/data
   #  expose:
   #    - 5432
-    # ports:
-    #   - 5432:5432
+  #  ports:
+  #    - 5432:5432
   #  environment:
   #    POSTGRES_USER: postgres
   #    POSTGRES_PASSWORD: postgres
@@ -283,73 +301,4 @@ services:
   ### For Postgres - End ###
   ##### Catalog Services - End #####
 
-  #namenode:
-  #  image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
-  #  container_name: namenode
-  #  volumes:
-  #    - ./storage/hdfs/namenode:/hadoop/dfs/name
-  #  environment:
-  #    - CLUSTER_NAME=hive
-  #  env_file:
-  #    - ./hadoop-hive.env
-  #  ports:
-  #    - "50070:50070"
-
-  #datanode:
-  #  image: bde2020/hadoop-datanode:2.0.0-hadoop2.7.4-java8
-  #  container_name: datanode
-  #  volumes:
-  #    - ./storage/hdfs/datanode:/hadoop/dfs/data
-  #  env_file:
-  #    - ./hadoop-hive.env
-  #  environment:
-  #    SERVICE_PRECONDITION: "namenode:50070"
-  #  depends_on:
-  #    - namenode
-  #  ports:
-  #    - "50075:50075"
-
-  #hive-server:
-  #  image: bde2020/hive:2.3.2-postgresql-metastore
-  #  container_name: hive-server
-  #  env_file:
-  #    - ./hadoop-hive.env
-  #  environment:
-  #    HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore-postgresql/metastore"
-  #    SERVICE_PRECONDITION: "hive-metastore:9083"
-  #  depends_on:
-  #    - hive-metastore
-  #  ports:
-  #    - "10000:10000"
-
-  #hive-metastore:
-  #  image: bde2020/hive:2.3.2-postgresql-metastore
-  #  container_name: hive-metastore
-  #  volumes:
-  #    - ./catalog/jars/parquet-hive-1.2.5.jar:/opt/hive/lib/parquet-hive-1.2.5.jar
-  #    - ./catalog/jars/hive-serde-0.13.1.jar:/opt/hive/lib/hive-serde-0.13.1.jar
-  #  env_file:
-  #    - ./hadoop-hive.env
-  #  command: /opt/hive/bin/hive --service metastore
-  #  environment:
-  #    SERVICE_PRECONDITION: "namenode:50070 datanode:50075 hive-metastore-postgresql:5432"
-  #  depends_on:
-  #    - hive-metastore-postgresql
-  #  ports:
-  #    - "9083:9083"
-      
-  #hive-metastore-postgresql:
-  #  image: bde2020/hive-metastore-postgresql:2.3.0
-  #  container_name: hive-metastore-postgresql
-  #  volumes:
-  #    - ./storage/metastore-postgresql/postgresql/data:/var/lib/postgresql/data
-  #  depends_on:
-  #    - datanode
   
-  presto-hive-hadoop:
-    image: presto-hive-hadoop
-    container_name: rtdl_presto-hive-hadoop
-    expose:
-      - 8080
-      - 9083
-      
