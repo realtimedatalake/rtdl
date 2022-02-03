@@ -28,10 +28,11 @@ configured in your stream. rtdl can write files locally, to AWS S3, and to GCP C
     * **Note:** This configuration should be fault-tolerant, but if any containers or 
       processes fail when running this, run `docker compose -f docker-compose.init.yml down` 
       and retry.
-2.  After containers `rtdl_rtdl-db-init`, `rtdl_catalog-db-init`, and `rtdl_catalog-init` 
-    exit and complete with `EXITED (0)`, kill and delete the rtdl container set by running 
-    `docker compose -f docker-compose.init.yml down`
-3.  Run `docker compose up -d` every time after.
+2.  After the container `rtdl_rtdl-db-init` exits and completes with `EXITED (0)`, kill and 
+    delete the rtdl container set by running `docker compose -f docker-compose.init.yml down`.
+3.  Run `docker compose up -d` every time after.  
+    **Note:** Your memory setting in Docker must be at least 8GB. rtdl may become unstable if it is 
+    set lower.
     * `docker compose down` to stop.
 
 ### Interact with rtdl services and create a data lake
@@ -40,6 +41,29 @@ All API calls used to interact with rtdl have Postman examples in our [postman-r
     by following the [RudderStack docs for AWS S3](https://www.rudderstack.com/docs/destinations/storage-platforms/amazon-s3/) or the [Segment docs for Google Cloud Storage](https://segment.com/docs/connections/storage/catalog/google-cloud-storage/). 
     * For AWS S3 storage, you will need your bucket name, your AWS access key id, and your AWS
       secret access key.
+      * For your IAM setup, you can use the below policy:
+        ```
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+              "Sid": "PutObjectsInBucket",
+              "Effect": "Allow",
+              "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:PutObjectAcl",
+                "s3:DeleteObject",
+                "s3:ListBucket"
+              ],
+              "Resource": [
+                "arn:aws:s3:::[your-bucket-name]/",
+                "arn:aws:s3:::[your-bucket-name]/*"
+              ]
+            }
+          ]
+        }
+        ```
     * For GCP Cloud Storage, you will need your credentials in flattened json (remove all the 
       newlines).
 3.  Instrument your website with [analytics-next-cc] - our fork of [Segment's Analytics.js 2.0](https://segment.com/docs/connections/sources/catalog/libraries/website/javascript/) 
