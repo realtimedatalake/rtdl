@@ -189,13 +189,14 @@ services:
       RTDL_DB_USER: rtdl
       RTDL_DB_PASSWORD: rtdl
       RTDL_DB_DBNAME: rtdl_db
-      LOCAL_DATA_STORE: /C/Users/dipanjan/rtdl/storage/rtdl-data_store
       DREMIO_HOST: dremio
       DREMIO_PORT: 9047
       DREMIO_USERNAME: dipanjanb
       DREMIO_PASSWORD: ZAQ1234w!!
+      NFS_HOST: nfs
+    privileged: true #required for mounting NFS
     volumes:
-      - ./storage/rtdl-data_store:/app/datastore
+      - ./storage/rtdl-data_store:/app/datastore    
     depends_on:
       #catalog-db:
         #condition: service_healthy      
@@ -203,7 +204,9 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started
-      presto-hadoop-hive:
+      dremio:
+        condition: service_started
+      nfs:
         condition: service_started
         
         
@@ -221,6 +224,20 @@ services:
       - 9047:9047
       - 31010:31010
       - 45678:45678
+      
+
+
+  nfs:
+    image: erichough/nfs-server:2.2.1
+    container_name: rtdl_nfs
+    privileged: true
+    volumes:
+      - ./storage/rtdl-data_store:/mnt/nfsshare
+    environment:
+      NFS_EXPORT_0: /mnt/nfsshare        0.0.0.0/0(ro,async,subtree_check,insecure,fsid=11)
+    
+    ports:
+      - 2049:2049      
     
     
   ##### Processing Services - End #####

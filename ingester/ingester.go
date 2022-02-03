@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"reflect"
@@ -34,6 +35,7 @@ import (
 	"github.com/xitongsys/parquet-go/parquet"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
+	"syscall"
 	
 )
 
@@ -598,7 +600,14 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 		
 		switch sourceType {
 		case "Local":
-			sourceDef = []byte(`{"name": "` + desiredPath + `", "type": "NAS", "config": {"path": "` + location + `"}}`)
+			nfsServer, _ := net.LookupHost("host.docker.internal")
+			nfsMount := "/app/datastore/nfsmount"
+			err := syscall.Mount(":"+location, nfsMount, "nfs", 0, "nolock,addr="+nfsServer[0])
+			if err != nil {
+				log.Println("Unable to mount filesystem ", err)
+				return err
+			}			
+			sourceDef = []byte(`{"name": "` + desiredPath + `", "type": "NAS", "config": {"path": "file:///` + nfsMount + `"}}`)
 		case "S3":
 			sourceStringMultiLine := `{"name": "` + desiredPath + `"`
 			sourceStringMultiLine+= `, "type": "S3", "config": {"accessKey": "` + configRecord.AWSAcessKeyID.String + `"`
@@ -614,42 +623,42 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 			sourceStringMultiLine +=  `"}}`
 			sourceDef =[]byte(sourceStringMultiLine)
 
-			log.Println(sourceStringMultiLine)
-			dremioResponse, err1 = DremioReqRes("source", sourceDef)
-			
-			if err1 != nil {
-			
-				log.Println("Error creating Dremio source ", err1)
-				return err1
-			}
-			
-			log.Println(dremioResponse)
-
-
 		}
-	
-	}
-	
-	//next we have to create the dataset
-	
-	encodedId := "dremio%3A%2F"+desiredPath+"%2F"+messageType
-	datasetDefMultiLine := `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + desiredPath + `", "` + messageType + `"]`
-	
-	datasetDefMultiLine += `, "format": {"type": "Parquet"}`
-	datasetDefMultiLine += `, "type": "PHYSICAL_DATASET"`
-	datasetDefMultiLine += `}`
-	datasetDef := []byte(datasetDefMultiLine)
+		
+		log.Println(string(sourceDef))
+		dremioResponse, err1 = DremioReqRes("source", sourceDef)
+		
+		if err1 != nil {
+		
+			log.Println("Error creating Dremio source ", err1)
+			return err1
+		}
+		
+		log.Println(dremioResponse)
 
-	dremioResponse, err1 = DremioReqRes("catalog/"+encodedId, datasetDef)
-	log.Println(datasetDefMultiLine)
+		//next we have to create the dataset
 	
-	if err1 != nil {
-	
-		log.Println("Error creating Dremio dataset ", err1)
-		return err1
+		encodedId := "dremio%3A%2F"+desiredPath+"%2F"+messageType
+		datasetDefMultiLine := `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + desiredPath + `", "` + messageType + `"]`
+		
+		datasetDefMultiLine += `, "format": {"type": "Parquet"}`
+		datasetDefMultiLine += `, "type": "PHYSICAL_DATASET"`
+		datasetDefMultiLine += `}`
+		datasetDef := []byte(datasetDefMultiLine)
+
+		dremioResponse, err1 = DremioReqRes("catalog/"+encodedId, datasetDef)
+		log.Println(datasetDefMultiLine)
+		
+		if err1 != nil {
+		
+			log.Println("Error creating Dremio dataset ", err1)
+			return err1
+		}
+
+		log.Println(dremioResponse)
+
 	}
 
-	log.Println(dremioResponse)
 	return nil
 
 }
@@ -674,7 +683,7 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 		return err
 	}
 
-	location := os.Getenv("LOCAL_DATA_STORE") + "/" + path
+	location := os.Getenv("LOCAL_FS_MOUNT_PATH") + "/" + path
 	fileName := path + "/" + generateLeafLevelFileName()
 	
 	log.Println("Local path:", fileName)
@@ -1000,7 +1009,7 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 
 func main() {
 
-
+	//log.Println(net.LookupHost("host.docker.internal"))
 	// connection string
 	SetDBConnectionString()
 
