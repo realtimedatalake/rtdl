@@ -13,7 +13,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"reflect"
@@ -35,7 +34,6 @@ import (
 	"github.com/xitongsys/parquet-go/parquet"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
-	"syscall"
 	
 )
 
@@ -597,17 +595,10 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 	if !sourceExists {
 
 		log.Println("Source does not exist for message type, creating ...")
-		
+		dremioMountPath := GetEnv("DREMIO_MOUNT_PATH","/mnt/datastore")
 		switch sourceType {
 		case "Local":
-			nfsServer, _ := net.LookupHost("host.docker.internal")
-			nfsMount := "/app/datastore/nfsmount"
-			err := syscall.Mount(":"+location, nfsMount, "nfs", 0, "nolock,addr="+nfsServer[0])
-			if err != nil {
-				log.Println("Unable to mount filesystem ", err)
-				return err
-			}			
-			sourceDef = []byte(`{"name": "` + desiredPath + `", "type": "NAS", "config": {"path": "file:///` + nfsMount + `"}}`)
+			sourceDef = []byte(`{"name": "` + desiredPath + `", "type": "NAS", "config": {"path": "file:///` + dremioMountPath + `/` + configRecord.FolderName.String + `"}}`)
 		case "S3":
 			sourceStringMultiLine := `{"name": "` + desiredPath + `"`
 			sourceStringMultiLine+= `, "type": "S3", "config": {"accessKey": "` + configRecord.AWSAcessKeyID.String + `"`

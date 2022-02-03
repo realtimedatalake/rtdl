@@ -193,7 +193,7 @@ services:
       DREMIO_PORT: 9047
       DREMIO_USERNAME: dipanjanb
       DREMIO_PASSWORD: ZAQ1234w!!
-      NFS_HOST: nfs
+      DREMIO_MOUNT_PATH: /mnt/datastore
     privileged: true #required for mounting NFS
     volumes:
       - ./storage/rtdl-data_store:/app/datastore    
@@ -216,6 +216,8 @@ services:
     container_name: rtdl_dremio
     volumes:
       - ./storage/dremio/data:/opt/dremio/data
+      - ./storage/rtdl-data_store:/mnt/datastore    
+
     expose:
       - 9047
       - 31010
@@ -227,18 +229,6 @@ services:
       
 
 
-  nfs:
-    image: erichough/nfs-server:2.2.1
-    container_name: rtdl_nfs
-    privileged: true
-    volumes:
-      - ./storage/rtdl-data_store:/mnt/nfsshare
-    environment:
-      NFS_EXPORT_0: /mnt/nfsshare        0.0.0.0/0(ro,async,subtree_check,insecure,fsid=11)
-    
-    ports:
-      - 2049:2049      
-    
     
   ##### Processing Services - End #####
 
