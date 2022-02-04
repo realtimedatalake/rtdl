@@ -196,20 +196,12 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started
-<<<<<<< HEAD
       rtdl-dremio:
-        condition: service_healthy
-        
-        
-  rtdl-dremio:
-=======
-      dremio:
         condition: service_healthy
   ##### Processing Services - End #####
 
   ##### Dremio Services - Start #####
-  dremio:
->>>>>>> fe7f016fae8affd69dfff0406e2723a0a1362105
+  rtdl-dremio:
     platform: linux/amd64
     image: dremio/dremio-oss
     container_name: rtdl_dremio
@@ -225,13 +217,8 @@ services:
       - 31010:31010
       - 45678:45678
     healthcheck:
-<<<<<<< HEAD
-
-=======
         test: ["CMD", "curl", "-f", "http://dremio:9047/apiv2/server_status"]
         interval: 10s
         timeout: 5s
         retries: 24
   ##### Dremio Services - End #####
->>>>>>> fe7f016fae8affd69dfff0406e2723a0a1362105
-  
