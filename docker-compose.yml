@@ -134,7 +134,7 @@ services:
       - kafka-zookeeper
     restart: always
   ##### Kafka Services - End #####
-  
+
 
   ##### Processing Services - Start #####
   statefun-manager:
@@ -186,8 +186,10 @@ services:
       RTDL_DB_USER: rtdl
       RTDL_DB_PASSWORD: rtdl
       RTDL_DB_DBNAME: rtdl_db
-      DREMIO_HOST: rtdl-dremio
+      DREMIO_HOST: dremio
       DREMIO_PORT: 9047
+      DREMIO_USERNAME: rtdl
+      DREMIO_PASSWORD: rtdl1234
       DREMIO_MOUNT_PATH: /mnt/datastore
     volumes:
       - ./storage/rtdl-data_store:/app/datastore    
@@ -196,12 +198,13 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started
-      rtdl-dremio:
+      dremio:
         condition: service_healthy
   ##### Processing Services - End #####
 
+
   ##### Dremio Services - Start #####
-  rtdl-dremio:
+  dremio:
     platform: linux/amd64
     image: dremio/dremio-oss
     container_name: rtdl_dremio

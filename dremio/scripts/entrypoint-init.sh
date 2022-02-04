@@ -1,2 +1,2 @@
 #!/bin/sh
-curl 'http://rtdl-dremio:9047/apiv2/bootstrap/firstuser' -X PUT -H 'Authorization: _dremionull' -H 'Content-Type: application/json' --data-binary '{"userName":"rtdl","firstName":"RTDL","lastName":"User","email":"rtdl@rtdl.io","createdAt":1526186430755,"password":"rtdl1234"}'
+curl 'http://dremio:9047/apiv2/bootstrap/firstuser' -X PUT -H 'Authorization: _dremionull' -H 'Content-Type: application/json' --data-binary '{"userName":"rtdl","firstName":"RTDL","lastName":"User","email":"rtdl@rtdl.io","createdAt":1526186430755,"password":"rtdl1234"}'

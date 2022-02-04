@@ -28,7 +28,7 @@ configured in your stream. rtdl can write files locally, to AWS S3, and to GCP C
     * **Note:** This configuration should be fault-tolerant, but if any containers or 
       processes fail when running this, run `docker compose -f docker-compose.init.yml down` 
       and retry.
-2.  After the container `rtdl_rtdl-db-init` exits and completes with `EXITED (0)`, kill and 
+2.  After the containers `rtdl_rtdl-db-init` and `rtdl_dremio-init` exit and complete with `EXITED (0)`, kill and 
     delete the rtdl container set by running `docker compose -f docker-compose.init.yml down`.
 3.  Run `docker compose up -d` every time after.  
     **Note:** Your memory setting in Docker must be at least 8GB. rtdl may become unstable if it is 

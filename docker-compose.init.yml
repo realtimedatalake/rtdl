@@ -19,7 +19,7 @@ services:
   #       interval: 10s
   #       timeout: 5s
   #       retries: 12
-  
+
   # rtdl-db-init:
   #   platform: linux/amd64
   #   image: rtdl/psql-client:latest
@@ -57,7 +57,7 @@ services:
         interval: 10s
         timeout: 5s
         retries: 12
-  
+
   rtdl-db-init:
     platform: linux/amd64
     image: rtdl/psql-client:latest
@@ -78,4 +78,40 @@ services:
         condition: service_healthy
   ### For Postgres - End ###
   ##### Config Services - End #####
-<<<<<<< HEAD
+
+
+  ##### Dremio Services - Start #####
+  dremio:
+    platform: linux/amd64
+    image: dremio/dremio-oss
+    container_name: rtdl_dremio
+    volumes:
+      - ./storage/dremio/data:/opt/dremio/data
+      - ./storage/rtdl-data_store:/mnt/datastore 
+    expose:
+      - 9047
+      - 31010
+      - 45678
+    ports:
+      - 9047:9047
+      - 31010:31010
+      - 45678:45678
+    healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:9047/apiv2/server_status"]
+        interval: 10s
+        timeout: 5s
+        retries: 24
+
+  dremio-init:
+    platform: linux/amd64
+    image: curlimages/curl
+    container_name: rtdl_dremio-init
+    user: root
+    volumes:
+      - ./dremio/scripts/entrypoint-init.sh:/entrypoint.sh
+    entrypoint: 
+      sh -c "chmod +x /entrypoint.sh && sh /entrypoint.sh"
+    depends_on:
+      dremio:
+        condition: service_healthy
+  ##### Dremio Services - End #####
