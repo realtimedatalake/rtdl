@@ -16,6 +16,12 @@ services:
       - 9047:9047
       - 31010:31010
       - 45678:45678
+    healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:9047/apiv2/server_status"]
+        interval: 10s
+        timeout: 5s
+        retries: 24
+
       
   create-admin:
     platform: linux/amd64
@@ -28,4 +34,4 @@ services:
       sh -c "chmod +x /entrypoint.sh && sh /entrypoint.sh"
     depends_on:
       rtdl-dremio:
-        condition: service_started
+        condition: service_healthy

@@ -217,7 +217,7 @@ services:
       - 31010:31010
       - 45678:45678
     healthcheck:
-        test: ["CMD", "curl", "-f", "http://dremio:9047/apiv2/server_status"]
+        test: ["CMD", "curl", "-f", "http://localhost:9047/apiv2/server_status"]
         interval: 10s
         timeout: 5s
         retries: 24
