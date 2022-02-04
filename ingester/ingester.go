@@ -269,8 +269,8 @@ func DremioReqRes (endPoint string, data []byte) (map[string] interface {}, erro
 //connect to Dremio server and retrieve token for subsequent calls
 func SetDremioToken() error {
 
-	username := GetEnv("DREMIO_USERNAME", "dremio")
-	password := GetEnv("DREMIO_PASSWORD", "dremio123")
+	username := GetEnv("DREMIO_USERNAME", "rtdl")
+	password := GetEnv("DREMIO_PASSWORD", "rtdl1234")
 	
 	
 	loginData := []byte(`{"userName":"` + username + `", "password":"` + password + `"}`)

@@ -189,10 +189,8 @@ services:
       RTDL_DB_USER: rtdl
       RTDL_DB_PASSWORD: rtdl
       RTDL_DB_DBNAME: rtdl_db
-      DREMIO_HOST: dremio
+      DREMIO_HOST: rtdl-dremio
       DREMIO_PORT: 9047
-      DREMIO_USERNAME: dipanjanb
-      DREMIO_PASSWORD: ZAQ1234w!!
       DREMIO_MOUNT_PATH: /mnt/datastore
     privileged: true #required for mounting NFS
     volumes:
@@ -204,13 +202,11 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started
-      dremio:
-        condition: service_started
-      nfs:
-        condition: service_started
+      rtdl-dremio:
+        condition: service_healthy
         
         
-  dremio:
+  rtdl-dremio:
     platform: linux/amd64
     image: dremio/dremio-oss
     container_name: rtdl_dremio
@@ -226,6 +222,11 @@ services:
       - 9047:9047
       - 31010:31010
       - 45678:45678
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9047"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
       
 
 
