@@ -110,7 +110,7 @@ services:
     ports:
       - 2181:2181
     environment:
-      ALLOW_ANONYMOUS_LOGIN: yes
+      ALLOW_ANONYMOUS_LOGIN: "yes"
     restart: always
 
   kafka:
@@ -127,7 +127,7 @@ services:
       KAFKA_CREATE_TOPICS: "ingress:1:1"
       KAFKA_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      ALLOW_PLAINTEXT_LISTENER: yes
+      ALLOW_PLAINTEXT_LISTENER: "yes"
       KAFKA_LOG_RETENTION_MS: 1000
       KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 1500
     depends_on:

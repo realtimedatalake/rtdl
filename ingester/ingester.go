@@ -215,7 +215,7 @@ func DremioReqRes (endPoint string, data []byte) (map[string] interface {}, erro
 
 	url := "http://" + dremioHost + ":" + dremioPort + "/" + version + "/" + endPoint
 
-	if endPoint == "catalog" && data == nil { //Get request
+	if data == nil { //Get request
 		method = "GET"
 	} else {
 		method = "POST"
@@ -546,11 +546,12 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 
 	var sourceDef []byte
 	var sourceExists bool 
-	
+	var sourceId string
+	var datasetExists bool
 
-	desiredPath := messageType + "_" + sourceType //our source names will be <message type>_<source type>
-
-	dremioResponse, err1 := DremioReqRes("catalog",nil)
+	//desiredPath := messageType + "_" + sourceType //our source names will be <message type>_<source type>
+	sourceName := configRecord.StreamId.String
+	dremioResponse, err1 := DremioReqRes("source",nil)
 	
 	if err1 != nil {
 	
@@ -558,39 +559,63 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 		return err1
 	
 	}
-	
-	log.Println("Dremio catalog information retrieved")
+
+	log.Println("Dremio source information retrieved")
 	
 	//iterate through catalog and find if space already exists
 	
-	catalogEntries, ok1 := dremioResponse["data"].([] interface {})
+	sources, ok1 := dremioResponse["data"].([] interface {})
 	if !ok1 {
 	
-		return errors.New("error handling Dremio server response")
+		return errors.New("error handling Dremio server response during source retrieval")
 	}
 
 
-	for _, catalogEntry := range catalogEntries {
+	for _, source := range sources {
 	
-		entry, ok2 := catalogEntry.(map[string] interface {})
+		entry, ok2 := source.(map[string] interface {})
 		if !ok2 {
 		
-			return errors.New("error handling Dremio server response")
+			return errors.New("error handling Dremio server response during source retrieval")
 		}
 		
-		path, ok3 := entry["path"].([]interface{})
-		if !ok3 {
-		
-			return errors.New("error handling Dremio server response")
-		}
-		
-		if entry["containerType"] == "SOURCE" && path[0] == desiredPath{
-			
+		if entry["name"] == sourceName {
+
 			sourceExists = true
-		
-		}
-		
+
+			//ok, source exits - check if dataset exits
+			sourceId, _ = entry["id"].(string)
+			dremioResponse, _ = DremioReqRes("catalog/"+sourceId, nil)
+
+			children, ok3 := dremioResponse["children"].([] interface {})
+			if !ok3 {
+			
+				return errors.New("error handling Dremio server response during dataset retrieval ok3")
+			}
+
+			for _, childNode := range children {
+
+				child, _ := childNode.(map[string] interface{})
+
+				path, ok4 := child["path"].([] interface {}) 
+				if !ok4 {
+			
+					return errors.New("error handling Dremio server response during dataset retrieval ok4")
+				}
+
+				datasetName, _ := path[1].(string)
+				datasetType, _ := child["type"].(string)
+				if datasetName == messageType && datasetType == "DATASET" {
+
+					datasetExists = true
+					break
+				}
+			}
+			break
+		}		
 	}
+
+	
 	
 	if !sourceExists {
 
@@ -598,9 +623,9 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 		dremioMountPath := GetEnv("DREMIO_MOUNT_PATH","/mnt/datastore")
 		switch sourceType {
 		case "Local":
-			sourceDef = []byte(`{"name": "` + desiredPath + `", "type": "NAS", "config": {"path": "file:///` + dremioMountPath + `/` + configRecord.FolderName.String + `"}}`)
+			sourceDef = []byte(`{"name": "` + sourceName + `", "type": "NAS", "config": {"path": "file:///` + dremioMountPath + `/` + configRecord.FolderName.String + `"}}`)
 		case "S3":
-			sourceStringMultiLine := `{"name": "` + desiredPath + `"`
+			sourceStringMultiLine := `{"name": "` + sourceName + `"`
 			sourceStringMultiLine+= `, "type": "S3", "config": {"accessKey": "` + configRecord.AWSAcessKeyID.String + `"`
 			sourceStringMultiLine += `, "accessSecret": "` + configRecord.AWSSecretAcessKey.String + `"`
 			//sourceStringMultiLine += `, "externalBucketList": ["` + location + `"]`
@@ -616,7 +641,6 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 
 		}
 		
-		log.Println(string(sourceDef))
 		dremioResponse, err1 = DremioReqRes("source", sourceDef)
 		
 		if err1 != nil {
@@ -624,13 +648,18 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 			log.Println("Error creating Dremio source ", err1)
 			return err1
 		}
-		
-		log.Println(dremioResponse)
 
+	}
+
+
+	if !datasetExists {
+
+		
 		//next we have to create the dataset
-	
-		encodedId := "dremio%3A%2F"+desiredPath+"%2F"+messageType
-		datasetDefMultiLine := `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + desiredPath + `", "` + messageType + `"]`
+
+		encodedId := "dremio%3A%2F"+sourceName+"%2F"+messageType
+
+		datasetDefMultiLine := `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + sourceName + `", "` + messageType + `"]`
 		
 		datasetDefMultiLine += `, "format": {"type": "Parquet"}`
 		datasetDefMultiLine += `, "type": "PHYSICAL_DATASET"`
@@ -638,7 +667,6 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 		datasetDef := []byte(datasetDefMultiLine)
 
 		dremioResponse, err1 = DremioReqRes("catalog/"+encodedId, datasetDef)
-		log.Println(datasetDefMultiLine)
 		
 		if err1 != nil {
 		
@@ -646,10 +674,9 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 			return err1
 		}
 
-		log.Println(dremioResponse)
 
 	}
-
+	
 	return nil
 
 }
