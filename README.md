@@ -1,4 +1,5 @@
 # rtdl - The Real-Time Data Lake ⚡️
+<img src="./public/logos/rtdl-logo.png" ali height="250px" width="250px"></img>  
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSES)  
 rtdl makes it easy to build and maintain a real-time data lake. You configure a data stream 
 with a source (from a tool like Segment) and a cloud storage destination, and rtdl builds you 
