@@ -2,9 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="210mm"
-   height="297mm"
-   viewBox="0 0 210 297"
+   width="152.39999mm"
+   height="152.39999mm"
+   viewBox="0 0 152.39999 152.39999"
    version="1.1"
    id="svg5"
    xmlns="http://www.w3.org/2000/svg"
@@ -12,9 +12,11 @@
   <defs
      id="defs2" />
   <g
-     id="layer1" />
+     id="layer1"
+     transform="translate(-28.672432,-72.300003)" />
   <g
-     id="layer2">
+     id="layer2"
+     transform="translate(-28.672432,-72.300003)">
     <text
        xml:space="preserve"
        style="font-size:10.5833px;line-height:1.25;font-family:'Apple Color Emoji';-inkscape-font-specification:'Apple Color Emoji';stroke-width:0.264583"
@@ -37,10 +39,12 @@
          y="28.0368" /></text>
   </g>
   <g
-     id="layer3" />
+     id="layer3"
+     transform="translate(-28.672432,-72.300003)" />
   <g
      id="layer4"
-     style="display:inline">
+     style="display:inline"
+     transform="translate(-28.672432,-72.300003)">
     <g
        id="g111">
       <circle

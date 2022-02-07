@@ -2,12 +2,12 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="210mm"
-   height="297mm"
-   viewBox="0 0 210 297"
+   width="152.39999mm"
+   height="152.39999mm"
+   viewBox="0 0 152.39999 152.39999"
    version="1.1"
    id="svg5"
-   sodipodi:docname="rtdl-logo.svg"
+   sodipodi:docname="rtdl-logo-inkscape.svg"
    inkscape:version="1.1.1 (c3084ef, 2021-09-22)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -24,12 +24,12 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="0.55678311"
-     inkscape:cx="129.31427"
-     inkscape:cy="561.25984"
+     inkscape:cx="22.450394"
+     inkscape:cy="288.26305"
      inkscape:window-width="1375"
      inkscape:window-height="847"
      inkscape:window-x="1653"
-     inkscape:window-y="58"
+     inkscape:window-y="30"
      inkscape:window-maximized="0"
      inkscape:current-layer="layer4" />
   <defs
@@ -37,11 +37,13 @@
   <g
      inkscape:label="background-light-blue"
      inkscape:groupmode="layer"
-     id="layer1" />
+     id="layer1"
+     transform="translate(-28.672432,-72.300003)" />
   <g
      inkscape:groupmode="layer"
      id="layer2"
-     inkscape:label="wave-mid-blue">
+     inkscape:label="wave-mid-blue"
+     transform="translate(-28.672432,-72.300003)">
     <text
        xml:space="preserve"
        style="font-size:10.5833px;line-height:1.25;font-family:'Apple Color Emoji';-inkscape-font-specification:'Apple Color Emoji';stroke-width:0.264583"
@@ -68,12 +70,14 @@
   <g
      inkscape:groupmode="layer"
      id="layer3"
-     inkscape:label="wave-dark-blue" />
+     inkscape:label="wave-dark-blue"
+     transform="translate(-28.672432,-72.300003)" />
   <g
      inkscape:groupmode="layer"
      id="layer4"
      inkscape:label="lightning"
-     style="display:inline">
+     style="display:inline"
+     transform="translate(-28.672432,-72.300003)">
     <g
        id="g111">
       <circle
