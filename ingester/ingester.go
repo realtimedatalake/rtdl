@@ -123,6 +123,22 @@ var (
 	IncomingMessageType = statefun.MakeJsonType(statefun.TypeNameFrom("com.rtdl.sf/IncomingMessage"))
 )
 
+//GCP config structure
+type GCPCredentials struct {
+
+	accountType	string	`json:"type"`
+	projectId	string	`json:"project_id"`
+	privateKeyId	string	`json:"private_key_id"`	
+	privateKey	string	`json:"private_key"`
+	clientEmail	string	`json:"client_email"`
+	clientId	string	`json:"client_id"`
+	authUri		string	`json:"auth_uri"`
+	tokenUri	string	`json:"token_uri"`
+	authProviderX509CertUrl	string `json:"auth_provider_x509_cert_url"`
+	clientX509CertUrl	string	`json:"client_x509_cert_url"`
+
+}
+
 
 // GetEnv get key environment variable if exist otherwise return defalutValue
 func GetEnv(key, defaultValue string) string {
@@ -621,11 +637,15 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 
 		log.Println("Source does not exist for message type, creating ...")
 		dremioMountPath := GetEnv("DREMIO_MOUNT_PATH","/mnt/datastore")
+		
+		sourceStringMultiLine := `{"name": "` + sourceName + `"`	
 		switch sourceType {
+		
 		case "Local":
-			sourceDef = []byte(`{"name": "` + sourceName + `", "type": "NAS", "config": {"path": "file:///` + dremioMountPath + `/` + configRecord.FolderName.String + `"}}`)
+			sourceStringMultiLine += `, "type": "NAS", "config": {"path": "file:///` + dremioMountPath + `/` + configRecord.FolderName.String 
+			
 		case "S3":
-			sourceStringMultiLine := `{"name": "` + sourceName + `"`
+			
 			sourceStringMultiLine+= `, "type": "S3", "config": {"accessKey": "` + configRecord.AWSAcessKeyID.String + `"`
 			sourceStringMultiLine += `, "accessSecret": "` + configRecord.AWSSecretAcessKey.String + `"`
 			//sourceStringMultiLine += `, "externalBucketList": ["` + location + `"]`
@@ -635,19 +655,43 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 				
 			}
 			
-			//sourceStringMultiLine += messageType + `/"}}`
-			sourceStringMultiLine +=  `"}}`
-			sourceDef =[]byte(sourceStringMultiLine)
-
+		case "GCS":
+			var gcpCreds GCPCredentials
+			//need to extract all variable values from GCP crendentials file
+			log.Println(configRecord.GCPJsonCredentials.String)
+			err := json.Unmarshal([]byte(configRecord.GCPJsonCredentials.String), &gcpCreds)
+			log.Println(gcpCreds)
+			if err != nil {
+				log.Println("Error reading GCP credentials from configuration record", err)
+				return err
+			}
+			sourceStringMultiLine += `, "type":"GCS", "config": {"projectId": "` + gcpCreds.projectId + `"`
+			sourceStringMultiLine += `, "authMode": "SERVICE_ACCOUNT_KEYS", "clientEmail": "` + gcpCreds.clientEmail + `"`
+			sourceStringMultiLine += `, "clientId": "` + gcpCreds.clientId + `", "privateKeyId": "` + gcpCreds.privateKeyId + `"`
+			sourceStringMultiLine += `, "privateKey": "` + gcpCreds.privateKey + `"`
+			sourceStringMultiLine += `, "rootPath": "/` + location + `/`
+			if configRecord.FolderName.String != "" {
+				sourceStringMultiLine += configRecord.FolderName.String + `/` 
+				
+			}
 		}
 		
+		sourceStringMultiLine += `"}}`
+		
+		log.Println(sourceStringMultiLine)
+		
+		
+		sourceDef = []byte(sourceStringMultiLine)
+		
 		dremioResponse, err1 = DremioReqRes("source", sourceDef)
+		
 		
 		if err1 != nil {
 		
 			log.Println("Error creating Dremio source ", err1)
 			return err1
 		}
+		log.Println(dremioResponse)
 
 	}
 
@@ -673,6 +717,7 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 			log.Println("Error creating Dremio dataset ", err1)
 			return err1
 		}
+		log.Println(dremioResponse)
 
 
 	}
@@ -824,9 +869,11 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 	subFolderName := generateSubFolderName(messageType, configRecord)
 	leafLevelFileName := generateLeafLevelFileName()
 
+	
+	
 	//replace all \n	with \\n to preserve them
 	jsonCreds := strings.Replace(configRecord.GCPJsonCredentials.String, "\n", "\\n", -1)
-	//jsonCreds := configRecord.GCPJsonCredentials.String
+	
 
 	//create client
 	ctx := context.Background()
@@ -891,8 +938,8 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 
 
 	log.Println("Finished uploading file to GCS")
-	//return UpdateDremio(messageType,"GCS","gs://"+bucketName+"/"+location)
-	return nil
+	return UpdateDremio(messageType,"GCS",bucketName, configRecord)
+	
 }
 
 //Parquet writing logic

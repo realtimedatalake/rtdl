@@ -59,8 +59,8 @@ services:
   ### For Postgres - End ###
 
   config:
-    # build:
-    #   context: ./config
+    build:
+      context: ./config
     platform: linux/amd64
     image: rtdl/rtdl-config:latest
     container_name: rtdl_config
