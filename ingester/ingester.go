@@ -656,20 +656,25 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 			}
 			
 		case "GCS":
-			var gcpCreds GCPCredentials
+			var gcpCreds map[string] interface {}
 			//need to extract all variable values from GCP crendentials file
-			log.Println(configRecord.GCPJsonCredentials.String)
+			
 			err := json.Unmarshal([]byte(configRecord.GCPJsonCredentials.String), &gcpCreds)
-			log.Println(gcpCreds)
 			if err != nil {
 				log.Println("Error reading GCP credentials from configuration record", err)
 				return err
 			}
-			sourceStringMultiLine += `, "type":"GCS", "config": {"projectId": "` + gcpCreds.projectId + `"`
-			sourceStringMultiLine += `, "authMode": "SERVICE_ACCOUNT_KEYS", "clientEmail": "` + gcpCreds.clientEmail + `"`
-			sourceStringMultiLine += `, "clientId": "` + gcpCreds.clientId + `", "privateKeyId": "` + gcpCreds.privateKeyId + `"`
-			sourceStringMultiLine += `, "privateKey": "` + gcpCreds.privateKey + `"`
-			sourceStringMultiLine += `, "rootPath": "/` + location + `/`
+			
+			projectId := gcpCreds["project_id"].(string)
+			clientEmail := gcpCreds["client_email"].(string)
+			clientId := gcpCreds["client_id"].(string)
+			privateKeyId := gcpCreds["private_key_id"].(string)
+			privateKey := strings.Replace(gcpCreds["private_key"].(string),"\n","\\n",-1)
+			sourceStringMultiLine+= `, "type":"GCS", "config": {"projectId": "` + projectId  + `"`
+			sourceStringMultiLine+= `, "authMode": "SERVICE_ACCOUNT_KEYS", "clientEmail": "` + clientEmail + `"`
+			sourceStringMultiLine+= `, "clientId": "` + clientId + `", "privateKeyId": "` + privateKeyId + `"`
+			sourceStringMultiLine+= `, "privateKey": "` + privateKey + `"`
+			sourceStringMultiLine+= `, "rootPath": "/` + location + `/`
 			if configRecord.FolderName.String != "" {
 				sourceStringMultiLine += configRecord.FolderName.String + `/` 
 				
@@ -678,7 +683,6 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 		
 		sourceStringMultiLine += `"}}`
 		
-		log.Println(sourceStringMultiLine)
 		
 		
 		sourceDef = []byte(sourceStringMultiLine)
@@ -691,7 +695,6 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 			log.Println("Error creating Dremio source ", err1)
 			return err1
 		}
-		log.Println(dremioResponse)
 
 	}
 
@@ -717,8 +720,6 @@ func UpdateDremio (messageType string, sourceType string, location string, confi
 			log.Println("Error creating Dremio dataset ", err1)
 			return err1
 		}
-		log.Println(dremioResponse)
-
 
 	}
 	
