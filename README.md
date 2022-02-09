@@ -3,25 +3,33 @@
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSES)  
 rtdl makes it easy to build and maintain a real-time data lake. You configure a data stream 
 with a source (from a tool like Segment) and a cloud storage destination, and rtdl builds you 
-a real-time data lake in Parquet format cataloged in Apache Hive Metastore – so you can access 
-your real-time data with common BI and ML tools. You provide the streams, rtdl builds your lake.
+a real-time data lake in Parquet format that automatically works with [Dremio](https://www.dremio.com/) 
+to give you access your real-time data in common BI and ML tools – just like a data warehouse.  
+  
+You provide the streams, rtdl builds your data lake.
 
 
-## V0.0.1 - Current status -- what works and what doesn't
+## V0.0.2 - Current status -- what works and what doesn't
 
 ### What works? 🚀
-rtdl is not full-featured yet, but it is currently functional. You can configure streams that 
-ingest json from an rtdl endpoint, process them into Parquet, and save the files to a destination 
-configured in your stream. rtdl can write files locally, to AWS S3, and to GCP Cloud Storage.
+rtdl is not full-featured yet, but it is currently functional. You can use the API on port 80 to 
+configure streams that ingest json from an rtdl endpoint on port 8080, process them into Parquet, 
+and save the files to a destination configured in your stream. rtdl can write files locally, to 
+AWS S3, and to GCP Cloud Storage, and you can query your data with Dremio on port 9047 (login with 
+Username: `rtdl` and Password `rtdl1234`).
+
+### What's new? 💥
+  * Switched from Apache Hive Metastore + Presto to Dremio.
+  * Added support for using a flattened JSON object as value for `gcp_json_credentials` field in the 
+    `createStream` API call. Previously, you had to double-quote everything and flatten.
+  * Added CONTRIBUTING.md and decided to use a DCO over a CLA - tl;dr use -s when you commit, like 
+    `git commit -s -m "..."`
+
 
 ### What doesn't work/what's next on the roadmap? 🚴🏼
-  * Add CONTRIBUTING.md and a contributor license agreement
-  * Cataloging data in Hive Metastore
-    * This will let you use your data with a much broader range of data tools.
-  * Adding Presto to the stack
-    * This will make connecting into a whole ecosystem of analytics, BI, and data science tools 
-    much easier
-  * Adding support for Azure Blob Storage
+  * Add Dremio support for multiple data lakes (only supports the first data lake you send data to now)
+  * Add support for Azure Blob Storage
+  * Add support for Segment Webhooks as a source
   * Add support for more compressions - currently default Snappy compression is supported
 
 
@@ -217,22 +225,22 @@ Standard Kafka services. Creates data streams that can be read by a Stateful Fun
 ### process services
 Apache Flink [Stateful Functions](https://flink.apache.org/stateful-functions.html) cluster in a standard 
 configuration – a job manager service with paired task manager and stateful function services.
-  * statefun-manager - Apache Flink Stateful Functions manager service
+  * statefun-manager - Apache Flink Stateful Functions manager service  
+    **Public Port:** 8081  
   * statefun-worker - Apache Flink Stateful Functions task manager service
   * statefun-functions - Apache Flink Stateful function written in Go named `ingester`. Reads JSON 
     payloads posted to Kafka, processes and stores the data in Parque format based on the configuration 
-    in the associated streams record.
-    * **Environment Variables:** RTDL_DB_HOST, RTDL_DB_USER, RTDL_DB_PASSWORD, RTDL_DB_DBNAME
+    in the associated streams record.  
+    **Public Port:** 8082  
+    **Environment Variables:** RTDL_DB_HOST, RTDL_DB_USER, RTDL_DB_PASSWORD, RTDL_DB_DBNAME, DREMIO_HOST, 
+    DREMIO_PORT, DREMIO_USERNAME, DREMIO_PASSWORD, DREMIO_MOUNT_PATH
 
-### catalog services
-Apache Hive Standalone Metastore containerized and backed by a PostgreSQL-compatible database.
-  * catalog - Apache Hive Standalone Metastore service built from the most recent release of the 
-    [Hive Standalone Metastore on Maven](https://repo1.maven.org/maven2/org/apache/hive/hive-standalone-metastore/).
-  * catalog-db - YugabyteDB or PostgreSQL (both configurations included in the docker compose files). This 
-    service stores all of the data required by Apache Hive Standalone Metastore.
-    * **Database Name:** rtdl_catalog_db
-    * **Username:** rtdl
-    * **Password:** rtdl
+
+### dremio service
+Standard Dremio service. Dremio makes the data in your data lake accessible in real-time. Dremio makes it easy 
+to discover, curate, accelerate, and share data. Use port 9047 to access Dremio's UI and query your data.
+**Public Ports:** 9047, 31010, 45678  
+  * dremio - Dremio's [dremio-oss](https://github.com/dremio/dremio-oss) service
 
 
 ## License 🤝
