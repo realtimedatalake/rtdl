@@ -19,7 +19,7 @@ services:
   #       interval: 10s
   #       timeout: 5s
   #       retries: 12
-  
+
   # rtdl-db-init:
   #   platform: linux/amd64
   #   image: rtdl/psql-client:latest
@@ -57,7 +57,7 @@ services:
         interval: 10s
         timeout: 5s
         retries: 12
-  
+
   rtdl-db-init:
     platform: linux/amd64
     image: rtdl/psql-client:latest
@@ -80,117 +80,38 @@ services:
   ##### Config Services - End #####
 
 
-  ##### Catalog Services - Start #####
-  ### For YBDB - Start ###
-  # catalog-db:
-  #   platform: linux/amd64
-  #   image: yugabytedb/yugabyte:latest
-  #   container_name: rtdl_catalog-db
-  #   volumes:
-  #     - ./storage/rtdl-catalog-db_data:/home/yugabyte/yb_data
-  #   command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
-  #   expose:
-  #     - 5433
-  #   ports:
-  #     - 5433:5433
-  #   healthcheck:
-  #       test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
-  #       interval: 10s
-  #       timeout: 5s
-  #       retries: 12
-  
-  # catalog-db-init:
-  #   platform: linux/amd64
-  #   image: rtdl/psql-client:latest
-  #   container_name: rtdl_catalog-db-init
-  #   volumes:
-  #     - ./catalog/scripts/create-user-db.postgres.sql:/create-user-db.postgres.sql
-  #   entrypoint: psql -h catalog-db -p 5433 -U yugabyte -f /create-user-db.postgres.sql
-  #   deploy:
-  #     restart_policy:
-  #       condition: on-failure
-  #       delay: 5s
-  #       max_attempts: 5
-  #       window: 10s
-  #   depends_on:
-  #     catalog-db:
-  #       condition: service_healthy
-
-  # catalog:
-  #   platform: linux/amd64
-  #   image: rtdl/hive-metastore:latest
-  #   container_name: rtdl_catalog-init
-  #   expose:
-  #     - 9083
-  #   ports:
-  #     - 9083:9083
-  #   volumes:
-  #     - ./catalog/scripts/entrypoint-init.sh:/entrypoint.sh
-  #     - ./catalog/conf/metastore-site.ybdb.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
-  #   entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
-  #   depends_on:
-  #     catalog-db:
-  #       condition: service_healthy
-  #     catalog-db-init:
-  #       condition: service_completed_successfully
-  ### For YBDB - End ###
-
-  ### For Postgres - Start ###
-  catalog-db:
+  ##### Dremio Services - Start #####
+  dremio:
     platform: linux/amd64
-    image: postgres:latest
-    container_name: rtdl_catalog-db
+    image: dremio/dremio-oss
+    container_name: rtdl_dremio
     volumes:
-      - ./storage/rtdl-catalog-db_data:/var/lib/postgresql/data
+      - ./storage/dremio/data:/opt/dremio/data
+      - ./storage/rtdl-data_store:/mnt/datastore 
     expose:
-      - 5432
+      - 9047
+      - 31010
+      - 45678
     ports:
-      - 5432:5432
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      - 9047:9047
+      - 31010:31010
+      - 45678:45678
     healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        test: ["CMD", "curl", "-f", "http://localhost:9047/apiv2/server_status"]
         interval: 10s
         timeout: 5s
-        retries: 12
-  
-  catalog-db-init:
+        retries: 24
+
+  dremio-init:
     platform: linux/amd64
-    image: rtdl/psql-client:latest
-    container_name: rtdl_catalog-db-init
-    volumes:
-      - ./catalog/scripts/create-user-db.postgres.sql:/create-user-db.postgres.sql
-    entrypoint: psql -h catalog-db -p 5432 -U postgres -f /create-user-db.postgres.sql
-    environment:
-      PGPASSWORD: postgres
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 5
-        window: 10s
-    depends_on:
-      catalog-db:
-        condition: service_healthy
-  
-  catalog:
-    platform: linux/amd64
-    image: rtdl/hive-metastore:latest
-    container_name: rtdl_catalog-init
-    expose:
-      - 9083
-    ports:
-      - 9083:9083
-    volumes:
-      - ./catalog/scripts/entrypoint-init.sh:/entrypoint.sh
-      - ./catalog/conf/metastore-site.postgres.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
+    image: curlimages/curl
+    container_name: rtdl_dremio-init
     user: root
-    entrypoint: bash -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && bash -c /entrypoint.sh"
+    volumes:
+      - ./dremio/scripts/entrypoint-init.sh:/entrypoint.sh
+    entrypoint: 
+      sh -c "chmod +x /entrypoint.sh && sh /entrypoint.sh"
     depends_on:
-      catalog-db:
+      dremio:
         condition: service_healthy
-      catalog-db-init:
-        condition: service_completed_successfully
-  ### For Postgres - End ###
-  ##### Catalog Services - End #####
+  ##### Dremio Services - End #####

@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
-
+	//"strings"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	
 )
 
 // default database connection settings
@@ -43,6 +43,25 @@ type compressionType struct {
 	CompressionTypeName string `db:"compression_type_name" json:"compression_type_name,omitempty"`
 }
 
+/*
+//GCP config structure
+type GCPCredentials struct {
+
+	accountType	string	`json:"type"`
+	projectId	string	`json:"project_id"`
+	privateKeyId	string	`json:"private_key_id"`	
+	privateKey	string	`json:"private_key"`
+	clientEmail	string	`json:"client_email"`
+	clientId	string	`json:"client_id"`
+	authUri		string	`json:"auth_uri"`
+	tokenUri	string	`json:"token_uri"`
+	authProviderX509CertUrl	string `json:"auth_provider_x509_cert_url"`
+	clientX509CertUrl	string	`json:"client_x509_cert_url"`
+
+}
+*/
+
+
 type stream_json struct {
 	StreamID           string                 `db:"stream_id" json:"stream_id,omitempty"`
 	StreamAltID        string                 `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
@@ -56,7 +75,7 @@ type stream_json struct {
 	CompressionTypeID  int                    `db:"compression_type_id" json:"compression_type_id,omitempty"`
 	AWSAcessKeyID      string                 `db:"aws_access_key_id" json:"aws_access_key_id,omitempty"`
 	AWSSecretAcessKey  string                 `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
-	GCPJsonCredentials map[string]interface{} `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
+	GCPJsonCredentials map[string] interface{} `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
 }
 
 type stream_sql struct {
@@ -74,6 +93,10 @@ type stream_sql struct {
 	AWSSecretAcessKey  sql.NullString `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
 	GCPJsonCredentials sql.NullString `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
 }
+
+
+
+
 
 //	FUNCTION
 // 	main
@@ -228,6 +251,10 @@ func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			if err != nil {
 				CheckError(err)
 			}
+			
+			log.Println(reqStream.GCPJsonCredentials)
+			
+			
 
 			// Send to database function
 			retStreams := []stream_sql{}
@@ -640,7 +667,10 @@ func buildQueryString_createStream(reqStream stream_json) (queryStr string) {
 		queryStr = queryStr + "NULL, "
 	}
 	if reqStream.GCPJsonCredentials != nil {
-		queryStr = queryStr + "'" + strings.Replace(strings.Replace(fmt.Sprintf("%v", reqStream.GCPJsonCredentials), "map[", "{", 1), "]", "}", 1) + "')"
+		gcpCredsJson, _ := json.Marshal(reqStream.GCPJsonCredentials)
+		log.Println(string(gcpCredsJson))
+		//queryStr = queryStr + "'" + strings.Replace(strings.Replace(fmt.Sprintf("%v", reqStream.GCPJsonCredentials), "map[", "{", 1), "]", "}", 1) + "')"
+		queryStr = queryStr + "'" + string(gcpCredsJson) + "')"
 	} else {
 		queryStr = queryStr + "NULL)"
 	}
@@ -714,7 +744,10 @@ func buildQueryString_updateStream(reqStream stream_json) (queryStr string) {
 		queryStr = queryStr + "NULL, "
 	}
 	if reqStream.GCPJsonCredentials != nil {
-		queryStr = queryStr + "'" + strings.Replace(strings.Replace(fmt.Sprintf("%v", reqStream.GCPJsonCredentials), "map[", "{", 1), "]", "}", 1) + "')"
+		gcpCredsJson, _ := json.Marshal(reqStream.GCPJsonCredentials)
+		log.Println(string(gcpCredsJson))
+		//queryStr = queryStr + "'" + strings.Replace(strings.Replace(fmt.Sprintf("%v", reqStream.GCPJsonCredentials), "map[", "{", 1), "]", "}", 1) + "')"
+		queryStr = queryStr + "'" + string(gcpCredsJson) + "')"
 	} else {
 		queryStr = queryStr + "NULL)"
 	}

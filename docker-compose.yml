@@ -94,6 +94,7 @@ services:
     environment:
       KAFKA_URL: kafka:9092
       KAFKA_TOPIC: ingress
+      LISTENER_PORT: 8080
     depends_on:      
       - kafka
   ##### Ingest Service - End #####
@@ -102,7 +103,6 @@ services:
   ##### Kafka Services - Start #####
   kafka-zookeeper:
     platform: linux/amd64
-    #image: wurstmeister/zookeeper:3.4.6
     image: bitnami/zookeeper:latest
     container_name: rtdl_kafka-zookeeper
     expose:
@@ -110,12 +110,11 @@ services:
     ports:
       - 2181:2181
     environment:
-      ALLOW_ANONYMOUS_LOGIN: yes
+      ALLOW_ANONYMOUS_LOGIN: "yes"
     restart: always
 
   kafka:
     platform: linux/amd64
-    #image: wurstmeister/kafka:2.12-2.3.0
     image: bitnami/kafka:latest
     container_name: rtdl_kafka
     expose:
@@ -127,14 +126,14 @@ services:
       KAFKA_CREATE_TOPICS: "ingress:1:1"
       KAFKA_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      ALLOW_PLAINTEXT_LISTENER: yes
+      ALLOW_PLAINTEXT_LISTENER: "yes"
       KAFKA_LOG_RETENTION_MS: 1000
       KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 1500
     depends_on:
       - kafka-zookeeper
     restart: always
   ##### Kafka Services - End #####
-  
+
 
   ##### Processing Services - Start #####
   statefun-manager:
@@ -151,7 +150,6 @@ services:
       MASTER_HOST: statefun-manager
     volumes:
       - ./storage/rtdl-statefun-manager_store:/checkpoint-dir
-      #- ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
       - ./ingester/module.yaml:/opt/statefun/modules/ingester/module.yaml
     depends_on:
       - ingest
@@ -168,15 +166,14 @@ services:
       MASTER_HOST: statefun-manager
     volumes:
       - ./storage/rtdl-statefun-worker_store:/checkpoint-dir
-      #- ./process/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar:/opt/flink/lib/flink-sql-connector-hive-3.1.2_2.12-1.14.2.jar
       - ./ingester/module.yaml:/opt/statefun/modules/ingester/module.yaml
     depends_on:
       - statefun-manager
       - kafka
 
   statefun-functions:
-    build:
-        context: ./ingester
+    # build:
+    #     context: ./ingester
     platform: linux/amd64
     image: rtdl/process-statefun-functions:latest
     container_name: rtdl_process-statefun-functions
@@ -188,93 +185,42 @@ services:
       RTDL_DB_USER: rtdl
       RTDL_DB_PASSWORD: rtdl
       RTDL_DB_DBNAME: rtdl_db
+      DREMIO_HOST: dremio
+      DREMIO_PORT: 9047
+      DREMIO_USERNAME: rtdl
+      DREMIO_PASSWORD: rtdl1234
+      DREMIO_MOUNT_PATH: /mnt/datastore
     volumes:
-      - ./storage/rtdl-data_store:/app/datastore
-    depends_on:
-      catalog-db:
-        condition: service_healthy      
+      - ./storage/rtdl-data_store:/app/datastore    
+    depends_on:     
       rtdl-db:
         condition: service_healthy
       kafka:
         condition: service_started
-      catalog:
-        condition: service_started
+      dremio:
+        condition: service_healthy
   ##### Processing Services - End #####
 
 
-  ##### Catalog Services - Start #####
-  ### For YBDB - Start ###
-  # catalog-db:
-  #   platform: linux/amd64
-  #   image: yugabytedb/yugabyte:latest
-  #   container_name: rtdl_catalog-db
-  #   volumes:
-  #     - ./storage/rtdl-catalog-db_data:/home/yugabyte/yb_data
-  #   command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
-  #   expose:
-  #     - 5433
-  #   # ports:
-  #   #   - 5433:5432
-  #   ports:
-  #     - 5433:5433
-  #   healthcheck:
-  #       test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
-  #       interval: 10s
-  #       timeout: 5s
-  #       retries: 12
-
-  # catalog:
-  #   platform: linux/amd64
-  #   image: rtdl/hive-metastore:latest
-  #   container_name: rtdl_catalog
-  #   expose:
-  #     - 9083
-  #   ports:
-  #     - 9083:9083
-  #   volumes:
-  #     - ./catalog/scripts/entrypoint-run.sh:/entrypoint.sh
-  #     - ./catalog/conf/metastore-site.ybdb.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
-  #   entrypoint: sh -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && sh -c /entrypoint.sh"
-  #   depends_on:
-  #     catalog-db:
-  #       condition: service_healthy
-  ### For YBDB - End ###
-
-  ### For Postgres - Start ###
-  catalog-db:
+  ##### Dremio Services - Start #####
+  dremio:
     platform: linux/amd64
-    image: postgres:latest
-    container_name: rtdl_catalog-db
+    image: dremio/dremio-oss
+    container_name: rtdl_dremio
     volumes:
-      - ./storage/rtdl-catalog-db_data:/var/lib/postgresql/data
+      - ./storage/dremio/data:/opt/dremio/data
+      - ./storage/rtdl-data_store:/mnt/datastore    
     expose:
-      - 5432
-    # ports:
-    #   - 5432:5432
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      - 9047
+      - 31010
+      - 45678
+    ports:
+      - 9047:9047
+      - 31010:31010
+      - 45678:45678
     healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        test: ["CMD", "curl", "-f", "http://localhost:9047/apiv2/server_status"]
         interval: 10s
         timeout: 5s
-        retries: 12
-
-  catalog:
-    platform: linux/amd64
-    image: rtdl/hive-metastore:latest
-    container_name: rtdl_catalog
-    expose:
-      - 9083
-    ports:
-      - 9083:9083
-    volumes:
-      - ./catalog/scripts/entrypoint-run.sh:/entrypoint.sh
-      - ./catalog/conf/metastore-site.postgres.xml:/opt/apache-hive-metastore-3.1.2-bin/conf/metastore-site.xml
-    user: root
-    command: bash -c "chown hive:hive /entrypoint.sh && chmod +x /entrypoint.sh && bash -c /entrypoint.sh"
-    depends_on:
-      catalog-db:
-        condition: service_healthy
-  ### For Postgres - End ###
-  ##### Catalog Services - End #####
+        retries: 24
+  ##### Dremio Services - End #####
