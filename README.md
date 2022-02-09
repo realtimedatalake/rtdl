@@ -27,7 +27,7 @@ Username: `rtdl` and Password `rtdl1234`).
 
 
 ### What doesn't work/what's next on the roadmap? 🚴🏼
-  * Add Dremio support for multiple data lakes (only supports the first data lake you send data to now)
+  * Add Dremio support for cloud data lakes (only supports a local data lake right now)
   * Add support for Azure Blob Storage
   * Add support for Segment Webhooks as a source
   * Add support for more compressions - currently default Snappy compression is supported
