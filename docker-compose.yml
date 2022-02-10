@@ -59,8 +59,8 @@ services:
   ### For Postgres - End ###
 
   config:
-    # build:
-    #   context: ./config
+    build:
+       context: ./config
     platform: linux/amd64
     image: rtdl/rtdl-config:latest
     container_name: rtdl_config
@@ -172,8 +172,8 @@ services:
       - kafka
 
   statefun-functions:
-    # build:
-    #     context: ./ingester
+    build:
+      context: ./ingester
     platform: linux/amd64
     image: rtdl/process-statefun-functions:latest
     container_name: rtdl_process-statefun-functions
