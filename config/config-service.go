@@ -76,6 +76,8 @@ type stream_json struct {
 	AWSAcessKeyID      string                 `db:"aws_access_key_id" json:"aws_access_key_id,omitempty"`
 	AWSSecretAcessKey  string                 `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
 	GCPJsonCredentials map[string] interface{} `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
+	AzureStorageAccountname	string			  `db:"azure_storage_account_name" json:"azure_storage_account_name, omitempty"`
+	AzureStorageAccessKey	string			  `db:"azure_storage_access_key" json:"azure_storage_access_key, omitempty"`
 }
 
 type stream_sql struct {
@@ -92,6 +94,8 @@ type stream_sql struct {
 	AWSAcessKeyID      sql.NullString `db:"aws_access_key_id" json:"aws_access_key_id,omitempty"`
 	AWSSecretAcessKey  sql.NullString `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
 	GCPJsonCredentials sql.NullString `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
+	AzureStorageAccountname	sql.NullString	`db:"azure_storage_account_name" json:"azure_storage_account_name, omitempty"`
+	AzureStorageAccessKey	sql.NullString	`db:"azure_storage_access_key" json:"azure_storage_access_key, omitempty"`
 }
 
 
@@ -670,7 +674,20 @@ func buildQueryString_createStream(reqStream stream_json) (queryStr string) {
 		gcpCredsJson, _ := json.Marshal(reqStream.GCPJsonCredentials)
 		log.Println(string(gcpCredsJson))
 		//queryStr = queryStr + "'" + strings.Replace(strings.Replace(fmt.Sprintf("%v", reqStream.GCPJsonCredentials), "map[", "{", 1), "]", "}", 1) + "')"
-		queryStr = queryStr + "'" + string(gcpCredsJson) + "')"
+		queryStr = queryStr + "'" + string(gcpCredsJson) + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+	
+	if reqStream.AzureStorageAccountname != "" {
+		queryStr = queryStr + "'" + reqStream.AzureStorageAccountname + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+
+	
+	if reqStream.AzureStorageAccessKey != "" {
+		queryStr = queryStr + "'" + reqStream.AzureStorageAccessKey + "') "
 	} else {
 		queryStr = queryStr + "NULL)"
 	}
@@ -747,7 +764,19 @@ func buildQueryString_updateStream(reqStream stream_json) (queryStr string) {
 		gcpCredsJson, _ := json.Marshal(reqStream.GCPJsonCredentials)
 		log.Println(string(gcpCredsJson))
 		//queryStr = queryStr + "'" + strings.Replace(strings.Replace(fmt.Sprintf("%v", reqStream.GCPJsonCredentials), "map[", "{", 1), "]", "}", 1) + "')"
-		queryStr = queryStr + "'" + string(gcpCredsJson) + "')"
+		queryStr = queryStr + "'" + string(gcpCredsJson) + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+		
+	if reqStream.AzureStorageAccountname != "" {
+		queryStr = queryStr + "'" + reqStream.AzureStorageAccountname + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+		
+	if reqStream.AzureStorageAccessKey != "" {
+		queryStr = queryStr + "'" + reqStream.AzureStorageAccessKey + "') "
 	} else {
 		queryStr = queryStr + "NULL)"
 	}

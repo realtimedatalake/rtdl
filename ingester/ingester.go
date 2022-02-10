@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"net/url"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/storage"
 	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
@@ -34,7 +35,7 @@ import (
 	"github.com/xitongsys/parquet-go/parquet"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
-	
+	"github.com/Azure/azure-storage-blob-go/azblob"
 )
 
 // default database connection settings
@@ -87,6 +88,8 @@ type Config struct {
 	AWSAcessKeyID      sql.NullString `db:"aws_access_key_id" default:""`
 	AWSSecretAcessKey  sql.NullString `db:"aws_secret_access_key" default:""`
 	GCPJsonCredentials sql.NullString `db:"gcp_json_credentials" default:""`
+	AzureStorageAccountname	sql.NullString `db:"azure_storage_account_name" default:""`
+	AzureStorageAccessKey sql.NullString `db:"azure_storage_access_key" default:""`
 	CreatedAt          time.Time      `db:"created_at"`
 	UpdatedAt          time.Time      `db:"updated_at"`
 }
@@ -943,8 +946,100 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 	
 }
 
+
+func WriteAzureParquet(messageType string, schema string, payload []byte, configRecord Config) error {
+
+	var path string
+	//var location string
+
+	subFolderName := generateSubFolderName(messageType, configRecord)
+	leafLevelFileName := generateLeafLevelFileName()
+
+	// Create a request pipeline that is used to process HTTP(S) requests and responses. It requires
+	// your account credentials. In more advanced scenarios, you can configure telemetry, retry policies,
+	// logging, and other options. Also, you can configure multiple request pipelines for different scenarios.
+	azureCredential, err := azblob.NewSharedKeyCredential(configRecord.AzureStorageAccountname.String, configRecord.AzureStorageAccessKey.String)
+	if err != nil {
+		log.Println("Error constructing Azure credential", err)
+		return err
+	}	
+
+	azurePipeline := azblob.NewPipeline(azureCredential, azblob.PipelineOptions{})
+
+	//Storage account blob service URL endpoint
+	azureUrl, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net", configRecord.AzureStorageAccountname.String))
+
+	bucketName := configRecord.BucketName.String //maps to Container Name for Azure Storage
+	if bucketName == "" {
+		return errors.New("Bucket name (maps to Azure Storage Account Name) cannot be null or empty")
+	}
+
+	if configRecord.FolderName.String != "" {
+
+		path = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
+		//location = configRecord.FolderName.String + "/" + subFolderName
+	} else {
+
+		path = subFolderName + "/" + leafLevelFileName
+		//location = subFolderName
+	}
+
+	// Create an ServiceURL object that wraps the service URL and a request pipeline.
+	azureServiceURL := azblob.NewServiceURL(*azureUrl, azurePipeline)
+
+	fw, err := local.NewLocalFileWriter(leafLevelFileName)
+	err = WriteToFile(schema, fw, payload, configRecord) //write temporary local file
+	if err != nil {
+		log.Println("Unable to write temporary local file", err)
+		return err
+	}
+
+	ctx := context.Background()
+	tempFile, err1 := os.Open(leafLevelFileName) //open temporary local file
+	if err1 != nil {
+		log.Println("Unable to open temporary local file", err1)
+		return err1
+	}
+
+	defer tempFile.Close()
+
+	// Create a URL that references a to-be-created container in your Azure Storage account.
+	// This returns a ContainerURL object that wraps the container's URL and a request pipeline (inherited from serviceURL)
+	azureContainerURL := azureServiceURL.NewContainerURL(strings.ToLower(bucketName)) // Container names require lowercase
+
+	//check if container exists
+	azureContainerProperties, _ := azureContainerURL.GetProperties(ctx, azblob.LeaseAccessConditions{})
+
+	if azureContainerProperties == nil { //container does not exist, need to create
+		// Create the container on the service (with no metadata and no public access)
+		_, err := azureContainerURL.Create(ctx, azblob.Metadata{}, azblob.PublicAccessNone)
+		if err != nil {
+			log.Println("Error creating Azure Storage container", err)
+			return err
+		}
+	}
+	
+	// Create a URL that references a to-be-created blob in your Azure Storage account's container.
+	// This returns a BlockBlobURL object that wraps the blob's URL and a request pipeline (inherited from containerURL)
+	azureBlobURL := azureContainerURL.NewBlockBlobURL(path) 
+
+	_, err = azureBlobURL.Upload(ctx, tempFile, azblob.BlobHTTPHeaders{ContentType: "application/octet-stream"}, azblob.Metadata{}, azblob.BlobAccessConditions{}, azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{})
+	if err != nil {
+		log.Println("Error writing Azure blob", err)
+		return err
+	}
+
+
+	os.Remove(leafLevelFileName) //remove the temp file
+
+
+	log.Println("Finished uploading file to Azure")
+	//return UpdateDremio(messageType,"Azure",bucketName, configRecord)
+	return nil
+	
+}
 //Parquet writing logic
-func writeParquet(request IncomingMessage) error {
+func WriteParquet(request IncomingMessage) error {
 
 	//log.Println(generateSchema(request.Payload,request.MessageType, "")+"]}")
 	
@@ -1022,6 +1117,8 @@ func writeParquet(request IncomingMessage) error {
 				return WriteAWSParquet(messageType, schema, payload, matchingConfig)
 			case "GCP":
 				return WriteGCPParquet(messageType, schema, payload, matchingConfig)
+			case "Azure":
+				return WriteAzureParquet(messageType, schema, payload, matchingConfig)
 
 			}
 		}
@@ -1049,7 +1146,7 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 		return nil
 	}
 
-	err := writeParquet(request)
+	err := WriteParquet(request)
 	if err != nil {
 
 		log.Println("error writing Parquet", err)
