@@ -19,7 +19,7 @@ AWS S3, and to GCP Cloud Storage, and you can query your data with Dremio on por
 Username: `rtdl` and Password `rtdl1234`).
 
 ### What's new? 💥
-  * Switched from Apache Hive Metastore + Presto to Dremio.
+  * Switched from Apache Hive Metastore + Presto to Dremio. **Dremio works for all storage types.**
   * Added support for using a flattened JSON object as value for `gcp_json_credentials` field in the 
     `createStream` API call. Previously, you had to double-quote everything and flatten.
   * Added CONTRIBUTING.md and decided to use a DCO over a CLA - tl;dr use -s when you commit, like 
@@ -27,7 +27,6 @@ Username: `rtdl` and Password `rtdl1234`).
 
 
 ### What doesn't work/what's next on the roadmap? 🚴🏼
-  * Add Dremio support for cloud data lakes (only supports a local data lake right now)
   * Add support for Azure Blob Storage
   * Add support for Segment Webhooks as a source
   * Add support for more compressions - currently default Snappy compression is supported
@@ -48,36 +47,56 @@ Username: `rtdl` and Password `rtdl1234`).
 
 ### Interact with rtdl services and create a data lake
 All API calls used to interact with rtdl have Postman examples in our [postman-rtdl-public repo](https://github.com/realtimedatalake/postman-rtdl-public).
-1.  If you are building your data lake on AWS or GCP, configure your storage buckets and access 
-    by following the [Segment docs for AWS S3](https://segment.com/docs/connections/storage/catalog/aws-s3/) 
-    or the [Segment docs for Google Cloud Storage](https://segment.com/docs/connections/storage/catalog/google-cloud-storage/). 
-    * For AWS S3 storage, you will need your bucket name, your AWS access key id, and your AWS
-      secret access key.
+1.  If you are building your data lake on a cloud vendor's storage service, configure your storage 
+    buckets and access:
+    * For AWS S3, follow the [Segment docs for AWS S3](https://segment.com/docs/connections/storage/catalog/aws-s3/). 
+      You will need your bucket name, your AWS access key id, and your AWS secret access key.
       * For your IAM setup, you can use the below policy:
         ```
         {
             "Version": "2012-10-17",
             "Statement": [
                 {
-              "Sid": "PutObjectsInBucket",
-              "Effect": "Allow",
-              "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:PutObjectAcl",
-                "s3:DeleteObject",
-                "s3:ListBucket"
-              ],
-              "Resource": [
-                "arn:aws:s3:::[your-bucket-name]/",
-                "arn:aws:s3:::[your-bucket-name]/*"
-              ]
-            }
-          ]
+                    "Sid": "ListAllBuckets",
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:GetBucketLocation",
+                        "s3:ListAllMyBuckets"
+                    ],
+                    "Resource": [
+                        "arn:aws:s3:::*"
+                    ]
+                },
+                {
+                    "Sid": "ListBucket",
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:ListBucket"
+                    ],
+                    "Resource": [
+                        "arn:aws:s3:::rtdl-test-bucket-aws"
+                    ]
+                },
+                {
+                    "Sid": "ManageBucket",
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:GetObject",
+                        "s3:PutObject",
+                        "s3:PutObjectAcl",
+                        "s3:DeleteObject"
+                    ],
+                    "Resource": [
+                        "arn:aws:s3:::rtdl-test-bucket-aws/*"
+                    ]
+                }
+            ]
         }
         ```
-    * For GCP Cloud Storage, you will need your credentials in flattened json (remove all the 
-      newlines).
+    * For GCP Cloud Storage, follow the [Segment docs for Google Cloud Storage](https://segment.com/docs/connections/storage/catalog/google-cloud-storage/). 
+      Instead of giving your service account object-level access as described in Segment's 
+      documentation, make your service account a Principal in IAM and give it `Storage Admin` access.
+      * You will need your credentials in flattened json (remove all the newlines).
 3.  Instrument your website with [analytics-next-cc](https://github.com/realtimedatalake/analytics-next-cc) - 
     our fork of [Segment's Analytics.js 2.0](https://segment.com/docs/connections/sources/catalog/libraries/website/javascript/) 
     that lets you cc all of the events you send to Segment to rtdl's ingest endpoint. Its 
