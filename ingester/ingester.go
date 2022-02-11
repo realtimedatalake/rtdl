@@ -563,7 +563,7 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 
 	log.Println("Dremio source information retrieved")
 
-	//iterate through catalog and find if space already exists
+	//iterate through catalog and find if source already exists
 
 	sources, ok1 := dremioResponse["data"].([]interface{})
 	if !ok1 {
@@ -663,8 +663,12 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 			}
 
 		case "Azure":
+
+			//sourceStringMultiLine += `, "metadataPolicy": {"datasetUpdateMode": "INLINE"} `
+			sourceStringMultiLine += `, "metadataPolicy": {"datasetUpdateMode": "INLINE", "datasetRefreshAfterMs": 60000 ` //to be made customisable
+			sourceStringMultiLine += `, "namesRefreshMs": 60000, "authTTLMs": 60000, "datasetExpireAfterMs": 60000} `      //metadata end, comment/delete two lines together
 			sourceStringMultiLine += `, "type": "AZURE_STORAGE", "config": {"accountName": "` + configRecord.AzureStorageAccountname.String + `"`
-			sourceStringMultiLine += `, "enableSSL": true, "accountKind":"STORAGE_V2","credentialsType":"ACCESS_KEY"` //candidate for future customisation
+			sourceStringMultiLine += `, "enableSSL": true, "isCachingEnabled": false, "accountKind":"STORAGE_V2","credentialsType":"ACCESS_KEY"` //candidate for future customisation
 			sourceStringMultiLine += `, "accessKey": "` + configRecord.AzureStorageAccessKey.String + `"`
 			sourceStringMultiLine += `, "rootPath": "/` + location + `/`
 			if configRecord.FolderName.String != "" {
