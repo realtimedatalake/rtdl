@@ -107,8 +107,8 @@ services:
     container_name: rtdl_kafka-zookeeper
     expose:
       - 2181
-    ports:
-      - 2181:2181
+    #ports:
+    #  - 2181:2181
     environment:
       ALLOW_ANONYMOUS_LOGIN: "yes"
     restart: always
@@ -143,8 +143,8 @@ services:
     expose:
       - 6123
       - 8081
-    ports:
-      - 8081:8081
+    #ports:
+    #  - 8081:8081
     environment:
       ROLE: master
       MASTER_HOST: statefun-manager
