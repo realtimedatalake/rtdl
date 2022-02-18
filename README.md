@@ -49,6 +49,7 @@ For more detailed instructions see our [Initialize rtdl docs](https://rtdl.io/do
     **Note:** Your memory setting in Docker must be at least 8GB. rtdl may become unstable if it is 
     set lower.
     * `docker compose down` to stop.
+
 **Note #1:** To start from scratch, run `rm -rf storage/` from the rtdl root folder.  
 **Note #2:** If you experience file write issues preventing Dremio services from starting, 
 please add 'user: root" to the `docker-compose.init.yml` and `docker-compose.yml` files 
