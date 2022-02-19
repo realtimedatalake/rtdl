@@ -60,7 +60,7 @@ services:
 
   config:
     # build:
-    #   context: ./config
+    #    context: ./config
     platform: linux/amd64
     image: rtdl/rtdl-config:latest
     container_name: rtdl_config
