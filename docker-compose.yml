@@ -138,7 +138,7 @@ services:
   ##### Processing Services - Start #####
   statefun-manager:
     platform: linux/amd64
-    image: apache/flink-statefun:3.1.0
+    image: apache/flink-statefun:latest
     container_name: rtdl_process-statefun-manager
     expose:
       - 6123
@@ -156,7 +156,7 @@ services:
 
   statefun-worker:
     platform: linux/amd64
-    image: apache/flink-statefun:3.1.0
+    image: apache/flink-statefun:latest
     container_name: rtdl_process-statefun-worker
     expose:
       - 6121

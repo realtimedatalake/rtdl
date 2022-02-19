@@ -166,7 +166,7 @@ func LoadConfig() error {
 		return err
 	}
 
-	configSql := "SELECT * FROM streams"
+	configSql := "SELECT * FROM streams where active = true"
 
 	err = db.Select(&tempConfigs, configSql) //populate stream configurations into array of stream config structs
 	if err != nil {
