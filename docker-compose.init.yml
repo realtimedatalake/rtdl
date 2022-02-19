@@ -47,8 +47,8 @@ services:
       - ./storage/rtdl-db_data:/var/lib/postgresql/data
     expose:
       - 5432
-    ports:
-      - 5433:5432
+    # ports:
+    #   - 5433:5432
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

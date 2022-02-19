@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+
 	//"strings"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	
 )
 
 // default database connection settings
@@ -49,7 +49,7 @@ type GCPCredentials struct {
 
 	accountType	string	`json:"type"`
 	projectId	string	`json:"project_id"`
-	privateKeyId	string	`json:"private_key_id"`	
+	privateKeyId	string	`json:"private_key_id"`
 	privateKey	string	`json:"private_key"`
 	clientEmail	string	`json:"client_email"`
 	clientId	string	`json:"client_id"`
@@ -61,42 +61,41 @@ type GCPCredentials struct {
 }
 */
 
-
 type stream_json struct {
-	StreamID           string                 `db:"stream_id" json:"stream_id,omitempty"`
-	StreamAltID        string                 `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
-	Active             bool                   `db:"active" json:"active,omitempty"`
-	MessageType        string                 `db:"message_type" json:"message_type,omitempty"`
-	FileStoreTypeID    int                    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
-	Region             string                 `db:"region" json:"region,omitempty"`
-	BucketName         string                 `db:"bucket_name" json:"bucket_name,omitempty"`
-	FolderName         string                 `db:"folder_name" json:"folder_name,omitempty"`
-	PartitionTimeID    int                    `db:"partition_time_id" json:"partition_time_id,omitempty"`
-	CompressionTypeID  int                    `db:"compression_type_id" json:"compression_type_id,omitempty"`
-	AWSAcessKeyID      string                 `db:"aws_access_key_id" json:"aws_access_key_id,omitempty"`
-	AWSSecretAcessKey  string                 `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
-	GCPJsonCredentials map[string] interface{} `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
+	StreamID                string                 `db:"stream_id" json:"stream_id,omitempty"`
+	StreamAltID             string                 `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
+	Active                  bool                   `db:"active" json:"active,omitempty"`
+	MessageType             string                 `db:"message_type" json:"message_type,omitempty"`
+	FileStoreTypeID         int                    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
+	Region                  string                 `db:"region" json:"region,omitempty"`
+	BucketName              string                 `db:"bucket_name" json:"bucket_name,omitempty"`
+	FolderName              string                 `db:"folder_name" json:"folder_name,omitempty"`
+	PartitionTimeID         int                    `db:"partition_time_id" json:"partition_time_id,omitempty"`
+	CompressionTypeID       int                    `db:"compression_type_id" json:"compression_type_id,omitempty"`
+	AWSAcessKeyID           string                 `db:"aws_access_key_id" json:"aws_access_key_id,omitempty"`
+	AWSSecretAcessKey       string                 `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
+	GCPJsonCredentials      map[string]interface{} `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
+	AzureStorageAccountname string                 `db:"azure_storage_account_name" json:"azure_storage_account_name, omitempty"`
+	AzureStorageAccessKey   string                 `db:"azure_storage_access_key" json:"azure_storage_access_key, omitempty"`
 }
 
 type stream_sql struct {
-	StreamID           sql.NullString `db:"stream_id" json:"stream_id,omitempty"`
-	StreamAltID        sql.NullString `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
-	Active             sql.NullBool   `db:"active" json:"active,omitempty"`
-	MessageType        sql.NullString `db:"message_type" json:"message_type,omitempty"`
-	FileStoreTypeID    sql.NullInt64  `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
-	Region             sql.NullString `db:"region" json:"region,omitempty"`
-	BucketName         sql.NullString `db:"bucket_name" json:"bucket_name,omitempty"`
-	FolderName         sql.NullString `db:"folder_name" json:"folder_name,omitempty"`
-	PartitionTimeID    sql.NullInt64  `db:"partition_time_id" json:"partition_time_id,omitempty"`
-	CompressionTypeID  sql.NullInt64  `db:"compression_type_id" json:"compression_type_id,omitempty"`
-	AWSAcessKeyID      sql.NullString `db:"aws_access_key_id" json:"aws_access_key_id,omitempty"`
-	AWSSecretAcessKey  sql.NullString `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
-	GCPJsonCredentials sql.NullString `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
+	StreamID                sql.NullString `db:"stream_id" json:"stream_id,omitempty"`
+	StreamAltID             sql.NullString `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
+	Active                  sql.NullBool   `db:"active" json:"active,omitempty"`
+	MessageType             sql.NullString `db:"message_type" json:"message_type,omitempty"`
+	FileStoreTypeID         sql.NullInt64  `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
+	Region                  sql.NullString `db:"region" json:"region,omitempty"`
+	BucketName              sql.NullString `db:"bucket_name" json:"bucket_name,omitempty"`
+	FolderName              sql.NullString `db:"folder_name" json:"folder_name,omitempty"`
+	PartitionTimeID         sql.NullInt64  `db:"partition_time_id" json:"partition_time_id,omitempty"`
+	CompressionTypeID       sql.NullInt64  `db:"compression_type_id" json:"compression_type_id,omitempty"`
+	AWSAcessKeyID           sql.NullString `db:"aws_access_key_id" json:"aws_access_key_id,omitempty"`
+	AWSSecretAcessKey       sql.NullString `db:"aws_secret_access_key" json:"aws_secret_access_key,omitempty"`
+	GCPJsonCredentials      sql.NullString `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
+	AzureStorageAccountname sql.NullString `db:"azure_storage_account_name" json:"azure_storage_account_name, omitempty"`
+	AzureStorageAccessKey   sql.NullString `db:"azure_storage_access_key" json:"azure_storage_access_key, omitempty"`
 }
-
-
-
-
 
 //	FUNCTION
 // 	main
@@ -145,11 +144,15 @@ func getStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
 			if err != nil {
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
 
@@ -160,16 +163,23 @@ func getStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 				queryStr = queryStr + "'" + reqStream.StreamID + "')"
 				err := db.Select(&streams, queryStr)
 				if err != nil {
-					fmt.Println("Error fetching stream record")
+					wrt.WriteHeader(http.StatusBadRequest)
+					http.Error(wrt, "Bad Request", http.StatusBadRequest)
 					CheckError(err)
 				}
-				jsonData, err := json.MarshalIndent(streams, "", "    ")
-				if err != nil {
-					jsonData = nil
-					CheckError(err)
+				if len(streams) <= 0 {
+					wrt.WriteHeader(http.StatusNoContent)
+				} else {
+					jsonData, err := json.MarshalIndent(streams, "", "    ")
+					if err != nil {
+						jsonData = nil
+						wrt.WriteHeader(http.StatusInternalServerError)
+						http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+						CheckError(err)
+					}
+					wrt.WriteHeader(http.StatusOK)
+					wrt.Write(jsonData)
 				}
-				wrt.WriteHeader(http.StatusOK)
-				wrt.Write(jsonData)
 			} else {
 				http.Error(wrt, "`stream_id` is required", http.StatusUnprocessableEntity)
 			}
@@ -190,16 +200,23 @@ func getAllStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) 
 			streams := []stream_sql{}
 			err := db.Select(&streams, "select * from getAllStreams()")
 			if err != nil {
-				fmt.Println("Error fetching stream records")
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
-			jsonData, err := json.MarshalIndent(streams, "", "    ")
-			if err != nil {
-				jsonData = nil
-				CheckError(err)
+			if len(streams) <= 0 {
+				wrt.WriteHeader(http.StatusNoContent)
+			} else {
+				jsonData, err := json.MarshalIndent(streams, "", "    ")
+				if err != nil {
+					jsonData = nil
+					wrt.WriteHeader(http.StatusInternalServerError)
+					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+					CheckError(err)
+				}
+				wrt.WriteHeader(http.StatusOK)
+				wrt.Write(jsonData)
 			}
-			wrt.WriteHeader(http.StatusOK)
-			wrt.Write(jsonData)
 		case http.MethodPost:
 		case http.MethodPut:
 		case http.MethodDelete:
@@ -217,16 +234,23 @@ func getAllActiveStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Req
 			streams := []stream_sql{}
 			err := db.Select(&streams, "select * from getAllActiveStreams()")
 			if err != nil {
-				fmt.Println("Error fetching stream records")
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
-			jsonData, err := json.MarshalIndent(streams, "", "    ")
-			if err != nil {
-				jsonData = nil
-				CheckError(err)
+			if len(streams) <= 0 {
+				wrt.WriteHeader(http.StatusNoContent)
+			} else {
+				jsonData, err := json.MarshalIndent(streams, "", "    ")
+				if err != nil {
+					jsonData = nil
+					wrt.WriteHeader(http.StatusInternalServerError)
+					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+					CheckError(err)
+				}
+				wrt.WriteHeader(http.StatusOK)
+				wrt.Write(jsonData)
 			}
-			wrt.WriteHeader(http.StatusOK)
-			wrt.Write(jsonData)
 		case http.MethodPost:
 		case http.MethodPut:
 		case http.MethodDelete:
@@ -244,29 +268,34 @@ func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
 			if err != nil {
+				wrt.WriteHeader(http.StatusInternalServerError)
+				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
-			
+
 			log.Println(reqStream.GCPJsonCredentials)
-			
-			
 
 			// Send to database function
 			retStreams := []stream_sql{}
 			queryStr := buildQueryString_createStream(reqStream)
 			err = db.Select(&retStreams, queryStr)
 			if err != nil {
-				fmt.Println("Error creating stream record")
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
 			resp, errRet := json.MarshalIndent(retStreams, "", "    ")
 			if errRet != nil {
 				resp = nil
+				wrt.WriteHeader(http.StatusInternalServerError)
+				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
 			wrt.WriteHeader(http.StatusOK)
@@ -291,11 +320,15 @@ func updateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
 			if err != nil {
+				wrt.WriteHeader(http.StatusInternalServerError)
+				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
 
@@ -304,16 +337,24 @@ func updateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			queryStr := buildQueryString_updateStream(reqStream)
 			err = db.Select(&retStreams, queryStr)
 			if err != nil {
-				fmt.Println("Error updating stream record")
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
-			resp, errRet := json.MarshalIndent(retStreams, "", "    ")
-			if errRet != nil {
-				resp = nil
+			if len(retStreams) <= 0 {
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
+			} else {
+				resp, errRet := json.MarshalIndent(retStreams, "", "    ")
+				if errRet != nil {
+					resp = nil
+					wrt.WriteHeader(http.StatusInternalServerError)
+					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+					CheckError(err)
+				}
+				wrt.WriteHeader(http.StatusOK)
+				wrt.Write(resp)
 			}
-			wrt.WriteHeader(http.StatusOK)
-			wrt.Write(resp)
 
 			// Refresh the cache on the `ingest` service
 			refreshIngestCache()
@@ -334,11 +375,15 @@ func deleteStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
 			if err != nil {
+				wrt.WriteHeader(http.StatusInternalServerError)
+				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
 
@@ -349,16 +394,24 @@ func deleteStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 				queryStr = queryStr + "'" + reqStream.StreamID + "')"
 				err := db.Select(&streams, queryStr)
 				if err != nil {
-					fmt.Println("Error deleting stream record")
+					wrt.WriteHeader(http.StatusBadRequest)
+					http.Error(wrt, "Bad Request", http.StatusBadRequest)
 					CheckError(err)
 				}
-				jsonData, err := json.MarshalIndent(streams, "", "    ")
-				if err != nil {
-					jsonData = nil
+				if len(streams) <= 0 {
+					http.Error(wrt, "Bad Request", http.StatusBadRequest)
 					CheckError(err)
+				} else {
+					jsonData, err := json.MarshalIndent(streams, "", "    ")
+					if err != nil {
+						jsonData = nil
+						wrt.WriteHeader(http.StatusInternalServerError)
+						http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+						CheckError(err)
+					}
+					wrt.WriteHeader(http.StatusOK)
+					wrt.Write(jsonData)
 				}
-				wrt.WriteHeader(http.StatusOK)
-				wrt.Write(jsonData)
 
 				// Refresh the cache on the `ingest` service
 				refreshIngestCache()
@@ -382,11 +435,15 @@ func activateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request)
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
 			if err != nil {
+				wrt.WriteHeader(http.StatusInternalServerError)
+				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
 
@@ -397,16 +454,24 @@ func activateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request)
 				queryStr = queryStr + "'" + reqStream.StreamID + "')"
 				err := db.Select(&streams, queryStr)
 				if err != nil {
-					fmt.Println("Error activating stream record")
+					wrt.WriteHeader(http.StatusBadRequest)
+					http.Error(wrt, "Bad Request", http.StatusBadRequest)
 					CheckError(err)
 				}
-				jsonData, err := json.MarshalIndent(streams, "", "    ")
-				if err != nil {
-					jsonData = nil
+				if len(streams) <= 0 {
+					http.Error(wrt, "Bad Request", http.StatusBadRequest)
 					CheckError(err)
+				} else {
+					jsonData, err := json.MarshalIndent(streams, "", "    ")
+					if err != nil {
+						jsonData = nil
+						wrt.WriteHeader(http.StatusInternalServerError)
+						http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+						CheckError(err)
+					}
+					wrt.WriteHeader(http.StatusOK)
+					wrt.Write(jsonData)
 				}
-				wrt.WriteHeader(http.StatusOK)
-				wrt.Write(jsonData)
 
 				// Refresh the cache on the `ingest` service
 				refreshIngestCache()
@@ -430,11 +495,15 @@ func deactivateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Reques
 			// Read json
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
 			var reqStream stream_json
 			err = json.Unmarshal(body, &reqStream)
 			if err != nil {
+				wrt.WriteHeader(http.StatusInternalServerError)
+				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
 
@@ -445,16 +514,24 @@ func deactivateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Reques
 				queryStr = queryStr + "'" + reqStream.StreamID + "')"
 				err := db.Select(&streams, queryStr)
 				if err != nil {
-					fmt.Println("Error deactivating stream record")
+					wrt.WriteHeader(http.StatusBadRequest)
+					http.Error(wrt, "Bad Request", http.StatusBadRequest)
 					CheckError(err)
 				}
-				jsonData, err := json.MarshalIndent(streams, "", "    ")
-				if err != nil {
-					jsonData = nil
+				if len(streams) <= 0 {
+					http.Error(wrt, "Bad Request", http.StatusBadRequest)
 					CheckError(err)
+				} else {
+					jsonData, err := json.MarshalIndent(streams, "", "    ")
+					if err != nil {
+						jsonData = nil
+						wrt.WriteHeader(http.StatusInternalServerError)
+						http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+						CheckError(err)
+					}
+					wrt.WriteHeader(http.StatusOK)
+					wrt.Write(jsonData)
 				}
-				wrt.WriteHeader(http.StatusOK)
-				wrt.Write(jsonData)
 
 				// Refresh the cache on the `ingest` service
 				refreshIngestCache()
@@ -478,16 +555,23 @@ func getAllFileStoreTypesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Re
 			fst := []fileStoreType{}
 			err := db.Select(&fst, "select * from getAllFileStoreTypes()")
 			if err != nil {
-				fmt.Println("Error fetching file_store_type records")
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
-			jsonData, err := json.MarshalIndent(fst, "", "    ")
-			if err != nil {
-				jsonData = nil
-				CheckError(err)
+			if len(fst) <= 0 {
+				wrt.WriteHeader(http.StatusNoContent)
+			} else {
+				jsonData, err := json.MarshalIndent(fst, "", "    ")
+				if err != nil {
+					jsonData = nil
+					wrt.WriteHeader(http.StatusInternalServerError)
+					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+					CheckError(err)
+				}
+				wrt.WriteHeader(http.StatusOK)
+				wrt.Write(jsonData)
 			}
-			wrt.WriteHeader(http.StatusOK)
-			wrt.Write(jsonData)
 		case http.MethodPost:
 		case http.MethodPut:
 		case http.MethodDelete:
@@ -505,16 +589,23 @@ func getAllPartitionTimesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Re
 			pt := []partitionTime{}
 			err := db.Select(&pt, "select * from getAllPartitionTimes()")
 			if err != nil {
-				fmt.Println("Error fetching partition_time records")
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
-			jsonData, err := json.MarshalIndent(pt, "", "    ")
-			if err != nil {
-				jsonData = nil
-				CheckError(err)
+			if len(pt) <= 0 {
+				wrt.WriteHeader(http.StatusNoContent)
+			} else {
+				jsonData, err := json.MarshalIndent(pt, "", "    ")
+				if err != nil {
+					jsonData = nil
+					wrt.WriteHeader(http.StatusInternalServerError)
+					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+					CheckError(err)
+				}
+				wrt.WriteHeader(http.StatusOK)
+				wrt.Write(jsonData)
 			}
-			wrt.WriteHeader(http.StatusOK)
-			wrt.Write(jsonData)
 		case http.MethodPost:
 		case http.MethodPut:
 		case http.MethodDelete:
@@ -532,16 +623,23 @@ func getAllCompressionTypesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.
 			ct := []compressionType{}
 			err := db.Select(&ct, "select * from getAllCompressionTypes()")
 			if err != nil {
-				fmt.Println("Error fetching compression_type records")
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
-			jsonData, err := json.MarshalIndent(ct, "", "    ")
-			if err != nil {
-				jsonData = nil
-				CheckError(err)
+			if len(ct) <= 0 {
+				wrt.WriteHeader(http.StatusNoContent)
+			} else {
+				jsonData, err := json.MarshalIndent(ct, "", "    ")
+				if err != nil {
+					jsonData = nil
+					wrt.WriteHeader(http.StatusInternalServerError)
+					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+					CheckError(err)
+				}
+				wrt.WriteHeader(http.StatusOK)
+				wrt.Write(jsonData)
 			}
-			wrt.WriteHeader(http.StatusOK)
-			wrt.Write(jsonData)
 		case http.MethodPost:
 		case http.MethodPut:
 		case http.MethodDelete:
@@ -670,7 +768,19 @@ func buildQueryString_createStream(reqStream stream_json) (queryStr string) {
 		gcpCredsJson, _ := json.Marshal(reqStream.GCPJsonCredentials)
 		log.Println(string(gcpCredsJson))
 		//queryStr = queryStr + "'" + strings.Replace(strings.Replace(fmt.Sprintf("%v", reqStream.GCPJsonCredentials), "map[", "{", 1), "]", "}", 1) + "')"
-		queryStr = queryStr + "'" + string(gcpCredsJson) + "')"
+		queryStr = queryStr + "'" + string(gcpCredsJson) + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+
+	if reqStream.AzureStorageAccountname != "" {
+		queryStr = queryStr + "'" + reqStream.AzureStorageAccountname + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+
+	if reqStream.AzureStorageAccessKey != "" {
+		queryStr = queryStr + "'" + reqStream.AzureStorageAccessKey + "') "
 	} else {
 		queryStr = queryStr + "NULL)"
 	}
@@ -747,7 +857,19 @@ func buildQueryString_updateStream(reqStream stream_json) (queryStr string) {
 		gcpCredsJson, _ := json.Marshal(reqStream.GCPJsonCredentials)
 		log.Println(string(gcpCredsJson))
 		//queryStr = queryStr + "'" + strings.Replace(strings.Replace(fmt.Sprintf("%v", reqStream.GCPJsonCredentials), "map[", "{", 1), "]", "}", 1) + "')"
-		queryStr = queryStr + "'" + string(gcpCredsJson) + "')"
+		queryStr = queryStr + "'" + string(gcpCredsJson) + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+
+	if reqStream.AzureStorageAccountname != "" {
+		queryStr = queryStr + "'" + reqStream.AzureStorageAccountname + "', "
+	} else {
+		queryStr = queryStr + "NULL, "
+	}
+
+	if reqStream.AzureStorageAccessKey != "" {
+		queryStr = queryStr + "'" + reqStream.AzureStorageAccessKey + "') "
 	} else {
 		queryStr = queryStr + "NULL)"
 	}
@@ -757,8 +879,8 @@ func buildQueryString_updateStream(reqStream stream_json) (queryStr string) {
 
 func CheckError(err error) {
 	if err != nil {
+		log.Println(err)
 		panic(err)
-		log.Fatalln(err)
 	}
 }
 
