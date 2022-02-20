@@ -24,13 +24,18 @@ Username: `rtdl` and Password `rtdl1234`).
     `createStream` API call. Previously, you had to double-quote everything and flatten.
   * Added CONTRIBUTING.md and decided to use a DCO over a CLA - tl;dr use -s when you commit, like 
     `git commit -s -m "..."`
+  * Added support for Azure Blob Storage V2 (please note that for events written to Azure Blob Storage
+    V2 - it can take time up to 1 minute for data to reflect in Dremio)
+  * Added support for GZIP and LZO compressions in addition to SNAPPY (default). Specify `compression_type_id`
+    as 2 for GZIP and 3 for LZO
+  
 
 
-### What doesn't work/what's next on the roadmap? 🚴🏼
-  * Add support for Azure Blob Storage
-  * Add support for Segment Webhooks as a source
-  * Add support for more compressions - currently default Snappy compression is supported
-
+### What doesn't work/what's next on the roadmap? 🚴🏼  
+  * Segment webhook support
+  * Writing to HDFS
+  * User Interface for Stream creation
+  
 
 ## Quickstart 🌱
 ### Initialize the rtdl services
