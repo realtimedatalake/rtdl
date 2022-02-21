@@ -2,21 +2,22 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"time"
-	"encoding/json"
 
 	kafka "github.com/segmentio/kafka-go"
 )
 
 type OutgoingMessage struct {
-	StreamId   string                  `json:"stream_id,omitempty"`
-	StreamAltId string				   `json:"stream_alt_id,omitempty"`
+	StreamId    string                 `json:"stream_id,omitempty"`
+	StreamAltId string                 `json:"stream_alt_id,omitempty"`
 	MessageType string                 `json:"message_type,omitempty"`
+	ProjectId   string                 `json:"projectId,omitempty"`
 	Payload     map[string]interface{} `json:"payload"`
 }
 
@@ -29,16 +30,14 @@ func GetEnv(key, defaultValue string) string {
 	return value
 }
 
-
 //handler function for incoming REST calls
-//based on processingType - either payload is passed on as-is to Kafka or 
-//specific message, asking stateful function to reload configuration cache, is put on Kafka 
+//based on processingType - either payload is passed on as-is to Kafka or
+//specific message, asking stateful function to reload configuration cache, is put on Kafka
 func producerHandler(kafkaURL string, topic string, processingType string) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 
 		var body []byte
 		var err error
-		
 
 		//normal ingestion request
 		if processingType == "ingest" {
@@ -46,50 +45,57 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 			if err != nil {
 				log.Println(err)
 				return
-			} 
-			
-			log.Println("Received : ",string(body))
+			}
+
+			log.Println("Received : ", string(body))
 			outgoingMessage := new(OutgoingMessage)
-			
+
 			//first need to study message to check if it has stream_id or writeKey. one is necessary
-			var message map[string] interface {}
-			
+			var message map[string]interface{}
+
 			err2 := json.Unmarshal(body, &message)
-			
+
 			if err2 != nil {
 				log.Println(err2)
 				return
-			} 
-			
-			if message["writeKey"] == nil { //no writeKey
-			
-				if message["stream_id"] != nil { //no stream_id
+			}
 
-					outgoingMessage.StreamId = message["stream_id"].(string)									
+			if message["projectId"] == nil {
+				if message["writeKey"] == nil { //no writeKey
+
+					if message["stream_id"] != nil { //no stream_id
+
+						outgoingMessage.StreamId = message["stream_id"].(string)
+					}
+
+				} else {
+
+					outgoingMessage.StreamAltId = message["writeKey"].(string) //put writKey to stream_alt_id
 				}
-			
+
 			} else {
-			
-				outgoingMessage.StreamAltId = message["writeKey"].(string) //put writKey to stream_alt_id				
+
+				outgoingMessage.StreamAltId = message["projectId"].(string) //put projectId to stream_alt_id
+
 			}
-			
+
 			if message["type"] != nil { //use type from message
-			
+
 				outgoingMessage.MessageType = message["type"].(string)
-			
+
 			}
-			
+
 			//finally put the original message inside payload
 			outgoingMessage.Payload = message
-			
+
 			//and create json
 			body, err = json.Marshal(outgoingMessage)
-			
+
 			if err != nil {
 
 				log.Println(err)
 
-			}			
+			}
 
 		} else { //cache refresh request
 
@@ -138,5 +144,5 @@ func main() {
 	http.HandleFunc("/refreshCache", producerHandler(kafkaURL, topic, "refresh-cache"))
 
 	// Run the web server.
-	log.Fatal(http.ListenAndServe(":"+GetEnv("LISTENER_PORT","8080"), nil))
+	log.Fatal(http.ListenAndServe(":"+GetEnv("LISTENER_PORT", "8080"), nil))
 }
