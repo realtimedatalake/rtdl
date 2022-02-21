@@ -28,11 +28,14 @@ Username: `rtdl` and Password `rtdl1234`).
     V2 - it can take time up to 1 minute for data to reflect in Dremio)
   * Added support for GZIP and LZO compressions in addition to SNAPPY (default). Specify `compression_type_id`
     as 2 for GZIP and 3 for LZO
+  * Added support for Segment webhooks. You can set up RTDL `ingester` endpoint as a webhook in Segment. You
+    will need to create a stream with the `stream_alt_id` as either the `Source ID` or the `Write Key` from the 
+    `API Keys` tab of `Settings` for the Source connected to the Webhook Destination
+    
   
 
 
 ### What doesn't work/what's next on the roadmap? 🚴🏼  
-  * Segment webhook support
   * Writing to HDFS
   * User Interface for Stream creation
   
