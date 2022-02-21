@@ -59,8 +59,8 @@ services:
   ### For Postgres - End ###
 
   config:
-    build:
-      context: ./config
+    # build:
+    #    context: ./config
     platform: linux/amd64
     image: rtdl/rtdl-config:latest
     container_name: rtdl_config
@@ -82,8 +82,8 @@ services:
 
   ##### Ingest Service - Start #####
   ingest:
-    build:
-      context: ./ingest
+    # build:
+    #   context: ./ingest
     platform: linux/amd64
     image: rtdl/rtdl-ingest:latest
     container_name: rtdl_ingest
@@ -138,7 +138,7 @@ services:
   ##### Processing Services - Start #####
   statefun-manager:
     platform: linux/amd64
-    image: apache/flink-statefun:3.1.0
+    image: apache/flink-statefun:latest
     container_name: rtdl_process-statefun-manager
     expose:
       - 6123
@@ -156,7 +156,7 @@ services:
 
   statefun-worker:
     platform: linux/amd64
-    image: apache/flink-statefun:3.1.0
+    image: apache/flink-statefun:latest
     container_name: rtdl_process-statefun-worker
     expose:
       - 6121
@@ -172,8 +172,8 @@ services:
       - kafka
 
   statefun-functions:
-    build:
-      context: ./ingester
+    # build:
+    #   context: ./ingester
     platform: linux/amd64
     image: rtdl/process-statefun-functions:latest
     container_name: rtdl_process-statefun-functions
