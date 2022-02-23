@@ -762,6 +762,33 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 
 }
 
+/*
+func WriteHDFSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
+
+	//temporary code for HDFS write test
+	client, clientError := hdfs.New("host.docker.internal:8020")
+	if clientError != nil {
+		log.Println(clientError)
+	} else {
+		_, hdfsReadError := client.ReadDir(path)
+
+		if hdfsReadError != nil { //directory does not exist
+			createErr := client.MkdirAll("/"+path, os.FileMode(0777))
+			if createErr != nil {
+				log.Println(createErr)
+			} else {
+
+				log.Println("directory created in hdfs")
+			}
+
+		} else {
+			log.Println("Directory " + path + " exists")
+		}
+	}
+
+}
+*/
+
 func WriteAWSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
 	var key string
