@@ -67,7 +67,7 @@ services:
     expose:
       - 80
     ports:
-      - 80:80
+      - 90:80
     environment:
       RTDL_DB_HOST: rtdl-db
       RTDL_DB_PORT: 5432
@@ -90,7 +90,7 @@ services:
     expose:
       - 8080
     ports:
-      - 8080:8080
+      - 9090:8080
     environment:
       KAFKA_URL: redpanda:29092
       KAFKA_TOPIC: ingress
@@ -247,9 +247,12 @@ services:
     # NOTE: Please use the latest version here!
     image: docker.vectorized.io/vectorized/redpanda:v21.9.5
     container_name: redpanda-1
-    ports:
-    - 9092:9092
-    - 29092:29092
+    expose:
+      - 9092
+      - 29092
+    #ports:
+    #- 9092:9092
+    #- 29092:29092
     healthcheck: { test: curl -f localhost:9644/v1/status/ready, interval: 1s, start_period: 30s }
 
   ##### Redpanda Services - End #####

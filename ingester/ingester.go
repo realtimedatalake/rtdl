@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/colinmarc/hdfs"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/xitongsys/parquet-go-source/local"
@@ -89,6 +90,8 @@ type Config struct {
 	GCPJsonCredentials      sql.NullString `db:"gcp_json_credentials" default:""`
 	AzureStorageAccountname sql.NullString `db:"azure_storage_account_name" default:""`
 	AzureStorageAccessKey   sql.NullString `db:"azure_storage_access_key" default:""`
+	NamenodeHost            sql.NullString `db:"namenode_host" default:"host.docker.internal"`
+	NamenodePort            sql.NullInt64  `db:"namenode_port" default:8020`
 	CreatedAt               time.Time      `db:"created_at"`
 	UpdatedAt               time.Time      `db:"updated_at"`
 }
@@ -762,11 +765,45 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 
 }
 
-/*
 func WriteHDFSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
+	if configRecord.BucketName.String == "" {
+		return errors.New("HDFS root folder (bucket) name cannot be null or empty")
+	}
+	subFolderName := generateSubFolderName(messageType, configRecord)
+	leafLevelFileName := generateLeafLevelFileName()
+
+	path := "/" + configRecord.BucketName.String
+
+	if configRecord.FolderName.String != "" {
+		path = path + "/" + configRecord.FolderName.String
+	}
+
+	path = path + "/" + subFolderName
+
+	fw, err := local.NewLocalFileWriter(leafLevelFileName)
+	err = WriteToFile(schema, fw, payload, configRecord) //write temporary local file
+	if err != nil {
+		log.Println("Unable to write temporary local file", err)
+		return err
+	}
+
+	tempFile, err1 := os.Open(leafLevelFileName) //open temporary local file
+	if err1 != nil {
+		log.Println("Unable to open temporary local file", err1)
+		return err1
+	}
+
+	defer tempFile.Close()
+
+	// Get file size and read the file content into a buffer
+	fileInfo, _ := tempFile.Stat()
+	var size int64 = fileInfo.Size()
+	buffer := make([]byte, size)
+	tempFile.Read(buffer)
+
 	//temporary code for HDFS write test
-	client, clientError := hdfs.New("host.docker.internal:8020")
+	client, clientError := hdfs.New(configRecord.NamenodeHost.String + ":" + strconv.Itoa(int(configRecord.NamenodePort.Int64)))
 	if clientError != nil {
 		log.Println(clientError)
 	} else {
@@ -782,12 +819,39 @@ func WriteHDFSParquet(messageType string, schema string, payload []byte, configR
 			}
 
 		} else {
-			log.Println("Directory " + path + " exists")
+			log.Println("HDFS Directory " + path + " exists")
 		}
 	}
 
+	fw2, err2 := client.Create(path + "/" + leafLevelFileName)
+	if err2 != nil {
+		log.Println("Error creating file in HDFS", err2)
+		return err2
+	}
+
+	fw2.Close()
+
+	fw2, err2 = client.Append(path + "/" + leafLevelFileName)
+	if err2 != nil {
+		log.Println("Error opening file for writing in HDFS", err2)
+		return err2
+	}
+
+	defer fw2.Close()
+
+	_, err = fw2.Write(buffer)
+	if err != nil {
+		log.Println("Error writing file to HDFS", err)
+		return err
+	}
+
+	fw2.Flush()
+
+	os.Remove(leafLevelFileName) //remove the temp file
+	log.Println("Finished writing file to HDFS")
+	return nil
+
 }
-*/
 
 func WriteAWSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
 
@@ -1118,6 +1182,8 @@ func WriteParquet(request IncomingMessage) error {
 				return WriteGCPParquet(messageType, schema, payload, matchingConfig)
 			case "Azure":
 				return WriteAzureParquet(messageType, schema, payload, matchingConfig)
+			case "HDFS":
+				return WriteHDFSParquet(messageType, schema, payload, matchingConfig)
 
 			}
 		}

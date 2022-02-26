@@ -69,6 +69,8 @@ CREATE TABLE IF NOT EXISTS streams (
   gcp_json_credentials VARCHAR,
   azure_storage_account_name VARCHAR,
   azure_storage_access_key VARCHAR,
+  namenode_host VARCHAR,
+  namenode_port INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (stream_id),
@@ -89,7 +91,8 @@ VALUES
     ('Local'),
     ('AWS'),
     ('GCP'),
-	('Azure');
+	('Azure'),
+    ('HDFS');
 
 INSERT INTO partition_times (partition_time_name)
 VALUES
@@ -123,13 +126,14 @@ CREATE OR REPLACE FUNCTION getStream(stream_id_arg VARCHAR)
         aws_secret_access_key VARCHAR,
         gcp_json_credentials VARCHAR,
 		azure_storage_account_name VARCHAR,
-		azure_storage_access_key VARCHAR
-		
+		azure_storage_access_key VARCHAR,
+        namenode_host VARCHAR,
+        namenode_port INTEGER		
     )
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.aws_access_key_id, s.aws_secret_access_key, s.gcp_json_credentials, s.azure_storage_account_name, s.azure_storage_access_key
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.aws_access_key_id, s.aws_secret_access_key, s.gcp_json_credentials, s.azure_storage_account_name, s.azure_storage_access_key,s.namenode_host,s.namenode_port
         FROM streams s
         WHERE s.stream_id = (stream_id_arg)::uuid
         ORDER BY s.stream_id ASC;
@@ -152,12 +156,14 @@ CREATE OR REPLACE FUNCTION getAllStreams()
         aws_secret_access_key VARCHAR,
         gcp_json_credentials VARCHAR,
 		azure_storage_account_name VARCHAR,
-		azure_storage_access_key VARCHAR
+		azure_storage_access_key VARCHAR,
+        namenode_host VARCHAR,
+        namenode_port INTEGER
     )
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.aws_access_key_id, s.aws_secret_access_key, s.gcp_json_credentials, s.azure_storage_account_name, s.azure_storage_access_key
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.aws_access_key_id, s.aws_secret_access_key, s.gcp_json_credentials, s.azure_storage_account_name, s.azure_storage_access_key, s.namenode_host,s.namenode_port
         FROM streams s
         ORDER BY s.stream_id ASC;
 END;
@@ -179,20 +185,22 @@ CREATE OR REPLACE FUNCTION getAllActiveStreams()
         aws_secret_access_key VARCHAR,
         gcp_json_credentials VARCHAR,
 		azure_storage_account_name VARCHAR,
-		azure_storage_access_key VARCHAR
+		azure_storage_access_key VARCHAR,
+        namenode_host VARCHAR,
+        namenode_port INTEGER
 		
     )
 AS $$
 BEGIN
     RETURN QUERY
-        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.aws_access_key_id, s.aws_secret_access_key, s.gcp_json_credentials, s.azure_storage_account_name, s.azure_storage_access_key
+        SELECT s.stream_id, s.stream_alt_id, s.active, s.message_type, s.file_store_type_id, s.region, s.bucket_name, s.folder_name, s.partition_time_id, s.compression_type_id, s.aws_access_key_id, s.aws_secret_access_key, s.gcp_json_credentials, s.azure_storage_account_name, s.azure_storage_access_key, s.namenode_host, s.namenode_port
         FROM streams s
         WHERE s.active = TRUE
         ORDER BY s.stream_id ASC;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION createStream(stream_alt_id_arg VARCHAR, active_arg BOOLEAN, message_type_arg VARCHAR, file_store_type_id_arg INTEGER, region_arg VARCHAR, bucket_name_arg VARCHAR, folder_name_arg VARCHAR, partition_time_id_arg INTEGER, compression_type_id_arg INTEGER, aws_access_key_id_arg VARCHAR, aws_secret_access_key_arg VARCHAR, gcp_json_credentials_arg VARCHAR, azure_storage_account_name_arg VARCHAR, azure_storage_access_key_arg VARCHAR)
+CREATE OR REPLACE FUNCTION createStream(stream_alt_id_arg VARCHAR, active_arg BOOLEAN, message_type_arg VARCHAR, file_store_type_id_arg INTEGER, region_arg VARCHAR, bucket_name_arg VARCHAR, folder_name_arg VARCHAR, partition_time_id_arg INTEGER, compression_type_id_arg INTEGER, aws_access_key_id_arg VARCHAR, aws_secret_access_key_arg VARCHAR, gcp_json_credentials_arg VARCHAR, azure_storage_account_name_arg VARCHAR, azure_storage_access_key_arg VARCHAR, namenode_host_arg VARCHAR, namenode_port_arg INTEGER)
     RETURNS TABLE (
         stream_id uuid,
         stream_alt_id VARCHAR,
@@ -208,20 +216,22 @@ CREATE OR REPLACE FUNCTION createStream(stream_alt_id_arg VARCHAR, active_arg BO
         aws_secret_access_key VARCHAR,
         gcp_json_credentials VARCHAR,
 		azure_storage_account_name VARCHAR,
-		azure_storage_access_key VARCHAR
+		azure_storage_access_key VARCHAR,
+        namenode_host VARCHAR,
+        namenode_port INTEGER
 		
     )
 AS $$
 BEGIN
     RETURN QUERY
-        INSERT INTO streams  (stream_alt_id, active, message_type, file_store_type_id, region, bucket_name, folder_name, partition_time_id, compression_type_id, aws_access_key_id, aws_secret_access_key, gcp_json_credentials, azure_storage_account_name, azure_storage_access_key)
+        INSERT INTO streams  (stream_alt_id, active, message_type, file_store_type_id, region, bucket_name, folder_name, partition_time_id, compression_type_id, aws_access_key_id, aws_secret_access_key, gcp_json_credentials, azure_storage_account_name, azure_storage_access_key, namenode_host, namenode_port)
         VALUES
-            (stream_alt_id_arg, active_arg, message_type_arg, file_store_type_id_arg, region_arg, bucket_name_arg, folder_name_arg, partition_time_id_arg, compression_type_id_arg, aws_access_key_id_arg, aws_secret_access_key_arg, gcp_json_credentials_arg, azure_storage_account_name_arg, azure_storage_access_key_arg)
-        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials, streams.azure_storage_account_name, streams.azure_storage_access_key;
+            (stream_alt_id_arg, active_arg, message_type_arg, file_store_type_id_arg, region_arg, bucket_name_arg, folder_name_arg, partition_time_id_arg, compression_type_id_arg, aws_access_key_id_arg, aws_secret_access_key_arg, gcp_json_credentials_arg, azure_storage_account_name_arg, azure_storage_access_key_arg, namenode_host_arg, namenode_port_arg)
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials, streams.azure_storage_account_name, streams.azure_storage_access_key, streams.namenode_host, streams.namenode_port;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION updateStream(stream_id_arg VARCHAR, stream_alt_id_arg VARCHAR, active_arg BOOLEAN, message_type_arg VARCHAR, file_store_type_id_arg INTEGER, region_arg VARCHAR, bucket_name_arg VARCHAR, folder_name_arg VARCHAR, partition_time_id_arg INTEGER, compression_type_id_arg INTEGER, aws_access_key_id_arg VARCHAR, aws_secret_access_key_arg VARCHAR, gcp_json_credentials_arg VARCHAR, azure_storage_account_name_arg VARCHAR, azure_storage_access_key_arg VARCHAR)
+CREATE OR REPLACE FUNCTION updateStream(stream_id_arg VARCHAR, stream_alt_id_arg VARCHAR, active_arg BOOLEAN, message_type_arg VARCHAR, file_store_type_id_arg INTEGER, region_arg VARCHAR, bucket_name_arg VARCHAR, folder_name_arg VARCHAR, partition_time_id_arg INTEGER, compression_type_id_arg INTEGER, aws_access_key_id_arg VARCHAR, aws_secret_access_key_arg VARCHAR, gcp_json_credentials_arg VARCHAR, azure_storage_account_name_arg VARCHAR, azure_storage_access_key_arg VARCHAR, namenode_host_arg VARCHAR, namenode_port_arg INTEGER)
     RETURNS TABLE (
         stream_id uuid,
         stream_alt_id VARCHAR,
@@ -237,7 +247,9 @@ CREATE OR REPLACE FUNCTION updateStream(stream_id_arg VARCHAR, stream_alt_id_arg
         aws_secret_access_key VARCHAR,
         gcp_json_credentials VARCHAR,
 		azure_storage_account_name VARCHAR,
-		azure_storage_access_key VARCHAR
+		azure_storage_access_key VARCHAR,
+        namenode_host VARCHAR,
+        namenode_port INTEGER
     )
 AS $$
 BEGIN
@@ -256,11 +268,13 @@ BEGIN
             aws_secret_access_key = aws_secret_access_key_arg,
             gcp_json_credentials = gcp_json_credentials_arg,
 			azure_storage_account_name = azure_storage_account_name_arg,
-			azure_storage_access_key = azure_storage_access_key_arg
+			azure_storage_access_key = azure_storage_access_key_arg,
+            namenode_host = namenode_host_arg,
+            namenode_port = namenode_port_arg
 			
 			
         WHERE streams.stream_id = (stream_id_arg)::uuid
-        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials, streams.azure_storage_account_name, streams.azure_storage_access_key;
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials, streams.azure_storage_account_name, streams.azure_storage_access_key, streams.namenode_host, streams.namenode_port;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -280,14 +294,17 @@ CREATE OR REPLACE FUNCTION deleteStream(stream_id_arg VARCHAR)
         aws_secret_access_key VARCHAR,
         gcp_json_credentials VARCHAR,
 		azure_storage_account_name VARCHAR,
-		azure_storage_access_key VARCHAR
+		azure_storage_access_key VARCHAR,
+        namenode_host VARCHAR,
+        namenode_port INTEGER
+
     )
 AS $$
 BEGIN
     RETURN QUERY
         DELETE FROM streams
         WHERE streams.stream_id = (stream_id_arg)::uuid
-        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials, streams.azure_storage_account_name, streams.azure_storage_access_key;
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials, streams.azure_storage_account_name, streams.azure_storage_access_key, streams.namenode_host, streams.namenode_port;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -307,7 +324,9 @@ CREATE OR REPLACE FUNCTION activateStream(stream_id_arg VARCHAR)
         aws_secret_access_key VARCHAR,
         gcp_json_credentials VARCHAR,
 		azure_storage_account_name VARCHAR,
-		azure_storage_access_key VARCHAR
+		azure_storage_access_key VARCHAR,
+        namenode_host VARCHAR,
+        namenode_port INTEGER
 		
     )
 AS $$
@@ -316,7 +335,7 @@ BEGIN
         UPDATE streams
         SET active = TRUE
         WHERE streams.stream_id = (stream_id_arg)::uuid
-        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials, streams.azure_storage_account_name, streams.azure_storage_access_key;
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials, streams.azure_storage_account_name, streams.azure_storage_access_key, streams.namenode_host, streams.namenode_port;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -336,7 +355,9 @@ CREATE OR REPLACE FUNCTION deactivateStream(stream_id_arg VARCHAR)
         aws_secret_access_key VARCHAR,
         gcp_json_credentials VARCHAR,
 		azure_storage_account_name VARCHAR,
-		azure_storage_access_key VARCHAR
+		azure_storage_access_key VARCHAR,
+        namenode_host VARCHAR,
+        namenode_port INTEGER
     )
 AS $$
 BEGIN
@@ -344,7 +365,7 @@ BEGIN
         UPDATE streams
         SET active = FALSE
         WHERE streams.stream_id = (stream_id_arg)::uuid
-        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials, streams.azure_storage_account_name, streams.azure_storage_access_key;
+        RETURNING streams.stream_id, streams.stream_alt_id, streams.active, streams.message_type, streams.file_store_type_id, streams.region, streams.bucket_name, streams.folder_name, streams.partition_time_id, streams.compression_type_id, streams.aws_access_key_id, streams.aws_secret_access_key, streams.gcp_json_credentials, streams.azure_storage_account_name, streams.azure_storage_access_key, streams.namenode_host, streams.namenode_port;
 END;
 $$ LANGUAGE plpgsql;
 
