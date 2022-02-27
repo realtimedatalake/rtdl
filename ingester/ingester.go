@@ -219,7 +219,7 @@ func DremioReqRes(endPoint string, data []byte) (map[string]interface{}, error) 
 	var request *http.Request
 	var err error
 
-	if endPoint == "login" { //end point v2
+	if endPoint == "login" || strings.Contains(endPoint, "folder_format") { //end point v2
 
 		version = "apiv2"
 
@@ -231,19 +231,20 @@ func DremioReqRes(endPoint string, data []byte) (map[string]interface{}, error) 
 
 	url := "http://" + dremioHost + ":" + dremioPort + "/" + version + "/" + endPoint
 
-	if data == nil { //Get request
-		method = "GET"
-	} else {
-		method = "POST"
-	}
+	if strings.Contains(endPoint, "folder_format") {
 
-	if data == nil {
-
-		request, err = http.NewRequest(method, url, nil)
+		method = "PUT"
+		request, err = http.NewRequest(method, url, strings.NewReader(`{"type":"Parquet"}`))
 
 	} else {
+		if data == nil { //Get request
+			method = "GET"
+			request, err = http.NewRequest(method, url, nil)
 
-		request, err = http.NewRequest(method, url, bytes.NewBuffer(data))
+		} else {
+			method = "POST"
+			request, err = http.NewRequest(method, url, bytes.NewBuffer(data))
+		}
 
 	}
 
@@ -257,7 +258,7 @@ func DremioReqRes(endPoint string, data []byte) (map[string]interface{}, error) 
 
 	if endPoint != "login" { //need to set auth header for non-login calls
 
-		request.Header.Set("authorization", dremioToken)
+		request.Header.Set("Authorization", dremioToken)
 	}
 
 	client := &http.Client{}
@@ -679,6 +680,16 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 
 			}
 
+		case "HDFS":
+
+			sourceStringMultiLine += `, "type": "HDFS", "config": {"hostname": "` + configRecord.NamenodeHost.String + `"`
+			sourceStringMultiLine += `, "port": ` + strconv.Itoa(int(configRecord.NamenodePort.Int64))
+			sourceStringMultiLine += `, "rootPath": "/` + location + `/`
+			if configRecord.FolderName.String != "" {
+				sourceStringMultiLine += configRecord.FolderName.String + `/`
+
+			}
+
 		}
 
 		sourceStringMultiLine += `"}}`
@@ -699,16 +710,23 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 
 		//next we have to create the dataset
 
-		encodedId := "dremio%3A%2F" + sourceName + "%2F" + messageType
+		if sourceType == "HDFS" {
 
-		datasetDefMultiLine := `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + sourceName + `", "` + messageType + `"]`
+			return nil //HDFS dataset creation to be done separately
 
-		datasetDefMultiLine += `, "format": {"type": "Parquet"}`
-		datasetDefMultiLine += `, "type": "PHYSICAL_DATASET"`
-		datasetDefMultiLine += `}`
-		datasetDef := []byte(datasetDefMultiLine)
+		} else {
+			encodedId := "dremio%3A%2F" + sourceName + "%2F" + messageType
 
-		dremioResponse, err1 = DremioReqRes("catalog/"+encodedId, datasetDef)
+			datasetDefMultiLine := `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + sourceName + `", "` + messageType + `"]`
+
+			datasetDefMultiLine += `, "format": {"type": "Parquet"}`
+			datasetDefMultiLine += `, "type": "PHYSICAL_DATASET"`
+			datasetDefMultiLine += `}`
+			datasetDef := []byte(datasetDefMultiLine)
+
+			dremioResponse, err1 = DremioReqRes("catalog/"+encodedId, datasetDef)
+
+		}
 
 		if err1 != nil {
 
@@ -762,6 +780,40 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 	}
 
 	return err
+
+}
+
+func CreateHDFSDataset(messageType string, configRecord Config) error {
+	url := "http://" + dremioHost + ":" + dremioPort + "/apiv2/source/" + configRecord.StreamId.String + "/folder_format/" + messageType
+
+	method := "PUT"
+
+	payload := strings.NewReader(`{"type":"Parquet"}`)
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, payload)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	req.Header.Add("Authorization", dremioToken)
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+
+	res, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer res.Body.Close()
+
+	_, err = ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
 
 }
 
@@ -840,16 +892,24 @@ func WriteHDFSParquet(messageType string, schema string, payload []byte, configR
 	defer fw2.Close()
 
 	_, err = fw2.Write(buffer)
+
 	if err != nil {
 		log.Println("Error writing file to HDFS", err)
-		return err
 	}
 
-	fw2.Flush()
+	err = fw2.Flush()
+
+	if err != nil {
+		log.Println("Error flushing file to HDFS", err)
+	}
 
 	os.Remove(leafLevelFileName) //remove the temp file
-	log.Println("Finished writing file to HDFS")
-	return nil
+	if err == nil {
+		log.Println("Finished writing file to HDFS")
+		err = UpdateDremio(messageType, "HDFS", configRecord.BucketName.String, configRecord)
+	}
+
+	return err
 
 }
 
@@ -1183,7 +1243,14 @@ func WriteParquet(request IncomingMessage) error {
 			case "Azure":
 				return WriteAzureParquet(messageType, schema, payload, matchingConfig)
 			case "HDFS":
-				return WriteHDFSParquet(messageType, schema, payload, matchingConfig)
+				err := WriteHDFSParquet(messageType, schema, payload, matchingConfig)
+				if err != nil {
+					log.Println("Error writing HDFS file")
+					return err
+				} else { //need to call HDFS dataset creation now
+
+					return CreateHDFSDataset(messageType, matchingConfig)
+				}
 
 			}
 		}
