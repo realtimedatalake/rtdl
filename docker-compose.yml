@@ -188,8 +188,7 @@ services:
       DREMIO_HOST: api.dremio.cloud
       DREMIO_PORT: 9047
       DREMIO_USERNAME: rtdl
-      #DREMIO_PASSWORD: rtdl1234
-      DREMIO_PASSWORD: b19I0xe3Q2iqApxKW+hovbuk7WZBV2swvirpxS2H30Ojr3ZXQ4hwbuaGFcY/YA==
+      DREMIO_PASSWORD: rtdl1234      
       DREMIO_CLOUD_PROJECT_ID: b2d480bb-1b54-424b-aba9-5294e1010b40
       DREMIO_MOUNT_PATH: /mnt/datastore
     volumes:
