@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="1097"
+   height="576"
+   viewBox="0 0 290.2479 152.39999"
+   version="1.1"
+   id="svg5"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2">
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath1278">
+      <rect
+         style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke-width:1.68391"
+         id="rect1280"
+         width="290.24792"
+         height="152.39999"
+         x="28.672432"
+         y="72.300003" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath1282">
+      <rect
+         style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke-width:1.68391"
+         id="rect1284"
+         width="290.24792"
+         height="152.39999"
+         x="28.672432"
+         y="72.300003" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath1286">
+      <rect
+         style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke-width:1.68391"
+         id="rect1288"
+         width="290.24792"
+         height="152.39999"
+         x="28.672432"
+         y="72.300003" />
+    </clipPath>
+  </defs>
+  <g
+     id="layer1"
+     transform="translate(-28.672432,-72.300003)" />
+  <g
+     id="layer2"
+     transform="translate(-28.672432,-72.300003)">
+    <text
+       xml:space="preserve"
+       style="font-size:10.5833px;line-height:1.25;font-family:'Apple Color Emoji';-inkscape-font-specification:'Apple Color Emoji';stroke-width:0.264583"
+       x="24.7104"
+       y="38.016003"
+       id="text5228"><tspan
+         id="tspan5226"
+         style="stroke-width:0.264583"
+         x="24.7104"
+         y="38.016003" /></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.5833px;line-height:1.25;font-family:'Apple Color Emoji';-inkscape-font-specification:'Apple Color Emoji';stroke-width:0.264583"
+       x="74.131195"
+       y="28.0368"
+       id="text9648"><tspan
+         id="tspan9646"
+         style="stroke-width:0.264583"
+         x="74.131195"
+         y="28.0368" /></text>
+  </g>
+  <g
+     id="layer3"
+     transform="translate(-28.672432,-72.300003)" />
+  <g
+     id="layer4"
+     style="display:inline"
+     transform="translate(-28.672432,-72.300003)">
+    <circle
+       style="fill:#d2ffff;fill-opacity:1;fill-rule:evenodd;stroke-width:0.703552"
+       id="path53"
+       cx="173.25673"
+       cy="190.07822"
+       r="202.62317"
+       clip-path="url(#clipPath1286)" />
+    <path
+       id="path53-9"
+       style="fill:#09c3db;fill-opacity:1;fill-rule:evenodd;stroke-width:0.527002"
+       d="m 212.60727,157.19069 c -2.67361,-0.0488 -7.17877,0.0269 -9.71677,0.23262 -43.07364,3.49125 -90.6361,68.28437 -131.565085,68.14932 -21.340208,-0.0703 -34.311099,-31.62153 -48.986542,-50.69312 -0.540192,5.04867 -0.826697,10.12128 -0.858439,15.19867 -6e-6,83.824 67.952772,151.77677 151.776776,151.77677 69.9077,-0.0333 130.7506,-47.81207 147.35898,-115.71825 -28.57902,-34.11745 -71.63269,-68.28299 -108.00892,-68.94601 z"
+       clip-path="url(#clipPath1282)" />
+    <path
+       id="path53-4"
+       style="fill:#024b86;fill-opacity:1;fill-rule:evenodd;stroke-width:0.527002"
+       d="m 112.47383,143.60724 c -35.317441,0.17648 -71.223233,34.16326 -89.329016,68.82017 11.071577,74.36902 74.923747,129.42264 150.112396,129.42754 38.73134,-0.0119 74.09435,-14.53681 100.91902,-38.45073 -41.38548,-15.9757 -52.89725,-23.17323 -68.44549,-41.86442 -31.1044,-37.39188 -55.48576,-112.9872 -85.18616,-117.36746 -2.68119,-0.39543 -5.37436,-0.57856 -8.07075,-0.5651 z"
+       clip-path="url(#clipPath1278)" />
+    <path
+       fill="#ffac33"
+       d="m 226.49263,140.21309 c -0.51517,-1.37941 -1.83452,-2.29661 -3.309,-2.29661 H 180.5856 l 24.57114,-47.773051 c 0.7721,-1.502832 0.37275,-3.340802 -0.95581,-4.385033 -0.64297,-0.507992 -1.41454,-0.758393 -2.18359,-0.758393 -0.82136,0 -1.64391,0.289274 -2.30366,0.857169 l -25.9186,22.383718 -51.69236,44.64402 c -1.11422,0.96247 -1.51705,2.51879 -1.00107,3.8982 0.51518,1.37927 1.83082,2.30007 3.3054,2.30007 h 42.59791 l -24.57101,47.77314 c -0.7721,1.50281 -0.37274,3.34081 0.95581,4.38489 0.64298,0.50852 1.41442,0.75879 2.18359,0.75879 0.82136,0 1.64392,-0.28888 2.30367,-0.85731 l 25.91846,-22.38383 51.6925,-44.64398 c 1.11823,-0.96247 1.51691,-2.51879 1.00505,-3.90166 z"
+       id="path2"
+       style="stroke-width:3.52777" />
+  </g>
+</svg>
