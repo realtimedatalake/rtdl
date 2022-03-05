@@ -218,18 +218,32 @@ func DremioReqRes(endPoint string, data []byte) (map[string]interface{}, error) 
 	var method string
 	var request *http.Request
 	var err error
+	var url string
 
-	if endPoint == "login" || strings.Contains(endPoint, "folder_format") { //end point v2
+	if strings.Contains(dremioHost, "cloud") { //Dremio cloud
 
-		version = "apiv2"
+		dremioCloudProjectId := os.Getenv("DREMIO_CLOUD_PROJECT_ID")
+
+		if dremioCloudProjectId == "" {
+			return nil, errors.New("DREMIO_CLOUD_PROJECT_ID cannot be blank for Dremio Cloud")
+		}
+
+		url = "https://" + dremioHost + "/v0/projects/" + dremioCloudProjectId + "/" + endPoint
 
 	} else {
+		if endPoint == "login" || strings.Contains(endPoint, "folder_format") { //end point v2
 
-		version = "api/v3"
+			version = "apiv2"
+
+		} else {
+
+			version = "api/v3"
+
+		}
+
+		url = "http://" + dremioHost + ":" + dremioPort + "/" + version + "/" + endPoint
 
 	}
-
-	url := "http://" + dremioHost + ":" + dremioPort + "/" + version + "/" + endPoint
 
 	if strings.Contains(endPoint, "folder_format") {
 
@@ -278,12 +292,26 @@ func DremioReqRes(endPoint string, data []byte) (map[string]interface{}, error) 
 		return nil, err
 	}
 
+	log.Println(dremioResponse)
 	return dremioResponse, nil
 
 }
 
 //connect to Dremio server and retrieve token for subsequent calls
 func SetDremioToken() error {
+
+	if strings.Contains(dremioHost, "cloud") { //Dremio Cloud
+
+		dremioCloudToken := os.Getenv("DREMIO_PASSWORD")
+
+		if dremioCloudToken == "" { //Password cannot be blank for Dremio Cloud
+			return errors.New("DREMIO_PASSWORD cannot be blank for Dremio Cloud")
+		}
+
+		dremioToken = "Bearer " + dremioCloudToken
+		return nil
+
+	}
 
 	username := GetEnv("DREMIO_USERNAME", "rtdl")
 	password := GetEnv("DREMIO_PASSWORD", "rtdl1234")
@@ -635,9 +663,14 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 			sourceStringMultiLine += `, "type": "S3", "config": {"accessKey": "` + configRecord.AWSAcessKeyID.String + `"`
 			sourceStringMultiLine += `, "accessSecret": "` + configRecord.AWSSecretAcessKey.String + `"`
 			//sourceStringMultiLine += `, "externalBucketList": ["` + location + `"]`
-			sourceStringMultiLine += `, "rootPath": "/` + location + `/`
-			if configRecord.FolderName.String != "" {
-				sourceStringMultiLine += configRecord.FolderName.String + `/`
+			if strings.Contains(dremioHost, "cloud") {
+				sourceStringMultiLine += `, "rootPath": "/`
+			} else {
+				sourceStringMultiLine += `, "rootPath": "/` + location + `/`
+				if configRecord.FolderName.String != "" {
+					sourceStringMultiLine += configRecord.FolderName.String + `/`
+
+				}
 
 			}
 
@@ -708,6 +741,9 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 
 	if !datasetExists {
 
+		var encodedId string
+		var datasetDefMultiLine string
+
 		//next we have to create the dataset
 
 		if sourceType == "HDFS" {
@@ -715,9 +751,22 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 			return nil //HDFS dataset creation to be done separately
 
 		} else {
-			encodedId := "dremio%3A%2F" + sourceName + "%2F" + messageType
 
-			datasetDefMultiLine := `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + sourceName + `", "` + messageType + `"]`
+			if strings.Contains(dremioHost, "cloud") { //for Dremio Cloud, need to add bucket and folder to path
+				encodedId = "dremio%3A%2F" + sourceName + "%2F" + configRecord.BucketName.String
+				if configRecord.FolderName.String != "" {
+					encodedId += "%2F" + configRecord.FolderName.String
+				}
+				encodedId += "%2F" + messageType
+				datasetDefMultiLine = `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + sourceName + `", "` + configRecord.BucketName.String + `" `
+				if configRecord.FolderName.String != "" {
+					datasetDefMultiLine += `, "` + configRecord.FolderName.String + `" `
+				}
+				datasetDefMultiLine += `, "` + messageType + `"]`
+			} else {
+				encodedId = "dremio%3A%2F" + sourceName + "%2F" + messageType
+				datasetDefMultiLine = `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + sourceName + `", "` + messageType + `"]`
+			}
 
 			datasetDefMultiLine += `, "format": {"type": "Parquet"}`
 			datasetDefMultiLine += `, "type": "PHYSICAL_DATASET"`
@@ -784,7 +833,22 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 }
 
 func CreateHDFSDataset(messageType string, configRecord Config) error {
-	url := "http://" + dremioHost + ":" + dremioPort + "/apiv2/source/" + configRecord.StreamId.String + "/folder_format/" + messageType
+
+	var url string
+
+	if strings.Contains(dremioHost, "cloud") { //
+
+		dremioCloudProjectId := os.Getenv("DREMIO_CLOUD_PROJECT_ID")
+
+		if dremioCloudProjectId == "" {
+			return errors.New("DREMIO_CLOUD_PROJECT_ID cannot be blank for Dremio Cloud")
+		}
+
+		url = "https://" + dremioHost + "/v0/projects/" + dremioCloudProjectId + "/source/" + configRecord.StreamId.String + "/folder_format/" + messageType
+
+	} else {
+		url = "http://" + dremioHost + ":" + dremioPort + "/apiv2/source/" + configRecord.StreamId.String + "/folder_format/" + messageType
+	}
 
 	method := "PUT"
 
