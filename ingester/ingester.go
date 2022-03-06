@@ -245,6 +245,8 @@ func DremioReqRes(endPoint string, data []byte) (map[string]interface{}, error) 
 
 	}
 
+	//log.Println(url)
+
 	if strings.Contains(endPoint, "folder_format") {
 
 		method = "PUT"
@@ -292,7 +294,7 @@ func DremioReqRes(endPoint string, data []byte) (map[string]interface{}, error) 
 		return nil, err
 	}
 
-	log.Println(dremioResponse)
+	//log.Println(dremioResponse)
 	return dremioResponse, nil
 
 }
@@ -400,6 +402,8 @@ func getParquetDataType(dataType string) string {
 		return `FLOAT`
 	case "float64":
 		return `DOUBLE`
+	case "boolean", "bool":
+		return `BOOLEAN`
 
 	}
 	return ""
@@ -409,7 +413,7 @@ func getParquetDataType(dataType string) string {
 //use reflection to study incoming generic payload and construct schema necessary for Parquet
 //payload is passed recursively through the function to break down till the elemental level
 
-func generateSchema(payload map[string]interface{}, messageType string, jsonSchema string) string {
+func GenerateSchema(payload map[string]interface{}, messageType string, jsonSchema string) string {
 
 	if jsonSchema == "" {
 		jsonSchema = `{"Tag": "name=` + messageType + `, repetitiontype=REQUIRED",`
@@ -437,7 +441,7 @@ func generateSchema(payload map[string]interface{}, messageType string, jsonSche
 			jsonSchema += `{"Tag": "name=` + key
 
 			jsonSchema += `, repetitiontype=REQUIRED", "Fields" : [`
-			jsonSchema = generateSchema(value.(map[string]interface{}), messageType, jsonSchema) //need recursion
+			jsonSchema = GenerateSchema(value.(map[string]interface{}), messageType, jsonSchema) //need recursion
 			jsonSchema = strings.TrimRight(jsonSchema, ",")                                      //remove trailing comma
 			jsonSchema += `]},`
 
@@ -451,7 +455,7 @@ func generateSchema(payload map[string]interface{}, messageType string, jsonSche
 				arrayItemDataType := reflect.TypeOf(value.([]interface{})[0]).String()
 				if strings.HasPrefix(arrayItemDataType, "map[string]interface") { //if array consists of objects then same have to be recursed
 					jsonSchema += `{"Tag": "name=element, repetitiontype=REQUIRED", "Fields" : [`
-					jsonSchema = generateSchema(value.([]interface{})[0].(map[string]interface{}), messageType, jsonSchema)
+					jsonSchema = GenerateSchema(value.([]interface{})[0].(map[string]interface{}), messageType, jsonSchema)
 					jsonSchema = strings.TrimRight(jsonSchema, ",")
 					jsonSchema += `]},`
 				} else { //arrays composed of native data types can be handled directly
@@ -533,8 +537,6 @@ func generateLeafLevelFileName() string {
 
 //writer-agnostic function to actually write to file
 func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRecord Config) error {
-
-	//log.Println("Schema : ", schema)
 
 	pw, err := writer.NewJSONWriter(schema, fw, 4)
 	if err != nil {
@@ -728,6 +730,8 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 		sourceStringMultiLine += `"}}`
 
 		sourceDef = []byte(sourceStringMultiLine)
+
+		//log.Println(sourceStringMultiLine)
 
 		dremioResponse, err1 = DremioReqRes("source", sourceDef)
 
@@ -1232,7 +1236,7 @@ func WriteAzureParquet(messageType string, schema string, payload []byte, config
 //Parquet writing logic
 func WriteParquet(request IncomingMessage) error {
 
-	//log.Println(generateSchema(request.Payload,request.MessageType, "")+"]}")
+	//log.Println(GenerateSchema(request.Payload,request.MessageType, "")+"]}")
 
 	//message type precedence order will be 1."type" within request.Payload 2."message_type" within incoming message 3. Config Record MessageType
 	//a default value will also be kept
@@ -1250,16 +1254,15 @@ func WriteParquet(request IncomingMessage) error {
 		if request.StreamAltId != "" { //use stream_alt_id
 
 			if configRecord.StreamAltId.String == request.StreamAltId {
-
 				matchingConfig = configRecord
 				break
 
 			}
 
-		} else if request.StreamId != "" {
+		}
 
+		if request.StreamId != "" {
 			if configRecord.StreamId.String == request.StreamId {
-
 				matchingConfig = configRecord
 				break
 
@@ -1289,9 +1292,7 @@ func WriteParquet(request IncomingMessage) error {
 		}
 	}
 
-	schema := strings.TrimRight(generateSchema(request.Payload, messageType, ""), ",") + "]}"
-
-	//log.Println(schema)
+	schema := strings.TrimRight(GenerateSchema(request.Payload, messageType, ""), ",") + "]}"
 
 	for _, fileStoreTypeRecord := range fileStoreTypes { //similar logic for file store types
 

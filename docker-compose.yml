@@ -185,7 +185,7 @@ services:
       RTDL_DB_USER: rtdl
       RTDL_DB_PASSWORD: rtdl
       RTDL_DB_DBNAME: rtdl_db
-      DREMIO_HOST: api.dremio.cloud
+      DREMIO_HOST: dremio
       DREMIO_PORT: 9047
       DREMIO_USERNAME: rtdl
       DREMIO_PASSWORD: rtdl1234      
