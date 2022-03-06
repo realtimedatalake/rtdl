@@ -77,6 +77,8 @@ type stream_json struct {
 	GCPJsonCredentials      map[string]interface{} `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
 	AzureStorageAccountname string                 `db:"azure_storage_account_name" json:"azure_storage_account_name, omitempty"`
 	AzureStorageAccessKey   string                 `db:"azure_storage_access_key" json:"azure_storage_access_key, omitempty"`
+	NamenodeHost            string                 `db:"namenode_host" json:"namenode_host, omitempty"`
+	NamenodePort            int                    `db:"namenode_port" json:"namenode_port, omitempty"`
 }
 
 type stream_sql struct {
@@ -95,6 +97,8 @@ type stream_sql struct {
 	GCPJsonCredentials      sql.NullString `db:"gcp_json_credentials" json:"gcp_json_credentials,omitempty"`
 	AzureStorageAccountname sql.NullString `db:"azure_storage_account_name" json:"azure_storage_account_name, omitempty"`
 	AzureStorageAccessKey   sql.NullString `db:"azure_storage_access_key" json:"azure_storage_access_key, omitempty"`
+	NamenodeHost            string         `db:"namenode_host" json:"namenode_host, omitempty"`
+	NamenodePort            int            `db:"namenode_port" json:"namenode_port, omitempty"`
 }
 
 //	FUNCTION
@@ -315,6 +319,7 @@ func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 
 func updateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
+
 		switch req.Method {
 		case http.MethodPut:
 			// Read json
@@ -780,10 +785,22 @@ func buildQueryString_createStream(reqStream stream_json) (queryStr string) {
 	}
 
 	if reqStream.AzureStorageAccessKey != "" {
-		queryStr = queryStr + "'" + reqStream.AzureStorageAccessKey + "') "
+		queryStr = queryStr + "'" + reqStream.AzureStorageAccessKey + "', "
 	} else {
-		queryStr = queryStr + "NULL)"
+		queryStr = queryStr + "NULL, "
+
 	}
+
+	if reqStream.NamenodeHost == "" {
+		reqStream.NamenodeHost = "host.docker.internal" //if no Namenode host has been specified we assume that Namenode is on same host
+	}
+	queryStr = queryStr + "'" + reqStream.NamenodeHost + "', "
+
+	if reqStream.NamenodePort < 1024 { //ports 1-1024 are used by system
+		reqStream.NamenodePort = 8020
+
+	}
+	queryStr = queryStr + strconv.Itoa(reqStream.NamenodePort) + ") "
 
 	return queryStr
 }
@@ -869,11 +886,23 @@ func buildQueryString_updateStream(reqStream stream_json) (queryStr string) {
 	}
 
 	if reqStream.AzureStorageAccessKey != "" {
-		queryStr = queryStr + "'" + reqStream.AzureStorageAccessKey + "') "
+		queryStr = queryStr + "'" + reqStream.AzureStorageAccessKey + "', "
 	} else {
-		queryStr = queryStr + "NULL)"
+		queryStr = queryStr + "NULL, "
 	}
 
+	if reqStream.NamenodeHost == "" {
+		reqStream.NamenodeHost = "host.docker.internal" //if no Namenode host has been specified we assume that Namenode is on same host
+	}
+	queryStr = queryStr + "'" + reqStream.NamenodeHost + "', "
+
+	if reqStream.NamenodePort < 1024 { //ports 1-1024 are used by system
+		reqStream.NamenodePort = 8020
+
+	}
+	queryStr = queryStr + strconv.Itoa(reqStream.NamenodePort) + ") "
+
+	log.Println(queryStr)
 	return queryStr
 }
 

@@ -61,14 +61,7 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 			}
 
 			if message["projectId"] == nil {
-				if message["writeKey"] == nil { //no writeKey
-
-					if message["stream_id"] != nil { //no stream_id
-
-						outgoingMessage.StreamId = message["stream_id"].(string)
-					}
-
-				} else {
+				if message["writeKey"] != nil { //no writeKey
 
 					outgoingMessage.StreamAltId = message["writeKey"].(string) //put writKey to stream_alt_id
 				}
@@ -77,6 +70,11 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 
 				outgoingMessage.StreamAltId = message["projectId"].(string) //put projectId to stream_alt_id
 
+			}
+
+			if message["stream_id"] != nil { //no stream_id
+
+				outgoingMessage.StreamId = message["stream_id"].(string)
 			}
 
 			if message["type"] != nil { //use type from message

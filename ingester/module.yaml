@@ -22,7 +22,7 @@ spec:
 kind: io.statefun.kafka.v1/ingress
 spec:
   id: com.rtdl.sf/ingress
-  address: kafka:9092
+  address: redpanda:29092
   consumerGroupId: ingress-group
   startupPosition:
     type: latest
@@ -37,7 +37,7 @@ spec:
 kind: io.statefun.kafka.v1/egress
 spec:
   id: com.rtdl.sf/egress
-  address: kafka:9092
+  address: redpanda:29092
   deliverySemantic:
     type: exactly-once
     transactionTimeout: 5sec

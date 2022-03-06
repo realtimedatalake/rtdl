@@ -59,8 +59,8 @@ services:
   ### For Postgres - End ###
 
   config:
-    # build:
-    #    context: ./config
+    build:
+      context: ./config
     platform: linux/amd64
     image: rtdl/rtdl-config:latest
     container_name: rtdl_config
@@ -82,8 +82,8 @@ services:
 
   ##### Ingest Service - Start #####
   ingest:
-    # build:
-    #   context: ./ingest
+    build:
+      context: ./ingest
     platform: linux/amd64
     image: rtdl/rtdl-ingest:latest
     container_name: rtdl_ingest
@@ -92,46 +92,46 @@ services:
     ports:
       - 8080:8080
     environment:
-      KAFKA_URL: kafka:9092
+      KAFKA_URL: redpanda:29092
       KAFKA_TOPIC: ingress
       LISTENER_PORT: 8080
     depends_on:      
-      - kafka
+      - redpanda
   ##### Ingest Service - End #####
 
 
   ##### Kafka Services - Start #####
-  kafka-zookeeper:
-    platform: linux/amd64
-    image: bitnami/zookeeper:latest
-    container_name: rtdl_kafka-zookeeper
-    expose:
-      - 2181
+  #kafka-zookeeper:
+  #  platform: linux/amd64
+  #  image: bitnami/zookeeper:latest
+  #  container_name: rtdl_kafka-zookeeper
+  #  expose:
+  #    - 2181
     #ports:
     #  - 2181:2181
-    environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes"
-    restart: always
+  #  environment:
+  #    ALLOW_ANONYMOUS_LOGIN: "yes"
+  #  restart: always
 
-  kafka:
-    platform: linux/amd64
-    image: bitnami/kafka:latest
-    container_name: rtdl_kafka
-    expose:
-      - 9092
-    ports:
-      - 9092:9092
-    environment:
-      KAFKA_ADVERTISED_HOST_NAME: kafka
-      KAFKA_CREATE_TOPICS: "ingress:1:1"
-      KAFKA_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-      KAFKA_LOG_RETENTION_MS: 1000
-      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 1500
-    depends_on:
-      - kafka-zookeeper
-    restart: always
+  #kafka:
+  #  platform: linux/amd64
+  #  image: bitnami/kafka:latest
+  #  container_name: rtdl_kafka
+  #  expose:
+  #    - 9092
+    #ports:
+    #  - 9092:9092
+  #  environment:
+  #    KAFKA_ADVERTISED_HOST_NAME: kafka
+  #    KAFKA_CREATE_TOPICS: "ingress:1:1"
+  #    KAFKA_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
+  #    KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+  #    ALLOW_PLAINTEXT_LISTENER: "yes"
+  #    KAFKA_LOG_RETENTION_MS: 1000
+  #    KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 1500
+  #  depends_on:
+  #    - kafka-zookeeper
+  #  restart: always
   ##### Kafka Services - End #####
 
 
@@ -169,11 +169,11 @@ services:
       - ./ingester/module.yaml:/opt/statefun/modules/ingester/module.yaml
     depends_on:
       - statefun-manager
-      - kafka
+      - redpanda
 
   statefun-functions:
-    # build:
-    #   context: ./ingester
+    build:
+      context: ./ingester
     platform: linux/amd64
     image: rtdl/process-statefun-functions:latest
     container_name: rtdl_process-statefun-functions
@@ -188,15 +188,16 @@ services:
       DREMIO_HOST: dremio
       DREMIO_PORT: 9047
       DREMIO_USERNAME: rtdl
-      DREMIO_PASSWORD: rtdl1234
+      DREMIO_PASSWORD: rtdl1234      
+      DREMIO_CLOUD_PROJECT_ID: b2d480bb-1b54-424b-aba9-5294e1010b40
       DREMIO_MOUNT_PATH: /mnt/datastore
     volumes:
       - ./storage/rtdl-data_store:/app/datastore    
     depends_on:     
       rtdl-db:
         condition: service_healthy
-      kafka:
-        condition: service_started
+      redpanda:
+        condition: service_healthy
       dremio:
         condition: service_healthy
   ##### Processing Services - End #####
@@ -224,3 +225,94 @@ services:
         timeout: 5s
         retries: 24
   ##### Dremio Services - End #####
+
+  ##### Redpanda Services - Start #####
+  redpanda:
+    command:
+    - redpanda
+    - start
+    - --smp
+    - '1'
+    - --reserve-memory
+    - 0M
+    - --overprovisioned
+    - --node-id
+    - '0'
+    - --kafka-addr
+    - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+    - --advertise-kafka-addr
+    - PLAINTEXT://redpanda:29092,OUTSIDE://0.0.0.0:9092
+    volumes:
+      - ./storage/redpanda/data:/var/lib/redpanda/data
+
+    # NOTE: Please use the latest version here!
+    image: docker.vectorized.io/vectorized/redpanda:v21.9.5
+    container_name: redpanda-1
+    expose:
+      - 9092
+      - 29092
+    ports:
+    - 9092:9092
+    - 29092:29092
+    healthcheck: { test: curl -f localhost:9644/v1/status/ready, interval: 1s, start_period: 30s }
+
+  ##### Redpanda Services - End #####
+
+  ##### Hadoop Services - Start #####
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    restart: always
+    ports:
+      - 9870:9870
+      - 9000:9000
+    volumes:
+      - ./storage/hadoop/dfs/name:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop/hadoop.env
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    restart: always
+    volumes:
+      - ./storage/hadoop/dfs/data:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    env_file:
+      - ./hadoop/hadoop.env
+  
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    restart: always
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
+    env_file:
+      - ./hadoop/hadoop.env
+
+  nodemanager1:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager
+    restart: always
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+    env_file:
+      - ./hadoop/hadoop.env
+  
+  historyserver:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+    container_name: historyserver
+    restart: always
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+    volumes:
+      - ./storage/hadoop/yarn/timeline:/hadoop/yarn/timeline
+    env_file:
+      - ./hadoop/hadoop.env
+  
+
+##### Hadoop Services - End ##### 
+
