@@ -1,7 +1,6 @@
 # rtdl - The Real-Time Data Lake ⚡️
 <img src="./public/logos/rtdl-logo.png" height="250px" width="250px"></img>  
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSES)  
-
 [rtdl](https://rtdl.io) makes it easy to build and maintain a real-time data lake. You send rtdl 
 a real-time data stream – often from a tool like Kafka or Segment – and it builds you a real-time 
 data lake in Parquet format that automatically works with [Dremio](https://www.dremio.com/) to 
@@ -20,7 +19,6 @@ and learn how to use rtdl via our [documentation](https://rtdl.io/docs/).
 rtdl's initial feature set is built and working. You can use the API on port 80 to 
 configure streams that ingest json from an rtdl endpoint on port 8080, process them into Parquet, 
 and save the files to a destination configured in your stream. rtdl can write files locally, to 
-
 AWS S3, GCP Cloud Storage, and Azure Blob Storage and you can query your data via Dremio's web UI
 at http://localhost:9047 (login with Username: `rtdl` and Password `rtdl1234`).
 
@@ -37,7 +35,7 @@ at http://localhost:9047 (login with Username: `rtdl` and Password `rtdl1234`).
   * Research and implementation for Apache Iceberg, Delta Lake, and Project Nessie.
   * Community contribution: Stateful Function for PII detection and masking.
   * Graphical user interface.
-
+  
 
 ## Quickstart 🌱
 ### Initialize and start rtdl
@@ -46,7 +44,7 @@ For more detailed instructions, see our [Initialize rtdl docs](https://rtdl.io/d
     * **Note:** This configuration should be fault-tolerant, but if any containers or 
       processes fail when running this, run `docker compose -f docker-compose.init.yml down` 
       and retry.
-2.  After the containers `rtdl_rtdl-db-init`, `rtdl_dremio-init` and `rtdl_redpanda-init` exit and complete 
+2.  After the containers `rtdl_rtdl-db-init`, `rtdl_dremio-init`, and `rtdl_redpanda-init` exit and complete 
     with `EXITED (0)`, kill and delete the rtdl container set by running 
     `docker compose -f docker-compose.init.yml down`.
 3.  Run `docker compose up -d` every time after.  
@@ -55,9 +53,9 @@ For more detailed instructions, see our [Initialize rtdl docs](https://rtdl.io/d
     * `docker compose down` to stop.
 
 **Note #1:** To start from scratch, run `rm -rf storage/` from the rtdl root folder.  
-**Note #2:** If you experience file write issues preventing Dremio services from starting, 
-please add 'user: root" to the `docker-compose.init.yml` and `docker-compose.yml` files 
-in the Dremio service definition section. This issue has been encountered on Linux.
+**Note #2:** If you experience file write issues preventing Dremio and/or Redpanda services 
+from starting, please add `user: root` to the `docker-compose.init.yml` and `docker-compose.yml` 
+files in the Dremio and Redpanda service definitions. This issue has been encountered on Linux.
 
 ### Setup your storage buckets (in AWS) and stream in rtdl
 For more detailed setup instructions for your cloud provider, see our setup docs:
@@ -114,12 +112,12 @@ For more detailed setup instructions for your cloud provider, see our setup docs
           ]
       }
       ```
-  4.  Create access keys for your IAM user. For more information, see 
-      [Amazon's documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html#Using_CreateAccessKey).
-        * Save the `Access Key ID` and `Secret Access Key` for use in 
-          configuring your stream in rtdl.
-  5.  Configure your stream in rtdl.  
-      Send a call to the API at http://localhost:8080/ingest.
+  5.  Attach the policy created in step 3 to the IAM user created in step 2.
+  6.  Create access keys for your IAM user.
+      * For more information, see [Amazon's documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html#Using_CreateAccessKey).
+      * Save the `Access Key ID` and `Secret Access Key` for use in configuring your stream in rtdl.
+  7.  Create a stream configuration record in rtdl.  
+      Send a call to the API at http://localhost:80/createStream.
       * Example `createStream` call body for creating a data lake on AWS S3.  
         ```
         {
@@ -171,8 +169,8 @@ All data should be sent to the `ingest` endpoint of the ingest service on port 8
 
 
 ## Architecture 🏛
-rtdl has a multi-service architecture composed of tested and trusted open source tools 
-to process and catalog your data and custom-built services to interact with them more easily. 
+rtdl has a multi-service architecture composed of a new generation of open source tools 
+to process and access your data and custom-built services to interact with them more easily. 
 To learn more about rtdl's services and architecture, visit our 
 [Architecture docs](https://rtdl.io/docs/architecture).
 
