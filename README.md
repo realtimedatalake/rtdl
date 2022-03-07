@@ -1,6 +1,7 @@
 # rtdl - The Real-Time Data Lake ⚡️
 <img src="./public/logos/rtdl-logo.png" height="250px" width="250px"></img>  
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSES)  
+
 [rtdl](https://rtdl.io) makes it easy to build and maintain a real-time data lake. You send rtdl 
 a real-time data stream – often from a tool like Kafka or Segment – and it builds you a real-time 
 data lake in Parquet format that automatically works with [Dremio](https://www.dremio.com/) to 
@@ -19,6 +20,7 @@ and learn how to use rtdl via our [documentation](https://rtdl.io/docs/).
 rtdl's initial feature set is built and working. You can use the API on port 80 to 
 configure streams that ingest json from an rtdl endpoint on port 8080, process them into Parquet, 
 and save the files to a destination configured in your stream. rtdl can write files locally, to 
+
 AWS S3, GCP Cloud Storage, and Azure Blob Storage and you can query your data via Dremio's web UI
 at http://localhost:9047 (login with Username: `rtdl` and Password `rtdl1234`).
 
@@ -35,7 +37,7 @@ at http://localhost:9047 (login with Username: `rtdl` and Password `rtdl1234`).
   * Research and implementation for Apache Iceberg, Delta Lake, and Project Nessie.
   * Community contribution: Stateful Function for PII detection and masking.
   * Graphical user interface.
-  
+
 
 ## Quickstart 🌱
 ### Initialize and start rtdl
