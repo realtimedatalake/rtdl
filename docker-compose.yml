@@ -100,39 +100,41 @@ services:
   ##### Ingest Service - End #####
 
 
-  ##### Kafka Services - Start #####
-  #kafka-zookeeper:
-  #  platform: linux/amd64
-  #  image: bitnami/zookeeper:latest
-  #  container_name: rtdl_kafka-zookeeper
-  #  expose:
-  #    - 2181
-    #ports:
-    #  - 2181:2181
-  #  environment:
-  #    ALLOW_ANONYMOUS_LOGIN: "yes"
-  #  restart: always
-
-  #kafka:
-  #  platform: linux/amd64
-  #  image: bitnami/kafka:latest
-  #  container_name: rtdl_kafka
-  #  expose:
-  #    - 9092
-    #ports:
-    #  - 9092:9092
-  #  environment:
-  #    KAFKA_ADVERTISED_HOST_NAME: kafka
-  #    KAFKA_CREATE_TOPICS: "ingress:1:1"
-  #    KAFKA_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
-  #    KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-  #    ALLOW_PLAINTEXT_LISTENER: "yes"
-  #    KAFKA_LOG_RETENTION_MS: 1000
-  #    KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 1500
-  #  depends_on:
-  #    - kafka-zookeeper
-  #  restart: always
-  ##### Kafka Services - End #####
+  ##### Kafka/Redpanda Services - Start #####
+  redpanda:
+    command:
+    - redpanda
+    - start
+    - --smp
+    - '1'
+    - --reserve-memory
+    - 0M
+    - --overprovisioned
+    - --node-id
+    - '0'
+    - --kafka-addr
+    - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+    - --advertise-kafka-addr
+    - PLAINTEXT://redpanda:29092,OUTSIDE://0.0.0.0:9092
+    # NOTE: Please use the latest version here!
+    image: docker.vectorized.io/vectorized/redpanda:v21.9.5
+    container_name: rtdl_redpanda
+    volumes:
+      - ./storage/redpanda/data:/var/lib/redpanda/data
+    expose:
+      - 9092
+      - 9644
+      - 29092
+    ports:
+    - 9092:9092
+    - 29092:29092
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:9644/v1/status/ready"]
+      start_period: 30s
+      interval: 5s
+      timeout: 2s
+      retries: 24
+  ##### Kafka/Redpanda Services - End #####
 
 
   ##### Processing Services - Start #####
@@ -226,93 +228,60 @@ services:
         retries: 24
   ##### Dremio Services - End #####
 
-  ##### Redpanda Services - Start #####
-  redpanda:
-    command:
-    - redpanda
-    - start
-    - --smp
-    - '1'
-    - --reserve-memory
-    - 0M
-    - --overprovisioned
-    - --node-id
-    - '0'
-    - --kafka-addr
-    - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
-    - --advertise-kafka-addr
-    - PLAINTEXT://redpanda:29092,OUTSIDE://0.0.0.0:9092
-    volumes:
-      - ./storage/redpanda/data:/var/lib/redpanda/data
-
-    # NOTE: Please use the latest version here!
-    image: docker.vectorized.io/vectorized/redpanda:v21.9.5
-    container_name: redpanda-1
-    expose:
-      - 9092
-      - 29092
-    ports:
-    - 9092:9092
-    - 29092:29092
-    healthcheck: { test: curl -f localhost:9644/v1/status/ready, interval: 1s, start_period: 30s }
-
-  ##### Redpanda Services - End #####
 
   ##### Hadoop Services - Start #####
-  namenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    container_name: namenode
-    restart: always
-    ports:
-      - 9870:9870
-      - 9000:9000
-    volumes:
-      - ./storage/hadoop/dfs/name:/hadoop/dfs/name
-    environment:
-      - CLUSTER_NAME=test
-    env_file:
-      - ./hadoop/hadoop.env
+  # namenode:
+  #   image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+  #   container_name: namenode
+  #   restart: always
+  #   ports:
+  #     - 9870:9870
+  #     - 9000:9000
+  #   volumes:
+  #     - ./storage/hadoop/dfs/name:/hadoop/dfs/name
+  #   environment:
+  #     - CLUSTER_NAME=test
+  #   env_file:
+  #     - ./hadoop/hadoop.env
 
-  datanode:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode
-    restart: always
-    volumes:
-      - ./storage/hadoop/dfs/data:/hadoop/dfs/data
-    environment:
-      SERVICE_PRECONDITION: "namenode:9870"
-    env_file:
-      - ./hadoop/hadoop.env
+  # datanode:
+  #   image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+  #   container_name: datanode
+  #   restart: always
+  #   volumes:
+  #     - ./storage/hadoop/dfs/data:/hadoop/dfs/data
+  #   environment:
+  #     SERVICE_PRECONDITION: "namenode:9870"
+  #   env_file:
+  #     - ./hadoop/hadoop.env
   
-  resourcemanager:
-    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
-    container_name: resourcemanager
-    restart: always
-    environment:
-      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
-    env_file:
-      - ./hadoop/hadoop.env
+  # resourcemanager:
+  #   image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+  #   container_name: resourcemanager
+  #   restart: always
+  #   environment:
+  #     SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
+  #   env_file:
+  #     - ./hadoop/hadoop.env
 
-  nodemanager1:
-    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
-    container_name: nodemanager
-    restart: always
-    environment:
-      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
-    env_file:
-      - ./hadoop/hadoop.env
+  # nodemanager1:
+  #   image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+  #   container_name: nodemanager
+  #   restart: always
+  #   environment:
+  #     SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+  #   env_file:
+  #     - ./hadoop/hadoop.env
   
-  historyserver:
-    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
-    container_name: historyserver
-    restart: always
-    environment:
-      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
-    volumes:
-      - ./storage/hadoop/yarn/timeline:/hadoop/yarn/timeline
-    env_file:
-      - ./hadoop/hadoop.env
-  
-
+  # historyserver:
+  #   image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+  #   container_name: historyserver
+  #   restart: always
+  #   environment:
+  #     SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+  #   volumes:
+  #     - ./storage/hadoop/yarn/timeline:/hadoop/yarn/timeline
+  #   env_file:
+  #     - ./hadoop/hadoop.env
 ##### Hadoop Services - End ##### 
 

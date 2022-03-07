@@ -1,44 +1,43 @@
 # rtdl - The Real-Time Data Lake ⚡️
 <img src="./public/logos/rtdl-logo.png" height="250px" width="250px"></img>  
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSES)  
-[rtdl](https://rtdl.io) makes it easy to build and maintain a real-time data lake. You 
-configure a data stream with a source - often from a tool like Kafka or Segment - and a 
-cloud storage destination, and rtdl builds you a real-time data lake in Parquet format that 
-automatically works with [Dremio](https://www.dremio.com/) to give you access your real-time 
-data in common BI and ML tools – just like a data warehouse.  
+
+[rtdl](https://rtdl.io) makes it easy to build and maintain a real-time data lake. You send rtdl 
+a real-time data stream – often from a tool like Kafka or Segment – and it builds you a real-time 
+data lake in Parquet format that automatically works with [Dremio](https://www.dremio.com/) to 
+give you access to your real-time data in popular BI and ML tools – just like a data warehouse. 
+rtdl can build your real-time data lake on AWS S3, GCP Cloud Storage, and Azure Blob Storage.  
   
-You provide the streams, rtdl builds your data lake. Works with AWS, GCP, and Azure.  
+You provide the streams, rtdl builds your data lake.  
   
 Stay up-to-date on rtdl via our [website](https://rtdl.io/) and [blog](https://rtdl.io/blog/), 
 and learn how to use rtdl via our [documentation](https://rtdl.io/docs/).
 
 
-## V0.1.0 - Current status -- what works and what doesn't
+## V0.1.1 - Current status -- what works and what doesn't
 
 ### What works? 🚀
 rtdl's initial feature set is built and working. You can use the API on port 80 to 
 configure streams that ingest json from an rtdl endpoint on port 8080, process them into Parquet, 
 and save the files to a destination configured in your stream. rtdl can write files locally, to 
-AWS S3, GCP Cloud Storage, and Azure Blob Storage and you can query your data with Dremio on port 
-9047 (login with Username: `rtdl` and Password `rtdl1234`).
+
+AWS S3, GCP Cloud Storage, and Azure Blob Storage and you can query your data via Dremio's web UI
+at http://localhost:9047 (login with Username: `rtdl` and Password `rtdl1234`).
 
 ### What's new? 💥
-  * Added support for Azure Blob Storage V2 (please note that for events written to Azure Blob Storage
-    V2 - it can take time up to 1 minute for data to reflect in Dremio)
-  * Added support for GZIP and LZO compressions in addition to SNAPPY (default). Specify 
-    `compression_type_id` as 2 for GZIP and 3 for LZO
-  * Added support for Segment webhooks. You can set up RTDL `ingester` endpoint as a webhook in Segment. 
-    You will need to create a stream with the `stream_alt_id` as either the `Source ID` or the 
-    `Write Key` from the `API Keys` tab of `Settings` for the Source connected to the Webhook 
-    Destination.
-
+  * Replaced Kafka & Zookeeper with [Redpanda](https://github.com/redpanda-data/redpanda).
+  * Added support for HDFS.
+  * Fixed issue with handling booleans when writing Parquet.
+  * Added several logo variants and a banner to the public directory.
 
 ### What doesn't work/what's next on the roadmap? 🚴🏼  
-  * Start using GitHub Projects for work tracking
-  * Research and implementation for Apache Hudi, Apache Iceberg, Delta Lake, and Project Nessie
-  * Writing to HDFS
-  * Graphical User Interface
-  
+  * [Dremio Cloud](https://www.dremio.com/platform/cloud/) support.
+  * Apache Hudi support.
+  * Start using GitHub Projects for work tracking.
+  * Research and implementation for Apache Iceberg, Delta Lake, and Project Nessie.
+  * Community contribution: Stateful Function for PII detection and masking.
+  * Graphical user interface.
+
 
 ## Quickstart 🌱
 ### Initialize and start rtdl
@@ -47,8 +46,9 @@ For more detailed instructions, see our [Initialize rtdl docs](https://rtdl.io/d
     * **Note:** This configuration should be fault-tolerant, but if any containers or 
       processes fail when running this, run `docker compose -f docker-compose.init.yml down` 
       and retry.
-2.  After the containers `rtdl_rtdl-db-init` and `rtdl_dremio-init` exit and complete with `EXITED (0)`, kill and 
-    delete the rtdl container set by running `docker compose -f docker-compose.init.yml down`.
+2.  After the containers `rtdl_rtdl-db-init`, `rtdl_dremio-init` and `rtdl_redpanda-init` exit and complete 
+    with `EXITED (0)`, kill and delete the rtdl container set by running 
+    `docker compose -f docker-compose.init.yml down`.
 3.  Run `docker compose up -d` every time after.  
     **Note:** Your memory setting in Docker must be at least 8GB. rtdl may become unstable if it is 
     set lower.
@@ -193,6 +193,7 @@ version [2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct.h
   * [Apache Flink](https://flink.apache.org/)
   * [Flink Stateful Functions](https://flink.apache.org/stateful-functions.html)
   * [Dremio](https://www.dremio.com/)
+  * [Redpanda](https://redpanda.com/)
   * [Apache Kafka](https://kafka.apache.org/)
   * [sqlx](https://github.com/jmoiron/sqlx) by [jmoiron](https://github.com/jmoiron)
   * [parquet-go](https://github.com/xitongsys/parquet-go) by [xitongsys](https://github.com/xitongsys)

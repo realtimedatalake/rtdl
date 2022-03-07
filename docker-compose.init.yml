@@ -80,6 +80,51 @@ services:
   ##### Config Services - End #####
 
 
+  ##### Kafka/Redpanda Services - Start #####
+  redpanda:
+    command: 
+    - redpanda
+    - start
+    - --smp
+    - '1'
+    - --reserve-memory
+    - 0M
+    - --overprovisioned
+    - --node-id
+    - '0'
+    - --kafka-addr
+    - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+    - --advertise-kafka-addr
+    - PLAINTEXT://redpanda:29092,OUTSIDE://0.0.0.0:9092
+    # NOTE: Please use the latest version here!
+    image: docker.vectorized.io/vectorized/redpanda:v21.9.5
+    container_name: rtdl_redpanda
+    volumes:
+      - ./storage/redpanda/data:/var/lib/redpanda/data
+    expose:
+      - 9092
+      - 9644
+      - 29092
+    ports:
+    - 9092:9092
+    - 29092:29092
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:9644/v1/status/ready"]
+      start_period: 30s
+      interval: 5s
+      timeout: 2s
+      retries: 24
+
+  redpanda-setup:
+    image: docker.vectorized.io/vectorized/redpanda:v21.9.5
+    container_name: rtdl_redpanda-init
+    command: topic create ingress --replicas 1 --brokers redpanda:29092
+    depends_on:
+      redpanda:
+        condition: service_healthy
+  ##### Kafka/Redpanda Services - End #####
+
+
   ##### Dremio Services - Start #####
   dremio:
     platform: linux/amd64
@@ -115,41 +160,3 @@ services:
       dremio:
         condition: service_healthy
   ##### Dremio Services - End #####
-
-  ##### Redpanda Services - Start #####
-  redpanda:
-    command: 
-    - redpanda
-    - start
-    - --smp
-    - '1'
-    - --reserve-memory
-    - 0M
-    - --overprovisioned
-    - --node-id
-    - '0'
-    - --kafka-addr
-    - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
-    - --advertise-kafka-addr
-    - PLAINTEXT://redpanda:29092,OUTSIDE://0.0.0.0:9092
-    # NOTE: Please use the latest version here!
-    image: docker.vectorized.io/vectorized/redpanda:v21.9.5
-    volumes:
-      - ./storage/redpanda/data:/var/lib/redpanda/data
-    container_name: redpanda
-    expose:
-      - 9092
-      - 29092
-    ports:
-    - 9092:9092
-    - 29092:29092
-    healthcheck: { test: curl -f localhost:9644/v1/status/ready, interval: 1s, start_period: 30s }
-
-  redpanda-setup:
-    image: docker.vectorized.io/vectorized/redpanda:v21.9.5
-    command: topic create ingress --replicas 1 --brokers redpanda:29092
-    depends_on:
-      redpanda:
-        condition: service_healthy
-
-  ##### Redpanda Services - End #####
