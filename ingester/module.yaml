@@ -21,14 +21,14 @@ spec:
 ---
 kind: io.statefun.kafka.v1/ingress
 spec:
-  id: com.rtdl.sf/ingress
+  id: com.rtdl.sf/pii-ingress
   address: redpanda:29092
-  consumerGroupId: ingress-group
+  consumerGroupId: ingest-group
   startupPosition:
     type: latest
 
   topics:
-    - topic: ingress
+    - topic: pii-detection
       valueType: com.rtdl.sf/IncomingMessage
       targets:
         - com.rtdl.sf/ingest

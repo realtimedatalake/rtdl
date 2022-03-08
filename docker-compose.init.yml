@@ -99,6 +99,7 @@ services:
     # NOTE: Please use the latest version here!
     image: docker.vectorized.io/vectorized/redpanda:v21.9.5
     container_name: rtdl_redpanda
+    user: root
     volumes:
       - ./storage/redpanda/data:/var/lib/redpanda/data
     expose:
@@ -130,6 +131,7 @@ services:
     platform: linux/amd64
     image: dremio/dremio-oss
     container_name: rtdl_dremio
+    user: root
     volumes:
       - ./storage/dremio/data:/opt/dremio/data
       - ./storage/rtdl-data_store:/mnt/datastore 

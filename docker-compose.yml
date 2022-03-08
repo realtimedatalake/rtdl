@@ -52,10 +52,10 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U postgres"]
-        interval: 10s
-        timeout: 5s
-        retries: 12
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
   ### For Postgres - End ###
 
   config:
@@ -95,7 +95,7 @@ services:
       KAFKA_URL: redpanda:29092
       KAFKA_TOPIC: ingress
       LISTENER_PORT: 8080
-    depends_on:      
+    depends_on:
       - redpanda
   ##### Ingest Service - End #####
 
@@ -103,22 +103,23 @@ services:
   ##### Kafka/Redpanda Services - Start #####
   redpanda:
     command:
-    - redpanda
-    - start
-    - --smp
-    - '1'
-    - --reserve-memory
-    - 0M
-    - --overprovisioned
-    - --node-id
-    - '0'
-    - --kafka-addr
-    - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
-    - --advertise-kafka-addr
-    - PLAINTEXT://redpanda:29092,OUTSIDE://0.0.0.0:9092
+      - redpanda
+      - start
+      - --smp
+      - '1'
+      - --reserve-memory
+      - 0M
+      - --overprovisioned
+      - --node-id
+      - '0'
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:29092,OUTSIDE://0.0.0.0:9092
     # NOTE: Please use the latest version here!
     image: docker.vectorized.io/vectorized/redpanda:v21.9.5
     container_name: rtdl_redpanda
+    user: root
     volumes:
       - ./storage/redpanda/data:/var/lib/redpanda/data
     expose:
@@ -126,10 +127,10 @@ services:
       - 9644
       - 29092
     ports:
-    - 9092:9092
-    - 29092:29092
+      - 9092:9092
+      - 29092:29092
     healthcheck:
-      test: ["CMD","curl","-f","http://localhost:9644/v1/status/ready"]
+      test: [ "CMD","curl","-f","http://localhost:9644/v1/status/ready" ]
       start_period: 30s
       interval: 5s
       timeout: 2s
@@ -153,6 +154,7 @@ services:
     volumes:
       - ./storage/rtdl-statefun-manager_store:/checkpoint-dir
       - ./ingester/module.yaml:/opt/statefun/modules/ingester/module.yaml
+      - ./pii-detection/module.yaml:/opt/statefun/modules/pii-detection/module.yaml
     depends_on:
       - ingest
 
@@ -169,6 +171,7 @@ services:
     volumes:
       - ./storage/rtdl-statefun-worker_store:/checkpoint-dir
       - ./ingester/module.yaml:/opt/statefun/modules/ingester/module.yaml
+      - ./pii-detection/module.yaml:/opt/statefun/modules/pii-detection/module.yaml
     depends_on:
       - statefun-manager
       - redpanda
@@ -190,12 +193,12 @@ services:
       DREMIO_HOST: dremio
       DREMIO_PORT: 9047
       DREMIO_USERNAME: rtdl
-      DREMIO_PASSWORD: rtdl1234      
+      DREMIO_PASSWORD: rtdl1234
       DREMIO_CLOUD_PROJECT_ID: b2d480bb-1b54-424b-aba9-5294e1010b40
       DREMIO_MOUNT_PATH: /mnt/datastore
     volumes:
-      - ./storage/rtdl-data_store:/app/datastore    
-    depends_on:     
+      - ./storage/rtdl-data_store:/app/datastore
+    depends_on:
       rtdl-db:
         condition: service_healthy
       redpanda:
@@ -210,9 +213,10 @@ services:
     platform: linux/amd64
     image: dremio/dremio-oss
     container_name: rtdl_dremio
+    user: root
     volumes:
       - ./storage/dremio/data:/opt/dremio/data
-      - ./storage/rtdl-data_store:/mnt/datastore    
+      - ./storage/rtdl-data_store:/mnt/datastore
     expose:
       - 9047
       - 31010
@@ -222,66 +226,66 @@ services:
       - 31010:31010
       - 45678:45678
     healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:9047/apiv2/server_status"]
-        interval: 10s
-        timeout: 5s
-        retries: 24
+      test: [ "CMD", "curl", "-f", "http://localhost:9047/apiv2/server_status" ]
+      interval: 10s
+      timeout: 5s
+      retries: 24
   ##### Dremio Services - End #####
 
 
   ##### Hadoop Services - Start #####
-  # namenode:
-  #   image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-  #   container_name: namenode
-  #   restart: always
-  #   ports:
-  #     - 9870:9870
-  #     - 9000:9000
-  #   volumes:
-  #     - ./storage/hadoop/dfs/name:/hadoop/dfs/name
-  #   environment:
-  #     - CLUSTER_NAME=test
-  #   env_file:
-  #     - ./hadoop/hadoop.env
-
-  # datanode:
-  #   image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-  #   container_name: datanode
-  #   restart: always
-  #   volumes:
-  #     - ./storage/hadoop/dfs/data:/hadoop/dfs/data
-  #   environment:
-  #     SERVICE_PRECONDITION: "namenode:9870"
-  #   env_file:
-  #     - ./hadoop/hadoop.env
-  
-  # resourcemanager:
-  #   image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
-  #   container_name: resourcemanager
-  #   restart: always
-  #   environment:
-  #     SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
-  #   env_file:
-  #     - ./hadoop/hadoop.env
-
-  # nodemanager1:
-  #   image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
-  #   container_name: nodemanager
-  #   restart: always
-  #   environment:
-  #     SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
-  #   env_file:
-  #     - ./hadoop/hadoop.env
-  
-  # historyserver:
-  #   image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
-  #   container_name: historyserver
-  #   restart: always
-  #   environment:
-  #     SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
-  #   volumes:
-  #     - ./storage/hadoop/yarn/timeline:/hadoop/yarn/timeline
-  #   env_file:
-  #     - ./hadoop/hadoop.env
+#  namenode:
+#    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+#    container_name: namenode
+#    restart: always
+#    ports:
+#      - 9870:9870
+#      - 9000:9000
+#    volumes:
+#      - ./storage/hadoop/dfs/name:/hadoop/dfs/name
+#    environment:
+#      - CLUSTER_NAME=test
+#    env_file:
+#      - ./hadoop/hadoop.env
+#
+#  datanode:
+#    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+#    container_name: datanode
+#    restart: always
+#    volumes:
+#      - ./storage/hadoop/dfs/data:/hadoop/dfs/data
+#    environment:
+#      SERVICE_PRECONDITION: "namenode:9870"
+#    env_file:
+#      - ./hadoop/hadoop.env
+#
+#  resourcemanager:
+#    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+#    container_name: resourcemanager
+#    restart: always
+#    environment:
+#      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
+#    env_file:
+#      - ./hadoop/hadoop.env
+#
+#  nodemanager1:
+#    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+#    container_name: nodemanager
+#    restart: always
+#    environment:
+#      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+#    env_file:
+#      - ./hadoop/hadoop.env
+#
+#  historyserver:
+#    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+#    container_name: historyserver
+#    restart: always
+#    environment:
+#      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+#    volumes:
+#      - ./storage/hadoop/yarn/timeline:/hadoop/yarn/timeline
+#    env_file:
+#      - ./hadoop/hadoop.env
 ##### Hadoop Services - End ##### 
 
