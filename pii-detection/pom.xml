@@ -22,7 +22,7 @@ under the License.
 
     <groupId>com.rtdl.sf</groupId>
     <artifactId>pii-detection</artifactId>
-    <version>0.0.1</version>
+    <version>0.1.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -45,17 +45,19 @@ under the License.
             <artifactId>jackson-databind</artifactId>
             <version>2.13.1</version>
         </dependency>
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
-            <version>3.19.4</version>
-        </dependency>
 
         <!-- Undertow web server -->
         <dependency>
             <groupId>io.undertow</groupId>
             <artifactId>undertow-core</artifactId>
             <version>2.2.16.Final</version>
+        </dependency>
+
+        <!-- Logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.36</version>
         </dependency>
     </dependencies>
 

@@ -117,7 +117,7 @@ services:
       - --advertise-kafka-addr
       - PLAINTEXT://redpanda:29092,OUTSIDE://0.0.0.0:9092
     # NOTE: Please use the latest version here!
-    image: docker.vectorized.io/vectorized/redpanda:v21.9.5
+    image: docker.vectorized.io/vectorized/redpanda:v21.11.9
     container_name: rtdl_redpanda
     user: root
     volumes:
