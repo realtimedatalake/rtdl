@@ -22,7 +22,7 @@ under the License.
 
     <groupId>com.rtdl.sf</groupId>
     <artifactId>pii-detection</artifactId>
-    <version>3.2.0</version>
+    <version>0.0.1</version>
     <packaging>jar</packaging>
 
     <properties>

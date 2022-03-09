@@ -7,6 +7,6 @@ RUN mvn -f /usr/src/app/pom.xml clean package
 # ... and run the web server!
 FROM openjdk:8
 WORKDIR /
-COPY --from=builder /usr/src/app/target/pii-detection-fn*jar-with-dependencies.jar pii-detection-fn.jar
+COPY --from=builder /usr/src/app/target/pii-detection*jar-with-dependencies.jar pii-detection.jar
 EXPOSE 5000
-CMD java -jar pii-detection-fn.jar
+CMD java -jar pii-detection.jar

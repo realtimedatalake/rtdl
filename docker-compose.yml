@@ -205,6 +205,13 @@ services:
         condition: service_healthy
       dremio:
         condition: service_healthy
+
+  pii-detection:
+    build:
+      context: ./pii-detection
+    expose:
+      - 5000
+
   ##### Processing Services - End #####
 
 
