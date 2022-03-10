@@ -14,7 +14,7 @@ import java.util.concurrent.CompletableFuture;
 public class PiiDetectionFn implements StatefulFunction {
 
     public static final TypeName PII_TYPE = TypeName.typeNameFromString("com.rtdl.sf.pii/pii-detection");
-    public static final TypeName PII_EGRESS = TypeName.typeNameFromString("com.rtdl.sf.pii/pii-egress");
+    public static final TypeName PII_EGRESS = TypeName.typeNameFromString("com.rtdl.sf.pii/egress");
     private static final Logger LOG = LoggerFactory.getLogger(PiiDetectionFn.class);
 
     @Override
