@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/glue"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/colinmarc/hdfs"
 	"github.com/jmoiron/sqlx"
@@ -1060,7 +1061,74 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 
 	if err == nil {
 
-		return UpdateDremio(messageType, "S3", bucketName, configRecord)
+		err = UpdateDremio(messageType, "S3", bucketName, configRecord)
+
+		if err != nil {
+			log.Println("Error updating Dremio", err)
+		}
+
+		//create Glue Catalog entry irrespective of whether Dremio succeeded or not
+		glueClient := glue.New(awsSession, aws.NewConfig().WithRegion(configRecord.Region.String))
+		//check if database exists
+		_, err = glueClient.GetDatabase(&glue.GetDatabaseInput{Name: &configRecord.StreamId.String})
+
+		if err != nil { //assume EntityNotFoundException for now, need to refine error handling later
+			//database name will be same as stream_id
+			_, err = glueClient.CreateDatabase(&glue.CreateDatabaseInput{DatabaseInput: &glue.DatabaseInput{Name: &configRecord.StreamId.String}})
+			if err != nil {
+				log.Println("Error creating Glue database", err)
+				return err
+			}
+
+			log.Println("Glue database created")
+
+		} else {
+			log.Println("Glue database found")
+		}
+
+		crawlerName := configRecord.StreamId.String + "_" + messageType
+		_, err = glueClient.GetCrawler(&glue.GetCrawlerInput{Name: &crawlerName})
+
+		if err != nil { //assume EntityNotFoundException for now, need to refine error handling later
+
+			//construct crawler path
+			crawlerPath := "s3://" + configRecord.BucketName.String
+			if configRecord.FolderName.String != "" {
+				crawlerPath += "/" + configRecord.FolderName.String
+			}
+
+			crawlerPath += "/" + messageType
+
+			s3Target := &glue.S3Target{Path: &crawlerPath}
+			s3TargetList := []*glue.S3Target{s3Target}
+
+			glueRole := os.Getenv("GLUE_ROLE")
+
+			if glueRole == "" {
+				log.Println("Role ARN for accessing Glue Services must be provided")
+				return errors.New("AWS Role ARN for accessing Glue Services must be provided")
+			}
+
+			glueScheduleCron := "cron(" + GetEnv("GLUE_SCHEDULE_CRON", "0 0 * * ? *") + ")" //default every day at 12 AM
+
+			createCrawlerInput := &glue.CreateCrawlerInput{Name: &crawlerName,
+				DatabaseName: &configRecord.StreamId.String,
+				Targets:      &glue.CrawlerTargets{S3Targets: s3TargetList},
+				Role:         &glueRole,
+				Schedule:     &glueScheduleCron}
+
+			_, err = glueClient.CreateCrawler(createCrawlerInput)
+			if err != nil {
+				log.Println("Error creating Glue crawler", err)
+				return err
+			}
+
+			log.Println("Glue crawler created")
+
+		} else {
+			log.Println("Glue crawler exists")
+		}
+
 	}
 
 	return err
