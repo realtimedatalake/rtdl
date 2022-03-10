@@ -13,25 +13,35 @@ import java.util.concurrent.CompletableFuture;
 
 public class PiiDetectionFn implements StatefulFunction {
 
-    public static final TypeName PII_TYPE = TypeName.typeNameFromString("com.rtdl.sf/pii-detection");
-    public static final TypeName PII_EGRESS = TypeName.typeNameFromString("com.rtdl.sf/pii-egress");
+    public static final TypeName PII_TYPE = TypeName.typeNameFromString("com.rtdl.sf.pii/pii-detection");
+    public static final TypeName PII_EGRESS = TypeName.typeNameFromString("com.rtdl.sf.pii/pii-egress");
     private static final Logger LOG = LoggerFactory.getLogger(PiiDetectionFn.class);
 
     @Override
     public CompletableFuture<Void> apply(Context context, Message message) {
-        if (!message.is(IncomingMessage.TYPE)) {
-            LOG.error("Unknown type");
-            throw new IllegalStateException("Unknown type");
+        LOG.info("Pii received a message: " + message);
+
+        try {
+            if (!message.is(IncomingMessage.TYPE)) {
+                LOG.error("Unknown type");
+                throw new IllegalStateException("Unknown type");
+            }
+
+            //TODO: Add pii functionality
+            /*
+            IncomingMessage incomingMessage = message.as(IncomingMessage.TYPE);
+            new PiiDetector().maskPII(input)
+             */
+
+            context.send(
+                    KafkaEgressMessage.forEgress(PII_EGRESS)
+                            .withTopic("pii-detection")
+                            .withValue(message.rawValue().toByteArray())
+                            .build());
+
+        } catch (Exception e) {
+            LOG.error(e.getMessage());
         }
-
-        IncomingMessage incomingMessage = message.as(IncomingMessage.TYPE);
-        LOG.info("Incoming:" + incomingMessage.toString());
-
-        context.send(
-                KafkaEgressMessage.forEgress(PII_EGRESS)
-                        .withTopic("pii-detection")
-                        .withUtf8Value("Testing pii detection... Incoming message:  " + incomingMessage)
-                        .build());
 
         return context.done();
     }
