@@ -21,7 +21,7 @@ spec:
 ---
 kind: io.statefun.kafka.v1/egress
 spec:
-  id: com.rtdl.sf.pii/pii-egress
+  id: com.rtdl.sf.pii/egress
   address: redpanda:29092
   deliverySemantic:
     type: exactly-once
