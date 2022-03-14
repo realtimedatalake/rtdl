@@ -22,8 +22,6 @@ public class PiiDetectionFn implements StatefulFunction {
 
     @Override
     public CompletableFuture<Void> apply(Context context, Message message) {
-        LOG.info("Pii received a message: " + message);
-
         try {
             if (!message.is(IncomingMessage.TYPE)) {
                 LOG.error("Unknown type");
