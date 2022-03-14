@@ -19,43 +19,23 @@ public class IncomingMessage {
             mapper::writeValueAsBytes,
             bytes -> mapper.readValue(bytes, IncomingMessage.class));
 
-    private final String streamId;
+    private final String stream_id;
     private final Map<String, Object> payload;
-    private final Map<String, Object> payloadContent;
-    private final Map<String, Object> propertiesContent;
 
     @JsonCreator
     public IncomingMessage(
-            @JsonProperty("stream_id") String streamId,
+            @JsonProperty("stream_id") String stream_id,
             @JsonProperty("payload") Map<String, Object> payload) {
 
-        this.streamId = Objects.requireNonNull(streamId);
+        this.stream_id = Objects.requireNonNull(stream_id);
         this.payload = Objects.requireNonNull(payload);
-        this.payloadContent = Objects.requireNonNull((Map<String, Object>) this.payload.get("payload"));
-        this.propertiesContent = Objects.requireNonNull((Map<String, Object>) this.payloadContent.get("properties"));
     }
 
-    public String getStreamId() {
-        return streamId;
-    }
-
-    public String getMessageType() {
-        return (String) payload.get("message_type");
-    }
-
-    public int[] getArray() {
-        return (int[]) this.payloadContent.get("array");
-    }
-
-    public String getName() {
-        return (String) this.payloadContent.get("name");
-    }
-
-    public int getAge() {
-        return (int) this.propertiesContent.get("age");
+    public String getStream_id() {
+        return stream_id;
     }
 
     public Map<String, Object> getPayload() {
-        return payload;
+        return this.payload;
     }
 }

@@ -1,5 +1,6 @@
 package com.rtdl.sf.piidetection.function;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rtdl.sf.piidetection.types.IncomingMessage;
 import org.apache.flink.statefun.sdk.java.Context;
 import org.apache.flink.statefun.sdk.java.StatefulFunction;
@@ -9,6 +10,8 @@ import org.apache.flink.statefun.sdk.java.message.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.concurrent.CompletableFuture;
 
 public class PiiDetectionFn implements StatefulFunction {
@@ -27,20 +30,26 @@ public class PiiDetectionFn implements StatefulFunction {
                 throw new IllegalStateException("Unknown type");
             }
 
-            //TODO: Add pii functionality
-            /*
             IncomingMessage incomingMessage = message.as(IncomingMessage.TYPE);
-            new PiiDetector().maskPII(input)
-             */
+
+            ObjectMapper mapper = new ObjectMapper();
+            String jsonString = mapper.writeValueAsString(incomingMessage);
+            String maskedJsonString = new PiiDetector().maskPII(jsonString);
+            IncomingMessage outgoingMessage = mapper.readValue(maskedJsonString, IncomingMessage.class);
 
             context.send(
                     KafkaEgressMessage.forEgress(PII_EGRESS)
                             .withTopic("pii-detection")
-                            .withValue(message.rawValue().toByteArray())
+                            .withUtf8Key("message")
+                            .withValue(new ObjectMapper().writeValueAsBytes(outgoingMessage))
                             .build());
 
         } catch (Exception e) {
-            LOG.error(e.getMessage());
+            StringWriter sw = new StringWriter();
+            try (PrintWriter pw = new PrintWriter(sw)) {
+                e.printStackTrace(pw);
+                LOG.error(sw.toString());
+            }
         }
 
         return context.done();

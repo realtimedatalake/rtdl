@@ -7,7 +7,6 @@ public class PiiDetector {
 
     static final String[] TARGETS = {
             "\\d{3}-\\d{2}-\\d{4}",                 // SSN
-            "[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}",  // email
             "[2-9]\\d{2}-\\d{3}-\\d{4}"             // phone
     };
     static final String MASK = "###";
