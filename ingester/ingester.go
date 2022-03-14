@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/apache/flink-statefun/statefun-sdk-go/v3/pkg/statefun"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/glue"
@@ -33,6 +34,7 @@ import (
 	"github.com/colinmarc/hdfs"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/snowflakedb/gosnowflake"
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/parquet"
 	"github.com/xitongsys/parquet-go/source"
@@ -577,6 +579,139 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRec
 
 }
 
+//Function to update Snowflake
+func UpdateSnowflake(messageType string, configRecord Config) error {
+
+	user := os.Getenv("SNOWFLAKE_USER")
+	password := os.Getenv("SNOWFLAKE_PASSWORD")
+	acct := os.Getenv("SNOWFLAKE_ACCT")
+	db := os.Getenv("SNOWFLAKE_DB")
+	if user == "" || password == "" || acct == "" || db == "" {
+		return errors.New("Valid values required for all of Snowflake Account, User, Password and Database")
+	}
+
+	connectionString := user + ":" + password + "@" + acct + "/" + db
+	conn, err := sql.Open("snowflake", connectionString)
+	if err != nil {
+		log.Println("Unable to open Snowflake connection", err)
+		return err
+	}
+	defer conn.Close()
+
+	s3Path := "s3://" + configRecord.BucketName.String
+	if configRecord.FolderName.String != "" {
+		s3Path += "/" + configRecord.FolderName.String
+
+	}
+
+	s3Path += "/" + messageType
+
+	schemaName := strings.Replace(configRecord.StreamId.String, "-", "_", -1)
+
+	schemaCreationQuery := "create schema if not exists " + schemaName + ";"
+	res, snowflakeErr := conn.ExecContext(context.Background(), schemaCreationQuery)
+	log.Println(res)
+	if snowflakeErr != nil {
+		log.Println("Error creating Snowflake stage", snowflakeErr)
+		return snowflakeErr
+	}
+
+	stageCreationQuery := "use schema " + schemaName + ";"
+	stageCreationQuery += "create stage if not exists " + messageType //hyphen not allowed
+	stageCreationQuery += " URL = '" + s3Path + "' "
+	stageCreationQuery += " CREDENTIALS = (AWS_KEY_ID = '" + configRecord.AWSAcessKeyID.String + "' "
+	stageCreationQuery += " AWS_SECRET_KEY = '" + configRecord.AWSSecretAcessKey.String + "');"
+
+	multiStatementContext, _ := gosnowflake.WithMultiStatement(context.Background(), 2)
+	res, snowflakeErr = conn.ExecContext(multiStatementContext, stageCreationQuery)
+
+	log.Println(res)
+	if snowflakeErr != nil {
+		log.Println("Error creating Snowflake stage", snowflakeErr)
+		return snowflakeErr
+	}
+
+	tableCreationQuery := "use schema " + schemaName + ";"
+	tableCreationQuery += "create external table if not exists " + messageType
+	tableCreationQuery += " location = @" + messageType
+	tableCreationQuery += " file_format = (type = PARQUET);"
+
+	res, snowflakeErr = conn.ExecContext(multiStatementContext, tableCreationQuery)
+	log.Println(res)
+	if snowflakeErr != nil {
+		log.Println("Error creating Snowflake external table", snowflakeErr)
+		return snowflakeErr
+	}
+
+	return nil
+}
+
+//Function for updating Glue
+func UpdateGlue(messageType string, configRecord Config, awsSession client.ConfigProvider) error {
+	//create Glue Catalog entry irrespective of whether Dremio succeeded or not
+	glueClient := glue.New(awsSession, aws.NewConfig().WithRegion(configRecord.Region.String))
+	//check if database exists
+	_, err := glueClient.GetDatabase(&glue.GetDatabaseInput{Name: &configRecord.StreamId.String})
+
+	if err != nil { //assume EntityNotFoundException for now, need to refine error handling later
+		//database name will be same as stream_id
+		_, err = glueClient.CreateDatabase(&glue.CreateDatabaseInput{DatabaseInput: &glue.DatabaseInput{Name: &configRecord.StreamId.String}})
+		if err != nil {
+			log.Println("Error creating Glue database", err)
+			return err
+		}
+
+		log.Println("Glue database created")
+
+	} else {
+		log.Println("Glue database found")
+	}
+
+	crawlerName := configRecord.StreamId.String + "_" + messageType
+	_, err = glueClient.GetCrawler(&glue.GetCrawlerInput{Name: &crawlerName})
+
+	if err != nil { //assume EntityNotFoundException for now, need to refine error handling later
+
+		//construct crawler path
+		crawlerPath := "s3://" + configRecord.BucketName.String
+		if configRecord.FolderName.String != "" {
+			crawlerPath += "/" + configRecord.FolderName.String
+		}
+
+		crawlerPath += "/" + messageType
+
+		s3Target := &glue.S3Target{Path: &crawlerPath}
+		s3TargetList := []*glue.S3Target{s3Target}
+
+		glueRole := os.Getenv("GLUE_ROLE")
+
+		if glueRole == "" {
+			log.Println("Role ARN for accessing Glue Services must be provided")
+			return errors.New("AWS Role ARN for accessing Glue Services must be provided")
+		}
+
+		glueScheduleCron := "cron(" + GetEnv("GLUE_SCHEDULE_CRON", "0 0 * * ? *") + ")" //default every day at 12 AM
+
+		createCrawlerInput := &glue.CreateCrawlerInput{Name: &crawlerName,
+			DatabaseName: &configRecord.StreamId.String,
+			Targets:      &glue.CrawlerTargets{S3Targets: s3TargetList},
+			Role:         &glueRole,
+			Schedule:     &glueScheduleCron}
+
+		_, err = glueClient.CreateCrawler(createCrawlerInput)
+		if err != nil {
+			log.Println("Error creating Glue crawler", err)
+			return err
+		}
+
+		log.Println("Glue crawler created")
+
+	} else {
+		log.Println("Glue crawler exists")
+	}
+	return nil
+}
+
 //Function for making Dremio entry
 func UpdateDremio(messageType string, sourceType string, location string, configRecord Config) error {
 
@@ -1067,66 +1202,14 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 			log.Println("Error updating Dremio", err)
 		}
 
-		//create Glue Catalog entry irrespective of whether Dremio succeeded or not
-		glueClient := glue.New(awsSession, aws.NewConfig().WithRegion(configRecord.Region.String))
-		//check if database exists
-		_, err = glueClient.GetDatabase(&glue.GetDatabaseInput{Name: &configRecord.StreamId.String})
-
-		if err != nil { //assume EntityNotFoundException for now, need to refine error handling later
-			//database name will be same as stream_id
-			_, err = glueClient.CreateDatabase(&glue.CreateDatabaseInput{DatabaseInput: &glue.DatabaseInput{Name: &configRecord.StreamId.String}})
-			if err != nil {
-				log.Println("Error creating Glue database", err)
-				return err
-			}
-
-			log.Println("Glue database created")
-
-		} else {
-			log.Println("Glue database found")
+		glueEnabled, _ := strconv.ParseBool(GetEnv("GLUE_ENABLED", "false"))
+		if glueEnabled {
+			err = UpdateGlue(messageType, configRecord, awsSession)
 		}
 
-		crawlerName := configRecord.StreamId.String + "_" + messageType
-		_, err = glueClient.GetCrawler(&glue.GetCrawlerInput{Name: &crawlerName})
-
-		if err != nil { //assume EntityNotFoundException for now, need to refine error handling later
-
-			//construct crawler path
-			crawlerPath := "s3://" + configRecord.BucketName.String
-			if configRecord.FolderName.String != "" {
-				crawlerPath += "/" + configRecord.FolderName.String
-			}
-
-			crawlerPath += "/" + messageType
-
-			s3Target := &glue.S3Target{Path: &crawlerPath}
-			s3TargetList := []*glue.S3Target{s3Target}
-
-			glueRole := os.Getenv("GLUE_ROLE")
-
-			if glueRole == "" {
-				log.Println("Role ARN for accessing Glue Services must be provided")
-				return errors.New("AWS Role ARN for accessing Glue Services must be provided")
-			}
-
-			glueScheduleCron := "cron(" + GetEnv("GLUE_SCHEDULE_CRON", "0 0 * * ? *") + ")" //default every day at 12 AM
-
-			createCrawlerInput := &glue.CreateCrawlerInput{Name: &crawlerName,
-				DatabaseName: &configRecord.StreamId.String,
-				Targets:      &glue.CrawlerTargets{S3Targets: s3TargetList},
-				Role:         &glueRole,
-				Schedule:     &glueScheduleCron}
-
-			_, err = glueClient.CreateCrawler(createCrawlerInput)
-			if err != nil {
-				log.Println("Error creating Glue crawler", err)
-				return err
-			}
-
-			log.Println("Glue crawler created")
-
-		} else {
-			log.Println("Glue crawler exists")
+		snowflakeEnabled, _ := strconv.ParseBool(GetEnv("SNOWFLAKE_ENABLED", "false"))
+		if snowflakeEnabled {
+			err = UpdateSnowflake(messageType, configRecord)
 		}
 
 	}

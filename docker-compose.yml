@@ -192,8 +192,14 @@ services:
       DREMIO_USERNAME: rtdl
       DREMIO_PASSWORD: rtdl1234      
       DREMIO_MOUNT_PATH: /mnt/datastore
+      GLUE_ENABLED: false
       GLUE_ROLE: arn:aws:iam::<account number>:role/<glue role>
       GLUE_SCHEDULE_CRON: 0 0 * * ? *
+      SNOWFLAKE_ENABLED: true
+      SNOWFLAKE_ACCT: <account identifier>
+      SNOWFLAKE_USER: <username>
+      SNOWFLAKE_PASSWORD: <password>
+      SNOWFLAKE_DB: <database>
     volumes:
       - ./storage/rtdl-data_store:/app/datastore    
     depends_on:     
