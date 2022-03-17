@@ -580,7 +580,9 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRec
 }
 
 //Function to update Snowflake
-func UpdateSnowflake(messageType string, configRecord Config) error {
+func UpdateSnowflake(messageType string, sourceType string, configRecord Config) error {
+
+	var path string
 
 	user := os.Getenv("SNOWFLAKE_USER")
 	password := os.Getenv("SNOWFLAKE_PASSWORD")
@@ -598,50 +600,75 @@ func UpdateSnowflake(messageType string, configRecord Config) error {
 	}
 	defer conn.Close()
 
-	s3Path := "s3://" + configRecord.BucketName.String
+	switch sourceType {
+	case "S3":
+		path = "s3://"
+
+	case "GCS":
+		path = "gcs://"
+
+	case "Azure":
+		path = "azure://" + configRecord.AzureStorageAccountname.String + ".blob.core.windows.net/"
+	}
+
+	path += configRecord.BucketName.String
 	if configRecord.FolderName.String != "" {
-		s3Path += "/" + configRecord.FolderName.String
+		path += "/" + configRecord.FolderName.String
 
 	}
 
-	s3Path += "/" + messageType
+	path += "/" + messageType //do not remove hyphens from this since this points to Azure location
 
-	schemaName := strings.Replace(configRecord.StreamId.String, "-", "_", -1)
+	//cannot use stream_id as is for schema name like Dremio or Glue
+	//because of Snowflake naming convention-related restrictions
+	schemaName := "s_" + strings.Replace(configRecord.StreamId.String, "-", "_", -1)
+
+	//stagename also needs to be cleansed similarly
+	stageName := strings.Replace(messageType, "-", "_", -1)
 
 	schemaCreationQuery := "create schema if not exists " + schemaName + ";"
-	res, snowflakeErr := conn.ExecContext(context.Background(), schemaCreationQuery)
-	log.Println(res)
+
+	_, snowflakeErr := conn.ExecContext(context.Background(), schemaCreationQuery)
+
 	if snowflakeErr != nil {
-		log.Println("Error creating Snowflake stage", snowflakeErr)
+		log.Println("Error creating Snowflake schema", snowflakeErr)
 		return snowflakeErr
 	}
 
 	stageCreationQuery := "use schema " + schemaName + ";"
-	stageCreationQuery += "create stage if not exists " + messageType //hyphen not allowed
-	stageCreationQuery += " URL = '" + s3Path + "' "
-	stageCreationQuery += " CREDENTIALS = (AWS_KEY_ID = '" + configRecord.AWSAcessKeyID.String + "' "
-	stageCreationQuery += " AWS_SECRET_KEY = '" + configRecord.AWSSecretAcessKey.String + "');"
+	stageCreationQuery += "create stage if not exists " + stageName //hyphen not allowed
+	stageCreationQuery += " URL = '" + path + "' "
+	//stageCreationQuery += " DIRECTORY = (ENABLE = TRUE, AUTO_REFRESH = FALSE) "
+	switch sourceType {
+	case "S3":
+		stageCreationQuery += " CREDENTIALS = (AWS_KEY_ID = '" + configRecord.AWSAcessKeyID.String + "' "
+		stageCreationQuery += " AWS_SECRET_KEY = '" + configRecord.AWSSecretAcessKey.String + "');"
+
+	case "Azure":
+		stageCreationQuery += " CREDENTIALS = (AZURE_SAS_TOKEN = '" + configRecord.AzureStorageAccessKey.String + "'); "
+	}
 
 	multiStatementContext, _ := gosnowflake.WithMultiStatement(context.Background(), 2)
-	res, snowflakeErr = conn.ExecContext(multiStatementContext, stageCreationQuery)
+	_, snowflakeErr = conn.ExecContext(multiStatementContext, stageCreationQuery)
 
-	log.Println(res)
 	if snowflakeErr != nil {
 		log.Println("Error creating Snowflake stage", snowflakeErr)
 		return snowflakeErr
 	}
 
 	tableCreationQuery := "use schema " + schemaName + ";"
-	tableCreationQuery += "create external table if not exists " + messageType
-	tableCreationQuery += " location = @" + messageType
+	tableCreationQuery += "create external table if not exists " + stageName //table=stage
+	tableCreationQuery += " location = @" + stageName
 	tableCreationQuery += " file_format = (type = PARQUET);"
 
-	res, snowflakeErr = conn.ExecContext(multiStatementContext, tableCreationQuery)
-	log.Println(res)
+	_, snowflakeErr = conn.ExecContext(multiStatementContext, tableCreationQuery)
+
 	if snowflakeErr != nil {
 		log.Println("Error creating Snowflake external table", snowflakeErr)
 		return snowflakeErr
 	}
+
+	log.Println("Snowflake external table created if not already existing")
 
 	return nil
 }
@@ -1209,7 +1236,7 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 
 		snowflakeEnabled, _ := strconv.ParseBool(GetEnv("SNOWFLAKE_ENABLED", "false"))
 		if snowflakeEnabled {
-			err = UpdateSnowflake(messageType, configRecord)
+			err = UpdateSnowflake(messageType, "S3", configRecord)
 		}
 
 	}
@@ -1291,7 +1318,27 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 	os.Remove(leafLevelFileName) //remove the temp file
 
 	log.Println("Finished uploading file to GCS")
-	return UpdateDremio(messageType, "GCS", bucketName, configRecord)
+	if err == nil {
+
+		//update Dremio if file update was successful
+		err = UpdateDremio(messageType, "GCS", bucketName, configRecord)
+
+		if err != nil {
+			log.Println("Error updating Dremio", err)
+		}
+
+		//update Snowflake if support is enabled
+		//this is on hold for now as it requires manual intervention and cannot be automated completely
+		/*
+			snowflakeEnabled, _ := strconv.ParseBool(GetEnv("SNOWFLAKE_ENABLED", "false"))
+			if snowflakeEnabled {
+				err = UpdateSnowflake(messageType, "GCS", configRecord)
+			}
+		*/
+
+	}
+
+	return err
 
 }
 
@@ -1380,7 +1427,24 @@ func WriteAzureParquet(messageType string, schema string, payload []byte, config
 	os.Remove(leafLevelFileName) //remove the temp file
 
 	log.Println("Finished uploading file to Azure")
-	return UpdateDremio(messageType, "Azure", bucketName, configRecord)
+	if err == nil {
+
+		err = UpdateDremio(messageType, "Azure", bucketName, configRecord)
+
+		if err != nil {
+			log.Println(("Error updating Dremio"))
+		}
+		//update Snowflake if support is enabled
+		//this is on hold for now as it requires manual intervention and cannot be automated completely
+		/*
+			snowflakeEnabled, _ := strconv.ParseBool(GetEnv("SNOWFLAKE_ENABLED", "false"))
+			if snowflakeEnabled {
+				err = UpdateSnowflake(messageType, "Azure", configRecord)
+			}
+		*/
+
+	}
+	return err
 
 }
 
