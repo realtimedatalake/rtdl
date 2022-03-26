@@ -99,6 +99,25 @@ services:
       - redpanda
   ##### Ingest Service - End #####
 
+  ##### DeltaWriter Service - Start #####
+  deltawriter:
+    build:
+      context: ./deltawriter
+    platform: linux/amd64
+    image: rtdl/rtdl-deltawriter:latest
+    container_name: rtdl_deltawriter
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SPARK_MASTER_HOST=host.docker.internal
+      - SPARK_MASTER_PORT=7077
+    expose:
+      - 8083
+    ports:
+      - 8083:8083
+    depends_on:      
+      - redpanda
+      - ingest
+  ##### DeltaWriter Service - End #####
 
   ##### Kafka/Redpanda Services - Start #####
   redpanda:
@@ -153,6 +172,7 @@ services:
     volumes:
       - ./storage/rtdl-statefun-manager_store:/checkpoint-dir
       - ./ingester/module.yaml:/opt/statefun/modules/ingester/module.yaml
+      - ./deltawriter/module.yaml:/opt/statefun/modules/deltawriter/module.yaml
     depends_on:
       - ingest
 
@@ -169,6 +189,7 @@ services:
     volumes:
       - ./storage/rtdl-statefun-worker_store:/checkpoint-dir
       - ./ingester/module.yaml:/opt/statefun/modules/ingester/module.yaml
+      - ./deltawriter/module.yaml:/opt/statefun/modules/deltawriter/module.yaml
     depends_on:
       - statefun-manager
       - redpanda
