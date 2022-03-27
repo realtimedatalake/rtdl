@@ -7,11 +7,18 @@ from aiohttp import web
 import json
 import os
 
+import socket
+
 functions = StatefulFunctions()
 
 # main logic
 @functions.bind(typename="com.rtdl.sf.deltawriter/deltawriter")
 async def greet(ctx: Context, message: Message):
+    host_name = socket.gethostname()
+    host_ip = socket.gethostbyname(host_name)
+    print("Hostname :  ",host_name)
+    print("IP : ",host_ip)
+    
     dbname = "rtdl_default_db" # will be populated based on one of project_id/stream_alt_id/stream_id
     tablename = "rtdl_default_table" # will be populated based on one of type/message_type
     data_json = message.raw_value().decode('utf8')
@@ -48,18 +55,29 @@ async def greet(ctx: Context, message: Message):
 
 
     builder = pyspark.sql.SparkSession.builder.appName("RTDL-Spark-Client") \
+        .master(spark_master_url) \
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-        .config("spark.executor.memory","4g") \
-        .config("spark.driver.memory","4g") \
-        .master(spark_master_url)
+        .config("spark.driver.host",str(host_ip))
+        #.config("spark.executor.memory","4g") \
+        #.config("spark.driver.memory","4g") \
+        #.config("spark.executor.cores",4) \
+        
+        #.config("spark.driver.bindAddress","0.0.0.0")\
+        #.config("spark.driver.host",str(host_ip))\
+        #.config("spark.submit.deployMode", "client")\
+        #.config("spark.ui.showConsoleProgress", "true")
+        
+        
 
 
     spark = configure_spark_with_delta_pip(builder).getOrCreate()
     jsonDF = spark.read.json(spark.sparkContext.parallelize([data_json]))
-    jsonDF.write.format("delta").mode("append").save(dbname + "." + tablename)
+    jsonDF.write.format("delta").mode("overwrite").save(dbname + "." + tablename)
     df = spark.read.format("delta").load(dbname + "." + tablename)
     df.show()
+    
+    
 
 
 handler = RequestReplyHandler(functions)
