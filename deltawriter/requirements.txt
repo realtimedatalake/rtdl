@@ -1,5 +1,4 @@
 aiohttp==3.8.1
 apache_flink_statefun==3.2.0
 delta==0.4.2
-delta_spark==1.1.0
-pyspark==3.2.1
+delta_spark==1.0.0
