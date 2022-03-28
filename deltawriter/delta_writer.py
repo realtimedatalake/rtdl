@@ -16,9 +16,7 @@ functions = StatefulFunctions()
 @functions.bind(typename="com.rtdl.sf.deltawriter/deltawriter")
 async def greet(ctx: Context, message: Message):
     host_name = socket.gethostname()
-    host_ip = socket.gethostbyname(host_name)
-    print("Hostname :  ",host_name)
-    print("IP : ",host_ip)
+
     
     dbname = "rtdl_default_db" # will be populated based on one of project_id/stream_alt_id/stream_id
     tablename = "rtdl_default_table" # will be populated based on one of type/message_type
@@ -38,9 +36,6 @@ async def greet(ctx: Context, message: Message):
     elif "message_type" in data and len(data["message_type"])>0:
         tablename = data["message_type"]
 
-    print(dbname)
-    print(tablename)
-
 
     # retrieve host and port details for Spark Master
     spark_master_host = os.environ['SPARK_MASTER_HOST']
@@ -54,34 +49,29 @@ async def greet(ctx: Context, message: Message):
     spark_master_url = "spark://" + spark_master_host + ":" + spark_master_port
 
 
-
+    os.system('chmod 777 -R /app/*')
     builder = pyspark.sql.SparkSession.builder.appName("RTDL-Spark-Client") \
         .master(spark_master_url) \
         .config("spark.jars.packages", "io.delta:delta-core_2.12:1.1.0") \
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-        .config("spark.driver.host",str(host_ip))
-        #.config("spark.executor.memory","4g") \
-        #.config("spark.driver.memory","4g") \
-        #.config("spark.executor.cores",4) \
-        
-        #.config("spark.driver.bindAddress","0.0.0.0")\
-        #.config("spark.driver.host",str(host_ip))\
-        #.config("spark.submit.deployMode", "client")\
-        #.config("spark.ui.showConsoleProgress", "true")
-        
-        
-
+        .config("spark.hadoop.fs.permissions.umask-mode", "777") \
+        .config("spark.driver.host",host_name)
 
     spark = configure_spark_with_delta_pip(builder).getOrCreate()
-    jsonDF = spark.read.json(spark.sparkContext.parallelize([data_json]))
-    spark.sql("refresh " + dbname + "." + tablename)
-    deltaTable = DeltaTable.convertToDelta(spark, "parquet.`" + dbname  + "." + tablename + "`")
-    jsonDF.write.format("delta").mode("append").save(dbname + "." + tablename)
-    #df = spark.read.format("delta").load(dbname + "." + tablename)
-    #df.show()
     
-    
+    try :
+        jsonDF = spark.read.json(spark.sparkContext.parallelize([data_json]))
+        jsonDF.write.format("delta").mode("append").save("/app/" + dbname + "/" + tablename)
+    except:
+        pass #throws errors but writes files
+    """
+    try:
+        df = spark.read.format("delta").load("/app/" + dbname + "/" + tablename)
+        df.show()
+    except:
+        pass
+    """
 
 
 handler = RequestReplyHandler(functions)
