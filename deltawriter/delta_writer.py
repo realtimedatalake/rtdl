@@ -1,5 +1,6 @@
 import pyspark
 from delta import *
+from delta.tables import *
 
 from statefun import *
 from aiohttp import web
@@ -56,6 +57,7 @@ async def greet(ctx: Context, message: Message):
 
     builder = pyspark.sql.SparkSession.builder.appName("RTDL-Spark-Client") \
         .master(spark_master_url) \
+        .config("spark.jars.packages", "io.delta:delta-core_2.12:1.1.0") \
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
         .config("spark.driver.host",str(host_ip))
@@ -73,9 +75,11 @@ async def greet(ctx: Context, message: Message):
 
     spark = configure_spark_with_delta_pip(builder).getOrCreate()
     jsonDF = spark.read.json(spark.sparkContext.parallelize([data_json]))
-    jsonDF.write.format("delta").mode("overwrite").save(dbname + "." + tablename)
-    df = spark.read.format("delta").load(dbname + "." + tablename)
-    df.show()
+    spark.sql("refresh " + dbname + "." + tablename)
+    deltaTable = DeltaTable.convertToDelta(spark, "parquet.`" + dbname  + "." + tablename + "`")
+    jsonDF.write.format("delta").mode("append").save(dbname + "." + tablename)
+    #df = spark.read.format("delta").load(dbname + "." + tablename)
+    #df.show()
     
     
 
