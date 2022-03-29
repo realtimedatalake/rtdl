@@ -100,26 +100,26 @@ services:
   ##### Ingest Service - End #####
 
   ##### DeltaWriter Service - Start #####
-  deltawriter:
-    build:
-      context: ./deltawriter
-    platform: linux/amd64
-    user: root
-    image: rtdl/rtdl-deltawriter:latest
-    container_name: rtdl_deltawriter
-    environment:
-      - PYTHONUNBUFFERED=1
-      - SPARK_MASTER_HOST=spark
-      - SPARK_MASTER_PORT=7077
-    expose:
-      - 8083
-    ports:
-      - 8083:8083
-    depends_on:      
-      - redpanda
-      - ingest
-    volumes:
-      - ./storage/spark:/app
+  #deltawriter:
+  #  build:
+  #    context: ./deltawriter
+  #  platform: linux/amd64
+  #  user: root
+  #  image: rtdl/rtdl-deltawriter:latest
+  #  container_name: rtdl_deltawriter
+  #  environment:
+  #    - PYTHONUNBUFFERED=1
+  #    - SPARK_MASTER_HOST=spark
+  #    - SPARK_MASTER_PORT=7077
+  #  expose:
+  #    - 8083
+  #  ports:
+  #    - 8083:8083
+  #  depends_on:      
+  #    - redpanda
+  #    - ingest
+  #  volumes:
+  #    - ./storage/spark:/app
   ##### DeltaWriter Service - End #####
 
   ##### Kafka/Redpanda Services - Start #####
@@ -198,8 +198,8 @@ services:
       - redpanda
 
   statefun-functions:
-    # build:
-    #   context: ./ingester
+    build:
+      context: ./ingester
     platform: linux/amd64
     image: rtdl/process-statefun-functions:latest
     container_name: rtdl_process-statefun-functions
@@ -317,33 +317,33 @@ services:
 ##### Hadoop Services - End ##### 
 
 ##### Spark Services - Start #####
-  spark:
-    image: docker.io/bitnami/spark:3
-    user: root
-    environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-    ports:
-      - '9090:8080'
-      - '7077:7077'
-    volumes:
-      - ./storage/spark:/app
-  spark-worker:
-    user: root
-    image: docker.io/bitnami/spark:3
-    environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark:7077
-      - SPARK_WORKER_MEMORY=8G
-      - SPARK_WORKER_CORES=8
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-    volumes:
-      - ./storage/spark:/app
+# spark:
+#    image: docker.io/bitnami/spark:3
+#    user: root
+#    environment:
+#      - SPARK_MODE=master
+#      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+#      - SPARK_RPC_ENCRYPTION_ENABLED=no
+#      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+#      - SPARK_SSL_ENABLED=no
+#    ports:
+#      - '9090:8080'
+#      - '7077:7077'
+#    volumes:
+#      - ./storage/spark:/app
+#  spark-worker:
+#    user: root
+#    image: docker.io/bitnami/spark:3
+#    environment:
+#      - SPARK_MODE=worker
+#      - SPARK_MASTER_URL=spark://spark:7077
+#      - SPARK_WORKER_MEMORY=8G
+#      - SPARK_WORKER_CORES=8
+#      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+#      - SPARK_RPC_ENCRYPTION_ENABLED=no
+#      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+#      - SPARK_SSL_ENABLED=no
+#    volumes:
+#      - ./storage/spark:/app
 ##### Spark Services - End #####
 
