@@ -1,5 +1,6 @@
 import pyspark
 from delta import *
+from delta import pip_utils
 from delta.tables import *
 
 from statefun import *
@@ -38,40 +39,46 @@ async def greet(ctx: Context, message: Message):
 
 
     # retrieve host and port details for Spark Master
-    spark_master_host = os.environ['SPARK_MASTER_HOST']
-    if spark_master_host is None or len(spark_master_host)<1:
-        spark_master_host = "host.docker.internal"
+    try:
+        spark_master_host = os.environ['SPARK_MASTER_HOST']
+        if spark_master_host is None or len(spark_master_host)<1:
+            spark_master_host = "0.0.0.0"
+    except:
+        spark_master_host = "0.0.0.0" #localhost also if key not specified
 
-    spark_master_port = os.environ['SPARK_MASTER_PORT']
-    if spark_master_port is None or len(spark_master_port)<1:
-        spark_master_port = "7077"
+    try:
+        spark_master_port = os.environ['SPARK_MASTER_PORT']
+        if spark_master_port is None or len(spark_master_port)<1:
+            spark_master_port = "7077"
+    except:
+        spark_master_port = "7077" # default port if not specified
 
     spark_master_url = "spark://" + spark_master_host + ":" + spark_master_port
 
 
-    os.system('chmod 777 -R /app/*')
     builder = pyspark.sql.SparkSession.builder.appName("RTDL-Spark-Client") \
         .master(spark_master_url) \
         .config("spark.jars.packages", "io.delta:delta-core_2.12:1.1.0") \
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-        .config("spark.hadoop.fs.permissions.umask-mode", "777") \
-        .config("spark.driver.host",host_name)
 
-    spark = configure_spark_with_delta_pip(builder).getOrCreate()
+    spark = pip_utils.configure_spark_with_delta_pip(builder).getOrCreate()
     
-    try :
-        jsonDF = spark.read.json(spark.sparkContext.parallelize([data_json]))
-        jsonDF.write.format("delta").mode("append").save("/app/" + dbname + "/" + tablename)
-    except:
-        pass #throws errors but writes files
-    """
+    jsonDF = spark.read.json(spark.sparkContext.parallelize([data_json]))
+    
     try:
-        df = spark.read.format("delta").load("/app/" + dbname + "/" + tablename)
-        df.show()
+        file_store_root = os.environ['FILE_STORE_ROOT']
     except:
-        pass
-    """
+        file_store_root = None # if not defined, no need to add
+
+    table_path = ""
+    if not file_store_root is None and len(file_store_root)>0:
+        table_path += file_store_root + "/"
+    table_path += dbname + "/" + tablename
+    #print(table_path)
+    jsonDF.write.format("delta").mode("append").save(table_path)
+    df = spark.read.format("delta").load(table_path)
+    df.show()
 
 
 handler = RequestReplyHandler(functions)
