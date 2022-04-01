@@ -99,29 +99,6 @@ services:
       - redpanda
   ##### Ingest Service - End #####
 
-  ##### DeltaWriter Service - Start #####
-  #deltawriter:
-  #  build:
-  #    context: ./deltawriter
-  #  platform: linux/amd64
-  #  user: root
-  #  image: rtdl/rtdl-deltawriter:latest
-  #  container_name: rtdl_deltawriter
-  #  environment:
-  #    - PYTHONUNBUFFERED=1
-  #    - SPARK_MASTER_HOST=spark
-  #    - SPARK_MASTER_PORT=7077
-  #  expose:
-  #    - 8083
-  #  ports:
-  #    - 8083:8083
-  #  depends_on:      
-  #    - redpanda
-  #    - ingest
-  #  volumes:
-  #    - ./storage/spark:/app
-  ##### DeltaWriter Service - End #####
-
   ##### Kafka/Redpanda Services - Start #####
   redpanda:
     command:
