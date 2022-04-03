@@ -1,40 +1,39 @@
 # rtdl - The Real-Time Data Lake ⚡️
 <img src="./public/logos/rtdl-logo.png" height="250px" width="250px"></img>  
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSES)  
-[rtdl](https://rtdl.io) makes it easy to build and maintain a real-time data lake. You send rtdl 
-a real-time data stream – often from a tool like Kafka or Segment – and it builds you a real-time 
-data lake in Parquet format that automatically works with [Dremio](https://www.dremio.com/) to 
-give you access to your real-time data in popular BI and ML tools – just like a data warehouse. 
-rtdl can build your real-time data lake on AWS S3, GCP Cloud Storage, and Azure Blob Storage.  
+[rtdl](https://rtdl.io) is a universal real-time ingestion and pre-processing layer for every 
+data lake – regardless of table format, OLAP layer, catalog, or cloud vendor. It is the easiest 
+way to build and maintain real-time data lakes. You send rtdl a real-time data stream – often 
+from a tool like Kafka or Segment – and it builds you a real-time data lake on AWS S3, GCP Cloud 
+Storage, and Azure Blob Storage.  
   
-You provide the streams, rtdl builds your data lake.  
+You provide the data, rtdl builds your lake.  
   
 Stay up-to-date on rtdl via our [website](https://rtdl.io/) and [blog](https://rtdl.io/blog/), 
 and learn how to use rtdl via our [documentation](https://rtdl.io/docs/).
 
 
-## V0.1.1 - Current status -- what works and what doesn't
+## V0.1.2 - Current status -- what works and what doesn't
 
 ### What works? 🚀
 rtdl's initial feature set is built and working. You can use the API on port 80 to 
 configure streams that ingest json from an rtdl endpoint on port 8080, process them into Parquet, 
 and save the files to a destination configured in your stream. rtdl can write files locally, to 
-AWS S3, GCP Cloud Storage, and Azure Blob Storage and you can query your data via Dremio's web UI
-at http://localhost:9047 (login with Username: `rtdl` and Password `rtdl1234`).
+HDFS, to AWS S3, GCP Cloud Storage, and Azure Blob Storage and you can query your data via Dremio's 
+web UI at http://localhost:9047 (login with Username: `rtdl` and Password `rtdl1234`).
 
 ### What's new? 💥
-  * Replaced Kafka & Zookeeper with [Redpanda](https://github.com/redpanda-data/redpanda).
-  * Added support for HDFS.
-  * Fixed issue with handling booleans when writing Parquet.
-  * Added several logo variants and a banner to the public directory.
+  * Added HDFS support.
+  * Added AWS Glue support.
+  * Added Snowflake External Tables support.
 
 ### What doesn't work/what's next on the roadmap? 🚴🏼  
-  * [Dremio Cloud](https://www.dremio.com/platform/cloud/) support.
-  * Apache Hudi support.
-  * Start using GitHub Projects for work tracking.
-  * Research and implementation for Apache Iceberg, Delta Lake, and Project Nessie.
   * Community contribution: Stateful Function for PII detection and masking.
+  * Move `stream` configurations to JSON files instead of SQL.
+  * git integration for `stream` configurations.
+  * Research and implementation for Apache Hudi, Apache Iceberg, Delta Lake, and Project Nessie.
   * Graphical user interface.
+  * [Dremio Cloud](https://www.dremio.com/platform/cloud/) support.
   
 
 ## Quickstart 🌱
