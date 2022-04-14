@@ -152,7 +152,7 @@ services:
     volumes:
       - ./storage/rtdl-statefun-manager_store:/checkpoint-dir
       - ./ingester/module.yaml:/opt/statefun/modules/ingester/module.yaml
-      - ./deltawriter/module.yaml:/opt/statefun/modules/deltawriter/module.yaml
+    #  - ./deltawriter/module.yaml:/opt/statefun/modules/deltawriter/module.yaml
     depends_on:
       - ingest
 
@@ -169,7 +169,7 @@ services:
     volumes:
       - ./storage/rtdl-statefun-worker_store:/checkpoint-dir
       - ./ingester/module.yaml:/opt/statefun/modules/ingester/module.yaml
-      - ./deltawriter/module.yaml:/opt/statefun/modules/deltawriter/module.yaml
+    #  - ./deltawriter/module.yaml:/opt/statefun/modules/deltawriter/module.yaml
     depends_on:
       - statefun-manager
       - redpanda
@@ -203,6 +203,7 @@ services:
       SNOWFLAKE_DB: <database>
     volumes:
       - ./storage/rtdl-data_store:/app/datastore    
+      - ./storage/configs:/app/configs
     depends_on:     
       rtdl-db:
         condition: service_healthy

@@ -52,6 +52,29 @@ const (
 	db_dbname_def   = "rtdl_db"
 )
 
+//configuration constants
+const (
+
+	//file store types
+	file_store_local = 1
+	file_store_aws   = 2
+	file_store_gcp   = 3
+	file_store_azure = 4
+	file_store_hdfs  = 5
+
+	//partition time windows
+	partition_time_hourly    = 1
+	partition_time_daily     = 2
+	partition_time_weekly    = 3
+	partition_time_monthly   = 4
+	partition_time_quarterly = 5
+
+	//compression types
+	compression_type_snappy = 1
+	compression_type_gzip   = 2
+	compression_type_lzo    = 3
+)
+
 // create the `psqlCon` string used to connect to the database
 var psqlCon string
 
@@ -100,6 +123,10 @@ type Config struct {
 }
 
 var configs []Config
+
+var streamConfigs []map[string]interface{}
+
+var configKeyValue map[string]interface{} //every config entry is a JSON object now
 
 //struct represenation of file store types
 type FileStoreType struct {
@@ -156,6 +183,31 @@ func GetEnv(key, defaultValue string) string {
 
 //loads all stream configurations
 func LoadConfig() error {
+	streamConfigs = make([]map[string]interface{},0)
+	configFiles, err := ioutil.ReadDir("configs")
+	if err != nil {
+		return err
+	}
+
+	//read all the config files and load them into the array of map[string]interface{}
+	for _, configFile := range configFiles {
+
+		configString, err2 := ioutil.ReadFile("configs/" + configFile.Name())
+		if err2 != nil {
+			return err2
+		}
+		var configObject map[string]interface{}
+		json.Unmarshal(configString,&configObject)
+		streamConfigs = append(streamConfigs, configObject)
+
+	}
+	log.Println("No. of configs loaded " + strconv.Itoa(len(streamConfigs)))
+	return nil
+
+}
+
+//loads all stream configurations - old implementation
+func LoadConfig_old() error {
 
 	//temp variables - to be assigned to parent level variables on successful load
 	var tempConfigs []Config
@@ -485,37 +537,29 @@ func GenerateSchema(payload map[string]interface{}, messageType string, jsonSche
 
 }
 
-func generateSubFolderName(messageType string, configRecord Config) string {
+func generateSubFolderName(messageType string, configRecord map[string]interface{}) string {
 
 	var subFolderName string
 
-	for _, partitionTimeRecord := range partitionTimes { //need to find out the write partition
+	switch configRecord["partition_time_id"] {
 
-		if partitionTimeRecord.PartitionTimeId == configRecord.PartitionTimeId.Int64 { //match found
+	case partition_time_hourly:
 
-			switch partitionTimeRecord.PartitionTimeName {
+		subFolderName = messageType + "/" + time.Now().Format("2006-01-02-15")
 
-			case "Hourly":
+	case partition_time_daily:
+		subFolderName = messageType + "/" + time.Now().Format("2006-01-02")
 
-				subFolderName = messageType + "/" + time.Now().Format("2006-01-02-15")
+	case partition_time_weekly:
+		year, week := time.Now().ISOWeek()
+		subFolderName = messageType + "/" + strconv.Itoa(year) + "-" + strconv.Itoa(week)
 
-			case "Daily":
-				subFolderName = messageType + "/" + time.Now().Format("2006-01-02")
+	case partition_time_monthly:
+		subFolderName = messageType + "/" + time.Now().Format("2006-01")
 
-			case "Weekly":
-				year, week := time.Now().ISOWeek()
-				subFolderName = messageType + "/" + strconv.Itoa(year) + "-" + strconv.Itoa(week)
-
-			case "Monthly":
-				subFolderName = messageType + "/" + time.Now().Format("2006-01")
-
-			case "Quarterly":
-				quarter := int((time.Now().Month() + 2) / 3)
-				subFolderName = messageType + "/" + time.Now().Format("2006") + "-" + string(quarter)
-			}
-
-		}
-
+	case partition_time_quarterly:
+		quarter := int((time.Now().Month() + 2) / 3)
+		subFolderName = messageType + "/" + time.Now().Format("2006") + "-" + string(quarter)
 	}
 
 	return subFolderName
@@ -539,7 +583,7 @@ func generateLeafLevelFileName() string {
 }
 
 //writer-agnostic function to actually write to file
-func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRecord Config) error {
+func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRecord map[string]interface{}) error {
 
 	pw, err := writer.NewJSONWriter(schema, fw, 4)
 	if err != nil {
@@ -549,16 +593,16 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRec
 
 	//set compression
 
-	compressionType := configRecord.CompressionTypeId.Int64
+	compressionType := configRecord["compression_type_id"].(float64)
 
 	if compressionType > 0 && compressionType < 4 { //supported compression type
 
 		switch compressionType {
-		case 1:
+		case compression_type_snappy:
 			pw.CompressionType = parquet.CompressionCodec_SNAPPY
-		case 2:
+		case compression_type_gzip:
 			pw.CompressionType = parquet.CompressionCodec_GZIP
-		case 3:
+		case compression_type_lzo:
 			pw.CompressionType = parquet.CompressionCodec_LZO
 
 		}
@@ -580,7 +624,7 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRec
 }
 
 //Function to update Snowflake
-func UpdateSnowflake(messageType string, sourceType string, configRecord Config) error {
+func UpdateSnowflake(messageType string, sourceType string, configRecord map[string]interface{}) error {
 
 	var path string
 
@@ -608,12 +652,12 @@ func UpdateSnowflake(messageType string, sourceType string, configRecord Config)
 		path = "gcs://"
 
 	case "Azure":
-		path = "azure://" + configRecord.AzureStorageAccountname.String + ".blob.core.windows.net/"
+		path = "azure://" + configRecord["azure_storage_account_name"].(string) + ".blob.core.windows.net/"
 	}
 
-	path += configRecord.BucketName.String
-	if configRecord.FolderName.String != "" {
-		path += "/" + configRecord.FolderName.String
+	path += configRecord["bucket_name"].(string)
+	if configRecord["folder_name"].(string) != "" {
+		path += "/" + configRecord["folder_name"].(string)
 
 	}
 
@@ -621,7 +665,7 @@ func UpdateSnowflake(messageType string, sourceType string, configRecord Config)
 
 	//cannot use stream_id as is for schema name like Dremio or Glue
 	//because of Snowflake naming convention-related restrictions
-	schemaName := "s_" + strings.Replace(configRecord.StreamId.String, "-", "_", -1)
+	schemaName := "s_" + strings.Replace(configRecord["stream_id"].(string), "-", "_", -1)
 
 	//stagename also needs to be cleansed similarly
 	stageName := strings.Replace(messageType, "-", "_", -1)
@@ -641,11 +685,11 @@ func UpdateSnowflake(messageType string, sourceType string, configRecord Config)
 	//stageCreationQuery += " DIRECTORY = (ENABLE = TRUE, AUTO_REFRESH = FALSE) "
 	switch sourceType {
 	case "S3":
-		stageCreationQuery += " CREDENTIALS = (AWS_KEY_ID = '" + configRecord.AWSAcessKeyID.String + "' "
-		stageCreationQuery += " AWS_SECRET_KEY = '" + configRecord.AWSSecretAcessKey.String + "');"
+		stageCreationQuery += " CREDENTIALS = (AWS_KEY_ID = '" + configRecord["aws_access_key_id"].(string) + "' "
+		stageCreationQuery += " AWS_SECRET_KEY = '" + configRecord["aws_secret_access_key"].(string) + "');"
 
 	case "Azure":
-		stageCreationQuery += " CREDENTIALS = (AZURE_SAS_TOKEN = '" + configRecord.AzureStorageAccessKey.String + "'); "
+		stageCreationQuery += " CREDENTIALS = (AZURE_SAS_TOKEN = '" + configRecord["azure_storage_access_key"].(string) + "'); "
 	}
 
 	multiStatementContext, _ := gosnowflake.WithMultiStatement(context.Background(), 2)
@@ -674,15 +718,16 @@ func UpdateSnowflake(messageType string, sourceType string, configRecord Config)
 }
 
 //Function for updating Glue
-func UpdateGlue(messageType string, configRecord Config, awsSession client.ConfigProvider) error {
+func UpdateGlue(messageType string, configRecord map[string]interface{}, awsSession client.ConfigProvider) error {
 	//create Glue Catalog entry irrespective of whether Dremio succeeded or not
-	glueClient := glue.New(awsSession, aws.NewConfig().WithRegion(configRecord.Region.String))
+	glueClient := glue.New(awsSession, aws.NewConfig().WithRegion(configRecord["region"].(string)))
 	//check if database exists
-	_, err := glueClient.GetDatabase(&glue.GetDatabaseInput{Name: &configRecord.StreamId.String})
+	streamId := configRecord["stream_id"].(string)
+	_, err := glueClient.GetDatabase(&glue.GetDatabaseInput{Name: &streamId})
 
 	if err != nil { //assume EntityNotFoundException for now, need to refine error handling later
 		//database name will be same as stream_id
-		_, err = glueClient.CreateDatabase(&glue.CreateDatabaseInput{DatabaseInput: &glue.DatabaseInput{Name: &configRecord.StreamId.String}})
+		_, err = glueClient.CreateDatabase(&glue.CreateDatabaseInput{DatabaseInput: &glue.DatabaseInput{Name: &streamId}})
 		if err != nil {
 			log.Println("Error creating Glue database", err)
 			return err
@@ -694,15 +739,15 @@ func UpdateGlue(messageType string, configRecord Config, awsSession client.Confi
 		log.Println("Glue database found")
 	}
 
-	crawlerName := configRecord.StreamId.String + "_" + messageType
+	crawlerName := configRecord["stream_id"].(string) + "_" + messageType
 	_, err = glueClient.GetCrawler(&glue.GetCrawlerInput{Name: &crawlerName})
 
 	if err != nil { //assume EntityNotFoundException for now, need to refine error handling later
 
 		//construct crawler path
-		crawlerPath := "s3://" + configRecord.BucketName.String
-		if configRecord.FolderName.String != "" {
-			crawlerPath += "/" + configRecord.FolderName.String
+		crawlerPath := "s3://" + configRecord["bucket_name"].(string)
+		if configRecord["folder_name"].(string) != "" {
+			crawlerPath += "/" + configRecord["folder_name"].(string)
 		}
 
 		crawlerPath += "/" + messageType
@@ -719,8 +764,10 @@ func UpdateGlue(messageType string, configRecord Config, awsSession client.Confi
 
 		glueScheduleCron := "cron(" + GetEnv("GLUE_SCHEDULE_CRON", "0 0 * * ? *") + ")" //default every day at 12 AM
 
+		databaseName := configRecord["stream_id"].(string)
+
 		createCrawlerInput := &glue.CreateCrawlerInput{Name: &crawlerName,
-			DatabaseName: &configRecord.StreamId.String,
+			DatabaseName: &databaseName,
 			Targets:      &glue.CrawlerTargets{S3Targets: s3TargetList},
 			Role:         &glueRole,
 			Schedule:     &glueScheduleCron}
@@ -740,7 +787,7 @@ func UpdateGlue(messageType string, configRecord Config, awsSession client.Confi
 }
 
 //Function for making Dremio entry
-func UpdateDremio(messageType string, sourceType string, location string, configRecord Config) error {
+func UpdateDremio(messageType string, sourceType string, location string, configRecord map[string]interface{}) error {
 
 	var sourceDef []byte
 	var sourceExists bool
@@ -748,7 +795,7 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 	var datasetExists bool
 
 	//desiredPath := messageType + "_" + sourceType //our source names will be <message type>_<source type>
-	sourceName := configRecord.StreamId.String
+	sourceName := configRecord["stream_id"].(string)
 	dremioResponse, err1 := DremioReqRes("source", nil)
 
 	if err1 != nil {
@@ -821,19 +868,19 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 		switch sourceType {
 
 		case "Local":
-			sourceStringMultiLine += `, "type": "NAS", "config": {"path": "file:///` + dremioMountPath + `/` + configRecord.FolderName.String
+			sourceStringMultiLine += `, "type": "NAS", "config": {"path": "file:///` + dremioMountPath + `/` + configRecord["folder_name"].(string)
 
 		case "S3":
 
-			sourceStringMultiLine += `, "type": "S3", "config": {"accessKey": "` + configRecord.AWSAcessKeyID.String + `"`
-			sourceStringMultiLine += `, "accessSecret": "` + configRecord.AWSSecretAcessKey.String + `"`
+			sourceStringMultiLine += `, "type": "S3", "config": {"accessKey": "` + configRecord["aws_access_key_id"].(string) + `"`
+			sourceStringMultiLine += `, "accessSecret": "` + configRecord["aws_secret_access_key"].(string) + `"`
 			//sourceStringMultiLine += `, "externalBucketList": ["` + location + `"]`
 			if strings.Contains(dremioHost, "cloud") {
 				sourceStringMultiLine += `, "rootPath": "/`
 			} else {
 				sourceStringMultiLine += `, "rootPath": "/` + location + `/`
-				if configRecord.FolderName.String != "" {
-					sourceStringMultiLine += configRecord.FolderName.String + `/`
+				if configRecord["folder_name"] != "" {
+					sourceStringMultiLine += configRecord["folder_name"].(string) + `/`
 
 				}
 
@@ -843,7 +890,7 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 			var gcpCreds map[string]interface{}
 			//need to extract all variable values from GCP crendentials object
 
-			err := json.Unmarshal([]byte(configRecord.GCPJsonCredentials.String), &gcpCreds)
+			err := json.Unmarshal([]byte(configRecord["gcp_json_credentials"].(string)), &gcpCreds)
 			if err != nil {
 				log.Println("Error reading GCP credentials from configuration record", err)
 				return err
@@ -859,8 +906,8 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 			sourceStringMultiLine += `, "clientId": "` + clientId + `", "privateKeyId": "` + privateKeyId + `"`
 			sourceStringMultiLine += `, "privateKey": "` + privateKey + `"`
 			sourceStringMultiLine += `, "rootPath": "/` + location + `/`
-			if configRecord.FolderName.String != "" {
-				sourceStringMultiLine += configRecord.FolderName.String + `/`
+			if configRecord["folder_name"] != "" {
+				sourceStringMultiLine += configRecord["folder_name"].(string) + `/`
 
 			}
 
@@ -869,22 +916,22 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 			//sourceStringMultiLine += `, "metadataPolicy": {"datasetUpdateMode": "INLINE"} `
 			sourceStringMultiLine += `, "metadataPolicy": {"datasetUpdateMode": "INLINE", "datasetRefreshAfterMs": 60000 ` //to be made customisable
 			sourceStringMultiLine += `, "namesRefreshMs": 60000, "authTTLMs": 60000, "datasetExpireAfterMs": 60000} `      //metadata end, comment/delete two lines together
-			sourceStringMultiLine += `, "type": "AZURE_STORAGE", "config": {"accountName": "` + configRecord.AzureStorageAccountname.String + `"`
+			sourceStringMultiLine += `, "type": "AZURE_STORAGE", "config": {"accountName": "` + configRecord["azure_storage_account_name"].(string) + `"`
 			sourceStringMultiLine += `, "enableSSL": true, "isCachingEnabled": false, "accountKind":"STORAGE_V2","credentialsType":"ACCESS_KEY"` //candidate for future customisation
-			sourceStringMultiLine += `, "accessKey": "` + configRecord.AzureStorageAccessKey.String + `"`
+			sourceStringMultiLine += `, "accessKey": "` + configRecord["azure_storage_access_key"].(string) + `"`
 			sourceStringMultiLine += `, "rootPath": "/` + location + `/`
-			if configRecord.FolderName.String != "" {
-				sourceStringMultiLine += configRecord.FolderName.String + `/`
+			if configRecord["folder_name"].(string) != "" {
+				sourceStringMultiLine += configRecord["folder_name"].(string) + `/`
 
 			}
 
 		case "HDFS":
 
-			sourceStringMultiLine += `, "type": "HDFS", "config": {"hostname": "` + configRecord.NamenodeHost.String + `"`
-			sourceStringMultiLine += `, "port": ` + strconv.Itoa(int(configRecord.NamenodePort.Int64))
+			sourceStringMultiLine += `, "type": "HDFS", "config": {"hostname": "` + configRecord["namenode_host"].(string) + `"`
+			sourceStringMultiLine += `, "port": ` + strconv.Itoa(int(configRecord["namenode_port"].(float64)))
 			sourceStringMultiLine += `, "rootPath": "/` + location + `/`
-			if configRecord.FolderName.String != "" {
-				sourceStringMultiLine += configRecord.FolderName.String + `/`
+			if configRecord["folder_name"].(string) != "" {
+				sourceStringMultiLine += configRecord["folder_name"].(string) + `/`
 
 			}
 
@@ -920,14 +967,14 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 		} else {
 
 			if strings.Contains(dremioHost, "cloud") { //for Dremio Cloud, need to add bucket and folder to path
-				encodedId = "dremio%3A%2F" + sourceName + "%2F" + configRecord.BucketName.String
-				if configRecord.FolderName.String != "" {
-					encodedId += "%2F" + configRecord.FolderName.String
+				encodedId = "dremio%3A%2F" + sourceName + "%2F" + configRecord["bucket_name"].(string)
+				if configRecord["folder_name"].(string) != "" {
+					encodedId += "%2F" + configRecord["folder_name"].(string)
 				}
 				encodedId += "%2F" + messageType
-				datasetDefMultiLine = `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + sourceName + `", "` + configRecord.BucketName.String + `" `
-				if configRecord.FolderName.String != "" {
-					datasetDefMultiLine += `, "` + configRecord.FolderName.String + `" `
+				datasetDefMultiLine = `{"id": "` + encodedId + `", "entityType": "dataset", "path": ["` + sourceName + `", "` + configRecord["bucket_name"].(string) + `" `
+				if configRecord["folder_name"].(string) != "" {
+					datasetDefMultiLine += `, "` + configRecord["folder_name"].(string) + `" `
 				}
 				datasetDefMultiLine += `, "` + messageType + `"]`
 			} else {
@@ -957,12 +1004,12 @@ func UpdateDremio(messageType string, sourceType string, location string, config
 }
 
 //Write local Parquet
-func WriteLocalParquet(messageType string, schema string, payload []byte, configRecord Config) error {
+func WriteLocalParquet(messageType string, schema string, payload []byte, configRecord map[string]interface{}) error {
 
 	//write
 	path := "datastore" //root will always be datastore
 
-	folderName := configRecord.FolderName.String
+	folderName := configRecord["folder_name"].(string)
 	if folderName != "" { //default
 		path += "/" + folderName
 	}
@@ -999,7 +1046,7 @@ func WriteLocalParquet(messageType string, schema string, payload []byte, config
 
 }
 
-func CreateHDFSDataset(messageType string, configRecord Config) error {
+func CreateHDFSDataset(messageType string, configRecord map[string]interface{}) error {
 
 	var url string
 
@@ -1011,10 +1058,10 @@ func CreateHDFSDataset(messageType string, configRecord Config) error {
 			return errors.New("DREMIO_CLOUD_PROJECT_ID cannot be blank for Dremio Cloud")
 		}
 
-		url = "https://" + dremioHost + "/v0/projects/" + dremioCloudProjectId + "/source/" + configRecord.StreamId.String + "/folder_format/" + messageType
+		url = "https://" + dremioHost + "/v0/projects/" + dremioCloudProjectId + "/source/" + configRecord["stream_id"].(string) + "/folder_format/" + messageType
 
 	} else {
-		url = "http://" + dremioHost + ":" + dremioPort + "/apiv2/source/" + configRecord.StreamId.String + "/folder_format/" + messageType
+		url = "http://" + dremioHost + ":" + dremioPort + "/apiv2/source/" + configRecord["stream_id"].(string) + "/folder_format/" + messageType
 	}
 
 	method := "PUT"
@@ -1048,18 +1095,18 @@ func CreateHDFSDataset(messageType string, configRecord Config) error {
 
 }
 
-func WriteHDFSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
+func WriteHDFSParquet(messageType string, schema string, payload []byte, configRecord map[string]interface{}) error {
 
-	if configRecord.BucketName.String == "" {
+	if configRecord["bucket_name"] == "" {
 		return errors.New("HDFS root folder (bucket) name cannot be null or empty")
 	}
 	subFolderName := generateSubFolderName(messageType, configRecord)
 	leafLevelFileName := generateLeafLevelFileName()
 
-	path := "/" + configRecord.BucketName.String
+	path := "/" + configRecord["bucket_name"].(string)
 
-	if configRecord.FolderName.String != "" {
-		path = path + "/" + configRecord.FolderName.String
+	if configRecord["folder_name"].(string) != "" {
+		path = path + "/" + configRecord["folder_name"].(string)
 	}
 
 	path = path + "/" + subFolderName
@@ -1086,7 +1133,7 @@ func WriteHDFSParquet(messageType string, schema string, payload []byte, configR
 	tempFile.Read(buffer)
 
 	//temporary code for HDFS write test
-	client, clientError := hdfs.New(configRecord.NamenodeHost.String + ":" + strconv.Itoa(int(configRecord.NamenodePort.Int64)))
+	client, clientError := hdfs.New(configRecord["namenode_host"].(string) + ":" + strconv.Itoa(int(configRecord["namenode_port"].(float64))))
 	if clientError != nil {
 		log.Println(clientError)
 	} else {
@@ -1137,37 +1184,37 @@ func WriteHDFSParquet(messageType string, schema string, payload []byte, configR
 	os.Remove(leafLevelFileName) //remove the temp file
 	if err == nil {
 		log.Println("Finished writing file to HDFS")
-		err = UpdateDremio(messageType, "HDFS", configRecord.BucketName.String, configRecord)
+		err = UpdateDremio(messageType, "HDFS", configRecord["bucket_name"].(string), configRecord)
 	}
 
 	return err
 
 }
 
-func WriteAWSParquet(messageType string, schema string, payload []byte, configRecord Config) error {
+func WriteAWSParquet(messageType string, schema string, payload []byte, configRecord map[string]interface{}) error {
 
 	var key string
 
 	subFolderName := generateSubFolderName(messageType, configRecord)
 	leafLevelFileName := generateLeafLevelFileName()
 
-	if configRecord.Region.String == "" {
+	if configRecord["region"] == "" {
 		return errors.New("AWS Region cannot be null or empty")
 	}
 
-	region := strings.TrimSpace(configRecord.Region.String)
-	awsAccessKeyId := strings.TrimSpace(configRecord.AWSAcessKeyID.String)
-	awsSecretAccessKey := strings.TrimSpace(configRecord.AWSSecretAcessKey.String)
+	region := strings.TrimSpace(configRecord["region"].(string))
+	awsAccessKeyId := strings.TrimSpace(configRecord["aws_access_key_id"].(string))
+	awsSecretAccessKey := strings.TrimSpace(configRecord["aws_secret_access_key"].(string))
 
 	//log.Println("AWS Parquet writing implementation pending")
-	bucketName := configRecord.BucketName.String
+	bucketName := configRecord["bucket_name"].(string)
 	if bucketName == "" {
 		return errors.New("S3 bucket name cannot be null or empty")
 	}
 
-	if configRecord.FolderName.String != "" {
+	if configRecord["folder_name"] != "" {
 
-		key = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
+		key = configRecord["folder_name"].(string) + "/" + subFolderName + "/" + leafLevelFileName
 
 	} else {
 
@@ -1245,7 +1292,7 @@ func WriteAWSParquet(messageType string, schema string, payload []byte, configRe
 
 }
 
-func WriteGCPParquet(messageType string, schema string, payload []byte, configRecord Config) error {
+func WriteGCPParquet(messageType string, schema string, payload []byte, configRecord map[string]interface{}) error {
 
 	var path string
 	//var location string
@@ -1254,7 +1301,7 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 	leafLevelFileName := generateLeafLevelFileName()
 
 	//replace all \n	with \\n to preserve them
-	jsonCreds := strings.Replace(configRecord.GCPJsonCredentials.String, "\n", "\\n", -1)
+	jsonCreds := strings.Replace(configRecord["gcp_json_credentials"].(string), "\n", "\\n", -1)
 
 	//create client
 	ctx := context.Background()
@@ -1271,15 +1318,15 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 	}
 	defer client.Close()
 
-	bucketName := configRecord.BucketName.String
+	bucketName := configRecord["bucket_name"].(string)
 	if bucketName == "" {
 		return errors.New("GCS bucket name cannot be null or empty")
 	}
 
-	if configRecord.FolderName.String != "" {
+	if configRecord["folder_name"].(string) != "" {
 
-		path = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
-		//location = configRecord.FolderName.String + "/" + subFolderName
+		path = configRecord["folder_name"].(string) + "/" + subFolderName + "/" + leafLevelFileName
+		//location = configRecord["folder_name"] + "/" + subFolderName
 	} else {
 
 		path = subFolderName + "/" + leafLevelFileName
@@ -1342,8 +1389,9 @@ func WriteGCPParquet(messageType string, schema string, payload []byte, configRe
 
 }
 
-func WriteAzureParquet(messageType string, schema string, payload []byte, configRecord Config) error {
+func WriteAzureParquet(messageType string, schema string, payload []byte, configRecord map[string]interface{}) error {
 
+	log.Println("inside WriteAzureParquet")
 	var path string
 	//var location string
 
@@ -1353,7 +1401,7 @@ func WriteAzureParquet(messageType string, schema string, payload []byte, config
 	// Create a request pipeline that is used to process HTTP(S) requests and responses. It requires
 	// your account credentials. In more advanced scenarios, you can configure telemetry, retry policies,
 	// logging, and other options. Also, you can configure multiple request pipelines for different scenarios.
-	azureCredential, err := azblob.NewSharedKeyCredential(configRecord.AzureStorageAccountname.String, configRecord.AzureStorageAccessKey.String)
+	azureCredential, err := azblob.NewSharedKeyCredential(configRecord["azure_storage_account_name"].(string), configRecord["azure_storage_access_key"].(string))
 	if err != nil {
 		log.Println("Error constructing Azure credential", err)
 		return err
@@ -1362,17 +1410,17 @@ func WriteAzureParquet(messageType string, schema string, payload []byte, config
 	azurePipeline := azblob.NewPipeline(azureCredential, azblob.PipelineOptions{})
 
 	//Storage account blob service URL endpoint
-	azureUrl, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net", configRecord.AzureStorageAccountname.String))
+	azureUrl, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net", configRecord["azure_storage_account_name"].(string)))
 
-	bucketName := configRecord.BucketName.String //maps to Container Name for Azure Storage
+	bucketName := configRecord["bucket_name"].(string) //maps to Container Name for Azure Storage
 	if bucketName == "" {
 		return errors.New("Bucket name (maps to Azure Storage Account Name) cannot be null or empty")
 	}
 
-	if configRecord.FolderName.String != "" {
+	if configRecord["folder_name"] != "" {
 
-		path = configRecord.FolderName.String + "/" + subFolderName + "/" + leafLevelFileName
-		//location = configRecord.FolderName.String + "/" + subFolderName
+		path = configRecord["folder_name"].(string) + "/" + subFolderName + "/" + leafLevelFileName
+		//location = configRecord["folder_name"] + "/" + subFolderName
 	} else {
 
 		path = subFolderName + "/" + leafLevelFileName
@@ -1460,15 +1508,15 @@ func WriteParquet(request IncomingMessage) error {
 
 	payload, _ := json.Marshal(request.Payload) //convert generic payload structure to JSON string
 
-	var matchingConfig Config
+	var matchingConfig map[string]interface{}
 
 	//first retrieve relevant destination information from config array
 
-	for _, configRecord := range configs {
+	for _, configRecord := range streamConfigs {
 
 		if request.StreamAltId != "" { //use stream_alt_id
 
-			if configRecord.StreamAltId.String == request.StreamAltId {
+			if configRecord["stream_alt_id"] == request.StreamAltId {
 				matchingConfig = configRecord
 				break
 
@@ -1477,7 +1525,7 @@ func WriteParquet(request IncomingMessage) error {
 		}
 
 		if request.StreamId != "" {
-			if configRecord.StreamId.String == request.StreamId {
+			if configRecord["stream_id"] == request.StreamId {
 				matchingConfig = configRecord
 				break
 
@@ -1488,9 +1536,9 @@ func WriteParquet(request IncomingMessage) error {
 	}
 
 	//least precendence - config record message_type
-	if matchingConfig.MessageType.String != "" {
+	if matchingConfig["message_type"] != "" {
 
-		messageType = matchingConfig.MessageType.String
+		messageType = matchingConfig["message_type"].(string)
 	}
 
 	//higher precendence message_type within message
@@ -1509,30 +1557,23 @@ func WriteParquet(request IncomingMessage) error {
 
 	schema := strings.TrimRight(GenerateSchema(request.Payload, messageType, ""), ",") + "]}"
 
-	for _, fileStoreTypeRecord := range fileStoreTypes { //similar logic for file store types
+	switch matchingConfig["file_store_type_id"].(float64) {
+	case file_store_local:
+		return WriteLocalParquet(messageType, schema, payload, matchingConfig)
+	case file_store_aws:
+		return WriteAWSParquet(messageType, schema, payload, matchingConfig)
+	case file_store_gcp:
+		return WriteGCPParquet(messageType, schema, payload, matchingConfig)
+	case file_store_azure:
+		return WriteAzureParquet(messageType, schema, payload, matchingConfig)
+	case file_store_hdfs:
+		err := WriteHDFSParquet(messageType, schema, payload, matchingConfig)
+		if err != nil {
+			log.Println("Error writing HDFS file")
+			return err
+		} else { //need to call HDFS dataset creation now
 
-		if fileStoreTypeRecord.FileStoreTypeId == matchingConfig.FileStoreTypeId.Int64 {
-
-			switch fileStoreTypeRecord.FileStoreTypeName {
-			case "Local":
-				return WriteLocalParquet(messageType, schema, payload, matchingConfig)
-			case "AWS":
-				return WriteAWSParquet(messageType, schema, payload, matchingConfig)
-			case "GCP":
-				return WriteGCPParquet(messageType, schema, payload, matchingConfig)
-			case "Azure":
-				return WriteAzureParquet(messageType, schema, payload, matchingConfig)
-			case "HDFS":
-				err := WriteHDFSParquet(messageType, schema, payload, matchingConfig)
-				if err != nil {
-					log.Println("Error writing HDFS file")
-					return err
-				} else { //need to call HDFS dataset creation now
-
-					return CreateHDFSDataset(messageType, matchingConfig)
-				}
-
-			}
+			return CreateHDFSDataset(messageType, matchingConfig)
 		}
 
 	}
