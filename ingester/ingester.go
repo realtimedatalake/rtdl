@@ -41,6 +41,7 @@ import (
 	"github.com/xitongsys/parquet-go/writer"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
+	"github.com/creamdog/gonfig"
 )
 
 // default database connection settings
@@ -50,29 +51,6 @@ const (
 	db_user_def     = "rtdl"
 	db_password_def = "rtdl"
 	db_dbname_def   = "rtdl_db"
-)
-
-//configuration constants
-const (
-
-	//file store types
-	file_store_local = 1
-	file_store_aws   = 2
-	file_store_gcp   = 3
-	file_store_azure = 4
-	file_store_hdfs  = 5
-
-	//partition time windows
-	partition_time_hourly    = 1
-	partition_time_daily     = 2
-	partition_time_weekly    = 3
-	partition_time_monthly   = 4
-	partition_time_quarterly = 5
-
-	//compression types
-	compression_type_snappy = 1
-	compression_type_gzip   = 2
-	compression_type_lzo    = 3
 )
 
 // create the `psqlCon` string used to connect to the database
@@ -170,6 +148,75 @@ type GCPCredentials struct {
 	tokenUri                string `json:"token_uri"`
 	authProviderX509CertUrl string `json:"auth_provider_x509_cert_url"`
 	clientX509CertUrl       string `json:"client_x509_cert_url"`
+}
+
+var storageTypesConstants gonfig.Gonfig
+var partitionTimesConstants gonfig.Gonfig
+var compressionTypesConstants gonfig.Gonfig
+
+
+//load constants from shared constants JSONs
+func LoadConstants() error {
+	storageTypesConstantsFile, err := os.Open("constants/file_store_types.json")
+	if err != nil {
+	  return err
+	}
+	defer storageTypesConstantsFile.Close();
+	storageTypesConstants, err = gonfig.FromJson(storageTypesConstantsFile)
+	if err != nil {
+	  return err
+	}
+
+	partitionTimesConstantsFile, err := os.Open("constants/partition_times.json")
+	if err != nil {
+	  return err
+	}
+	defer partitionTimesConstantsFile.Close();
+	partitionTimesConstants, err = gonfig.FromJson(partitionTimesConstantsFile)
+	if err != nil {
+	  return err
+	}
+
+	compressionTypesConstantsFile, err := os.Open("constants/compression_types.json")
+	if err != nil {
+	  return err
+	}
+	defer compressionTypesConstantsFile.Close();
+	compressionTypesConstants, err = gonfig.FromJson(compressionTypesConstantsFile)
+	if err != nil {
+	  return err
+	}
+
+	return nil
+
+}
+
+//utility methods to wrap around gonfig's constant reading logic
+func GetStorageTypeId(fileStoreTypeLiteral string) float64 {
+	fileStoreTypeId, err := storageTypesConstants.GetFloat(fileStoreTypeLiteral,nil)
+	if err != nil {
+		return -1
+	} else {
+		return fileStoreTypeId
+	}
+}
+
+func GetPartitionTimeId(partitionTimeLiteral string) float64 {
+	partitionTimeId, err := partitionTimesConstants.GetFloat(partitionTimeLiteral,nil)
+	if err != nil {
+		return -1
+	} else {
+		return partitionTimeId
+	}
+}
+
+func GetCompressionTypeId(compressionTypeLiteral string) float64 {
+	compressionTypeId, err := compressionTypesConstants.GetFloat(compressionTypeLiteral,nil)
+	if err != nil {
+		return -1
+	} else {
+		return compressionTypeId
+	}
 }
 
 // GetEnv get key environment variable if exist otherwise return defalutValue
@@ -543,21 +590,21 @@ func generateSubFolderName(messageType string, configRecord map[string]interface
 
 	switch configRecord["partition_time_id"] {
 
-	case partition_time_hourly:
+	case GetPartitionTimeId("partition_time_hourly"):
 
 		subFolderName = messageType + "/" + time.Now().Format("2006-01-02-15")
 
-	case partition_time_daily:
+	case GetPartitionTimeId("partition_time_daily"):
 		subFolderName = messageType + "/" + time.Now().Format("2006-01-02")
 
-	case partition_time_weekly:
+	case GetPartitionTimeId("partition_time_weekly"):
 		year, week := time.Now().ISOWeek()
 		subFolderName = messageType + "/" + strconv.Itoa(year) + "-" + strconv.Itoa(week)
 
-	case partition_time_monthly:
+	case GetPartitionTimeId("partition_time_monthly"):
 		subFolderName = messageType + "/" + time.Now().Format("2006-01")
 
-	case partition_time_quarterly:
+	case GetPartitionTimeId("partition_time_quarterly"):
 		quarter := int((time.Now().Month() + 2) / 3)
 		subFolderName = messageType + "/" + time.Now().Format("2006") + "-" + string(quarter)
 	}
@@ -598,11 +645,11 @@ func WriteToFile(schema string, fw source.ParquetFile, payload []byte, configRec
 	if compressionType > 0 && compressionType < 4 { //supported compression type
 
 		switch compressionType {
-		case compression_type_snappy:
+		case GetCompressionTypeId("compression_type_snappy"):
 			pw.CompressionType = parquet.CompressionCodec_SNAPPY
-		case compression_type_gzip:
+		case GetCompressionTypeId("compression_type_gzip"):
 			pw.CompressionType = parquet.CompressionCodec_GZIP
-		case compression_type_lzo:
+		case GetCompressionTypeId("compression_type_lzo"):
 			pw.CompressionType = parquet.CompressionCodec_LZO
 
 		}
@@ -1558,15 +1605,15 @@ func WriteParquet(request IncomingMessage) error {
 	schema := strings.TrimRight(GenerateSchema(request.Payload, messageType, ""), ",") + "]}"
 
 	switch matchingConfig["file_store_type_id"].(float64) {
-	case file_store_local:
+	case GetStorageTypeId("file_store_local"):
 		return WriteLocalParquet(messageType, schema, payload, matchingConfig)
-	case file_store_aws:
+	case GetStorageTypeId("file_store_aws"):
 		return WriteAWSParquet(messageType, schema, payload, matchingConfig)
-	case file_store_gcp:
+	case GetStorageTypeId("file_store_gcp"):
 		return WriteGCPParquet(messageType, schema, payload, matchingConfig)
-	case file_store_azure:
+	case GetStorageTypeId("file_store_azure"):
 		return WriteAzureParquet(messageType, schema, payload, matchingConfig)
-	case file_store_hdfs:
+	case GetStorageTypeId("file_store_hdfs"):
 		err := WriteHDFSParquet(messageType, schema, payload, matchingConfig)
 		if err != nil {
 			log.Println("Error writing HDFS file")
@@ -1622,15 +1669,23 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 	return nil
 }
 
+
 func main() {
 
 	//log.Println(net.LookupHost("host.docker.internal"))
 	// connection string
-	SetDBConnectionString()
+	//SetDBConnectionString()
+
+	//load constants from shared files
+	err := LoadConstants()
+	if err != nil {
+		log.Fatal("Unable to load constants ", err)
+	}
+
 
 	//load configuration at the outset
 	//should panic if unable to do source
-	err := LoadConfig()
+	err = LoadConfig()
 
 	if err != nil {
 		log.Fatal("Unable to load configuration ", err)

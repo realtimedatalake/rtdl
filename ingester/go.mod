@@ -37,6 +37,7 @@ require (
 	github.com/cncf/xds/go v0.0.0-20220112060520-0fa49ea1db0c // indirect
 	github.com/colinmarc/hdfs v1.1.3
 	github.com/containerd/containerd v1.5.9 // indirect
+	github.com/creamdog/gonfig v0.0.0-20160810132730-80d86bfb5a37 // indirect
 	github.com/docker/distribution v2.8.0+incompatible // indirect
 	github.com/docker/docker v20.10.12+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
