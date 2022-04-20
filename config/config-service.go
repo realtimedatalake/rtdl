@@ -125,7 +125,7 @@ func main() {
 	//defer db.Close()
 
 	// Add handler functions
-	// http.HandleFunc("/getStream", getStreamHandler(db))                           // POST; `stream_id` required
+	http.HandleFunc("/getStream", getStreamHandler()) // POST; `stream_id` required
 	// http.HandleFunc("/getAllStreams", getAllStreamsHandler(db))                   // GET
 	// http.HandleFunc("/getAllActiveStreams", getAllActiveStreamsHandler(db))       //GET
 	http.HandleFunc("/createStream", createStreamHandler()) // POST; `message_type` and `folder_name` required
@@ -142,7 +142,7 @@ func main() {
 }
 
 ////////// HANDLER FUNCTIONS - Start //////////
-func getStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
+func getStreamHandler() func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodPost:
@@ -162,20 +162,22 @@ func getStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 			}
 
 			// Query database
-			streams := []stream_sql{}
-			queryStr := "select * from getStream("
+			// streams := []stream_sql{}
+			// queryStr := "select * from getStream("
 			if reqStream.StreamID != "" {
-				queryStr = queryStr + "'" + reqStream.StreamID + "')"
-				err := db.Select(&streams, queryStr)
+				// queryStr = queryStr + "'" + reqStream.StreamID + "')"
+				// err := db.Select(&streams, queryStr)
+				configString, err := ioutil.ReadFile("configs/" + reqStream.StreamID + ".json")
 				if err != nil {
 					wrt.WriteHeader(http.StatusBadRequest)
 					http.Error(wrt, "Bad Request", http.StatusBadRequest)
 					CheckError(err)
 				}
-				if len(streams) <= 0 {
+				if len(configString) <= 0 {
 					wrt.WriteHeader(http.StatusNoContent)
 				} else {
-					jsonData, err := json.MarshalIndent(streams, "", "    ")
+					log.Println(configString)
+					jsonData, err := json.MarshalIndent(configString, "", "    ")
 					if err != nil {
 						jsonData = nil
 						wrt.WriteHeader(http.StatusInternalServerError)
