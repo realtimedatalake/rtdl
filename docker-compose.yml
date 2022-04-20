@@ -76,7 +76,7 @@ services:
       RTDL_DB_DBNAME: rtdl_db
     volumes:
       - ./storage/configs:/app/configs
-      - ./storage/constants:/app/constants
+      - ./constants:/app/constants
     depends_on:
       rtdl-db:
         condition: service_healthy
@@ -207,7 +207,7 @@ services:
     volumes:
       - ./storage/rtdl-data_store:/app/datastore    
       - ./storage/configs:/app/configs
-      - ./storage/constants:/app/constants
+      - ./constants:/app/constants
     depends_on:     
       rtdl-db:
         condition: service_healthy
