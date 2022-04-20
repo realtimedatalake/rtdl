@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	//"strings"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -113,28 +114,28 @@ type stream_sql struct {
 func main() {
 
 	// connection string
-	setDBConnectionString()
+	//setDBConnectionString()
 
 	// open database
-	db, err := sqlx.Open("postgres", psqlCon)
-	if err != nil {
-		CheckError(err)
-	}
+	// db, err := sqlx.Open("postgres", psqlCon)
+	// if err != nil {
+	// 	CheckError(err)
+	// }
 	// defer database close
-	defer db.Close()
+	//defer db.Close()
 
 	// Add handler functions
-	http.HandleFunc("/getStream", getStreamHandler(db))                           // POST; `stream_id` required
-	http.HandleFunc("/getAllStreams", getAllStreamsHandler(db))                   // GET
-	http.HandleFunc("/getAllActiveStreams", getAllActiveStreamsHandler(db))       //GET
-	http.HandleFunc("/createStream", createStreamHandler(db))                     // POST; `message_type` and `folder_name` required
-	http.HandleFunc("/updateStream", updateStreamHandler(db))                     // PUT; all fields required (will replace all fields)
-	http.HandleFunc("/deleteStream", deleteStreamHandler(db))                     // DELETE; `stream_id` required
-	http.HandleFunc("/activateStream", activateStreamHandler(db))                 // PUT; `stream_id` required
-	http.HandleFunc("/deactivateStream", deactivateStreamHandler(db))             // PUT; `stream_id` required
-	http.HandleFunc("/getAllFileStoreTypes", getAllFileStoreTypesHandler(db))     // GET
-	http.HandleFunc("/getAllPartitionTimes", getAllPartitionTimesHandler(db))     // GET
-	http.HandleFunc("/getAllCompressionTypes", getAllCompressionTypesHandler(db)) // GET
+	// http.HandleFunc("/getStream", getStreamHandler(db))                           // POST; `stream_id` required
+	// http.HandleFunc("/getAllStreams", getAllStreamsHandler(db))                   // GET
+	// http.HandleFunc("/getAllActiveStreams", getAllActiveStreamsHandler(db))       //GET
+	http.HandleFunc("/createStream", createStreamHandler()) // POST; `message_type` and `folder_name` required
+	// http.HandleFunc("/updateStream", updateStreamHandler(db))                     // PUT; all fields required (will replace all fields)
+	// http.HandleFunc("/deleteStream", deleteStreamHandler(db))                     // DELETE; `stream_id` required
+	// http.HandleFunc("/activateStream", activateStreamHandler(db))                 // PUT; `stream_id` required
+	// http.HandleFunc("/deactivateStream", deactivateStreamHandler(db))             // PUT; `stream_id` required
+	// http.HandleFunc("/getAllFileStoreTypes", getAllFileStoreTypesHandler(db))     // GET
+	// http.HandleFunc("/getAllPartitionTimes", getAllPartitionTimesHandler(db))     // GET
+	// http.HandleFunc("/getAllCompressionTypes", getAllCompressionTypesHandler(db)) // GET
 
 	// Run the web server
 	log.Fatal(http.ListenAndServe(":80", nil))
@@ -265,7 +266,7 @@ func getAllActiveStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Req
 	})
 }
 
-func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
+func createStreamHandler() func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodPost:
@@ -284,24 +285,34 @@ func createStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
 				CheckError(err)
 			}
 
-			log.Println(reqStream.GCPJsonCredentials)
+			//generate UUID and persist
+			id := uuid.New()
+			reqStream.StreamID = id.String()
+
+			//log.Println(reqStream.GCPJsonCredentials)
 
 			// Send to database function
-			retStreams := []stream_sql{}
-			queryStr := buildQueryString_createStream(reqStream)
-			err = db.Select(&retStreams, queryStr)
+			// retStreams := []stream_sql{}
+			// queryStr := buildQueryString_createStream(reqStream)
+			// err = db.Select(&retStreams, queryStr)
 			if err != nil {
 				wrt.WriteHeader(http.StatusBadRequest)
 				http.Error(wrt, "Bad Request", http.StatusBadRequest)
 				CheckError(err)
 			}
-			resp, errRet := json.MarshalIndent(retStreams, "", "    ")
+
+			//persist and also send back updated JSON
+			resp, errRet := json.MarshalIndent(reqStream, "", "    ")
+			if errRet == nil {
+				errRet = ioutil.WriteFile("configs/"+reqStream.StreamID+".json", resp, 0644)
+			}
 			if errRet != nil {
 				resp = nil
 				wrt.WriteHeader(http.StatusInternalServerError)
 				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
+
 			wrt.WriteHeader(http.StatusOK)
 			wrt.Write(resp)
 
