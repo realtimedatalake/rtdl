@@ -125,17 +125,17 @@ func main() {
 	//defer db.Close()
 
 	// Add handler functions
-	http.HandleFunc("/getStream", getStreamHandler()) // POST; `stream_id` required
-	// http.HandleFunc("/getAllStreams", getAllStreamsHandler(db))                   // GET
-	// http.HandleFunc("/getAllActiveStreams", getAllActiveStreamsHandler(db))       //GET
-	http.HandleFunc("/createStream", createStreamHandler()) // POST; `message_type` and `folder_name` required
+	http.HandleFunc("/getStream", getStreamHandler())                     // POST; `stream_id` required
+	http.HandleFunc("/getAllStreams", getAllStreamsHandler())             // GET
+	http.HandleFunc("/getAllActiveStreams", getAllActiveStreamsHandler()) //GET
+	http.HandleFunc("/createStream", createStreamHandler())               // POST; `message_type` and `folder_name` required
 	// http.HandleFunc("/updateStream", updateStreamHandler(db))                     // PUT; all fields required (will replace all fields)
 	// http.HandleFunc("/deleteStream", deleteStreamHandler(db))                     // DELETE; `stream_id` required
 	// http.HandleFunc("/activateStream", activateStreamHandler(db))                 // PUT; `stream_id` required
 	// http.HandleFunc("/deactivateStream", deactivateStreamHandler(db))             // PUT; `stream_id` required
-	// http.HandleFunc("/getAllFileStoreTypes", getAllFileStoreTypesHandler(db))     // GET
-	// http.HandleFunc("/getAllPartitionTimes", getAllPartitionTimesHandler(db))     // GET
-	// http.HandleFunc("/getAllCompressionTypes", getAllCompressionTypesHandler(db)) // GET
+	http.HandleFunc("/getAllFileStoreTypes", getAllFileStoreTypesHandler())     // GET
+	http.HandleFunc("/getAllPartitionTimes", getAllPartitionTimesHandler())     // GET
+	http.HandleFunc("/getAllCompressionTypes", getAllCompressionTypesHandler()) // GET
 
 	// Run the web server
 	log.Fatal(http.ListenAndServe(":80", nil))
@@ -192,21 +192,37 @@ func getStreamHandler() func(http.ResponseWriter, *http.Request) {
 	})
 }
 
-func getAllStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
+func getAllStreamsHandler() func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			streams := []stream_sql{}
-			err := db.Select(&streams, "select * from getAllStreams()")
+			streamConfigs := make([]map[string]interface{}, 0)
+			configFiles, err := ioutil.ReadDir("configs")
 			if err != nil {
 				wrt.WriteHeader(http.StatusBadRequest)
-				http.Error(wrt, "Bad Request", http.StatusBadRequest)
+				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
-			if len(streams) <= 0 {
+
+			//read all the config files and load them into the array of map[string]interface{}
+			for _, configFile := range configFiles {
+
+				configString, err2 := ioutil.ReadFile("configs/" + configFile.Name())
+				if err2 != nil {
+					wrt.WriteHeader(http.StatusInternalServerError)
+					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+					CheckError(err)
+				}
+				var configObject map[string]interface{}
+				json.Unmarshal(configString, &configObject)
+				streamConfigs = append(streamConfigs, configObject)
+
+			}
+			log.Println("No. of configs loaded " + strconv.Itoa(len(streamConfigs)))
+			if len(streamConfigs) <= 0 {
 				wrt.WriteHeader(http.StatusNoContent)
 			} else {
-				jsonData, err := json.MarshalIndent(streams, "", "    ")
+				jsonData, err := json.MarshalIndent(streamConfigs, "", "    ")
 				if err != nil {
 					jsonData = nil
 					wrt.WriteHeader(http.StatusInternalServerError)
@@ -226,21 +242,41 @@ func getAllStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) 
 	})
 }
 
-func getAllActiveStreamsHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
+func getAllActiveStreamsHandler() func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			streams := []stream_sql{}
-			err := db.Select(&streams, "select * from getAllActiveStreams()")
+			// streams := []stream_sql{}
+			// err := db.Select(&streams, "select * from getAllActiveStreams()")
+			streamConfigs := make([]map[string]interface{}, 0)
+			configFiles, err := ioutil.ReadDir("configs")
+
 			if err != nil {
 				wrt.WriteHeader(http.StatusBadRequest)
-				http.Error(wrt, "Bad Request", http.StatusBadRequest)
+				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
-			if len(streams) <= 0 {
+			//read all the config files and load them into the array of map[string]interface{}
+			for _, configFile := range configFiles {
+
+				configString, err2 := ioutil.ReadFile("configs/" + configFile.Name())
+				if err2 != nil {
+					wrt.WriteHeader(http.StatusInternalServerError)
+					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+					CheckError(err)
+				}
+				var configObject map[string]interface{}
+				json.Unmarshal(configString, &configObject)
+				if configObject["active"].(bool) {
+					streamConfigs = append(streamConfigs, configObject)
+				}
+
+			}
+
+			if len(streamConfigs) <= 0 {
 				wrt.WriteHeader(http.StatusNoContent)
 			} else {
-				jsonData, err := json.MarshalIndent(streams, "", "    ")
+				jsonData, err := json.MarshalIndent(streamConfigs, "", "    ")
 				if err != nil {
 					jsonData = nil
 					wrt.WriteHeader(http.StatusInternalServerError)
@@ -558,29 +594,24 @@ func deactivateStreamHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Reques
 	})
 }
 
-func getAllFileStoreTypesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
+func getAllFileStoreTypesHandler() func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			fst := []fileStoreType{}
-			err := db.Select(&fst, "select * from getAllFileStoreTypes()")
+			// fst := []fileStoreType{}
+			// err := db.Select(&fst, "select * from getAllFileStoreTypes()")
+			storageTypesConstants, err := ioutil.ReadFile("constants/file_store_types.json")
 			if err != nil {
 				wrt.WriteHeader(http.StatusBadRequest)
-				http.Error(wrt, "Bad Request", http.StatusBadRequest)
+				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
-			if len(fst) <= 0 {
+
+			if len(storageTypesConstants) <= 0 {
 				wrt.WriteHeader(http.StatusNoContent)
 			} else {
-				jsonData, err := json.MarshalIndent(fst, "", "    ")
-				if err != nil {
-					jsonData = nil
-					wrt.WriteHeader(http.StatusInternalServerError)
-					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
-					CheckError(err)
-				}
 				wrt.WriteHeader(http.StatusOK)
-				wrt.Write(jsonData)
+				wrt.Write(storageTypesConstants)
 			}
 		case http.MethodPost:
 		case http.MethodPut:
@@ -592,29 +623,23 @@ func getAllFileStoreTypesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Re
 	})
 }
 
-func getAllPartitionTimesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
+func getAllPartitionTimesHandler() func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			pt := []partitionTime{}
-			err := db.Select(&pt, "select * from getAllPartitionTimes()")
+			// pt := []partitionTime{}
+			// err := db.Select(&pt, "select * from getAllPartitionTimes()")
+			partitionTimesConstants, err := ioutil.ReadFile("constants/partition_times.json")
 			if err != nil {
 				wrt.WriteHeader(http.StatusBadRequest)
-				http.Error(wrt, "Bad Request", http.StatusBadRequest)
+				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
-			if len(pt) <= 0 {
+			if len(partitionTimesConstants) <= 0 {
 				wrt.WriteHeader(http.StatusNoContent)
 			} else {
-				jsonData, err := json.MarshalIndent(pt, "", "    ")
-				if err != nil {
-					jsonData = nil
-					wrt.WriteHeader(http.StatusInternalServerError)
-					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
-					CheckError(err)
-				}
 				wrt.WriteHeader(http.StatusOK)
-				wrt.Write(jsonData)
+				wrt.Write(partitionTimesConstants)
 			}
 		case http.MethodPost:
 		case http.MethodPut:
@@ -626,29 +651,24 @@ func getAllPartitionTimesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Re
 	})
 }
 
-func getAllCompressionTypesHandler(db *sqlx.DB) func(http.ResponseWriter, *http.Request) {
+func getAllCompressionTypesHandler() func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			ct := []compressionType{}
-			err := db.Select(&ct, "select * from getAllCompressionTypes()")
+			// ct := []compressionType{}
+			// err := db.Select(&ct, "select * from getAllCompressionTypes()")
+			compressionTypesConstants, err := ioutil.ReadFile("constants/compression_types.json")
 			if err != nil {
 				wrt.WriteHeader(http.StatusBadRequest)
-				http.Error(wrt, "Bad Request", http.StatusBadRequest)
+				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
 				CheckError(err)
 			}
-			if len(ct) <= 0 {
+
+			if len(compressionTypesConstants) <= 0 {
 				wrt.WriteHeader(http.StatusNoContent)
 			} else {
-				jsonData, err := json.MarshalIndent(ct, "", "    ")
-				if err != nil {
-					jsonData = nil
-					wrt.WriteHeader(http.StatusInternalServerError)
-					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
-					CheckError(err)
-				}
 				wrt.WriteHeader(http.StatusOK)
-				wrt.Write(jsonData)
+				wrt.Write(compressionTypesConstants)
 			}
 		case http.MethodPost:
 		case http.MethodPut:

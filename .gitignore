@@ -13,3 +13,5 @@
 
 # Data storage directories
 storage*/
+
+.DS_Store
