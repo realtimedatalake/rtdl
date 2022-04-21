@@ -167,25 +167,17 @@ func getStreamHandler() func(http.ResponseWriter, *http.Request) {
 			if reqStream.StreamID != "" {
 				// queryStr = queryStr + "'" + reqStream.StreamID + "')"
 				// err := db.Select(&streams, queryStr)
-				configString, err := ioutil.ReadFile("configs/" + reqStream.StreamID + ".json")
+				configJson, err := ioutil.ReadFile("configs/" + reqStream.StreamID + ".json")
 				if err != nil {
 					wrt.WriteHeader(http.StatusBadRequest)
 					http.Error(wrt, "Bad Request", http.StatusBadRequest)
 					CheckError(err)
 				}
-				if len(configString) <= 0 {
+				if len(configJson) <= 0 {
 					wrt.WriteHeader(http.StatusNoContent)
 				} else {
-					log.Println(configString)
-					jsonData, err := json.MarshalIndent(configString, "", "    ")
-					if err != nil {
-						jsonData = nil
-						wrt.WriteHeader(http.StatusInternalServerError)
-						http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
-						CheckError(err)
-					}
 					wrt.WriteHeader(http.StatusOK)
-					wrt.Write(jsonData)
+					wrt.Write(configJson)
 				}
 			} else {
 				http.Error(wrt, "`stream_id` is required", http.StatusUnprocessableEntity)
