@@ -1,62 +1,6 @@
 version: '3'
 
 services:
-  ##### Config Services - Start #####
-  ### For YBDB - Start ###
-  # rtdl-db:
-  #   platform: linux/amd64
-  #   image: yugabytedb/yugabyte:latest
-  #   container_name: rtdl_rtdl-db
-  #   volumes:
-  #     - ./storage/rtdl-db_data:/home/yugabyte/yb_data
-  #   command: ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--daemon=false"]
-  #   expose:
-  #     - 5433
-  #   # ports:
-  #   #   - 5433:5432
-  #   healthcheck:
-  #       test: ["CMD", "yb-ts-cli", "--server_address=localhost", "is_server_ready"]
-  #       interval: 10s
-  #       timeout: 5s
-  #       retries: 12
-
-  # config:
-  #   # build:
-  #   #   context: ./config
-  #   platform: linux/amd64
-  #   image: rtdl/rtdl-config:latest
-  #   container_name: rtdl_config
-  #   expose:
-  #     - 80
-  #   ports:
-  #     - 80:80
-  #   environment:
-  #     RTDL_DB_PORT: 5433
-  # depends_on:
-  #   rtdl-db:
-  #     condition: service_healthy
-  ### For YBDB - End ###
-
-  ### For Postgres - Start ###
-  rtdl-db:
-    platform: linux/amd64
-    image: postgres:latest
-    container_name: rtdl_rtdl-db
-    volumes:
-      - ./storage/rtdl-db_data:/var/lib/postgresql/data
-    expose:
-      - 5432
-    # ports:
-    #   - 5433:5432
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U postgres"]
-        interval: 10s
-        timeout: 5s
-        retries: 12
-  ### For Postgres - End ###
 
   config:
     build:
@@ -77,9 +21,7 @@ services:
     volumes:
       - ./storage/configs:/app/configs
       - ./constants:/app/constants
-    depends_on:
-      rtdl-db:
-        condition: service_healthy
+
   ##### Config Services - End #####
 
 
@@ -186,11 +128,6 @@ services:
     expose:
       - 8082
     environment:
-      RTDL_DB_HOST: rtdl-db
-      RTDL_DB_PORT: 5432
-      RTDL_DB_USER: rtdl
-      RTDL_DB_PASSWORD: rtdl
-      RTDL_DB_DBNAME: rtdl_db
       DREMIO_HOST: dremio
       DREMIO_PORT: 9047
       DREMIO_USERNAME: rtdl
@@ -209,8 +146,6 @@ services:
       - ./storage/configs:/app/configs
       - ./constants:/app/constants
     depends_on:     
-      rtdl-db:
-        condition: service_healthy
       redpanda:
         condition: service_healthy
       dremio:

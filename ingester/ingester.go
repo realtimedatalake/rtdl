@@ -32,7 +32,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/glue"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/colinmarc/hdfs"
-	"github.com/jmoiron/sqlx"
+	//"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/xitongsys/parquet-go-source/local"
@@ -254,64 +254,6 @@ func LoadConfig() error {
 }
 
 //loads all stream configurations - old implementation
-func LoadConfig_old() error {
-
-	//temp variables - to be assigned to parent level variables on successful load
-	var tempConfigs []Config
-	var tempFileStoreTypes []FileStoreType
-	var tempPartitionTimes []PartitionTime
-	var tempCompressionTypes []CompressionType
-
-	//directly load data from PostgreSQL
-
-	// open database
-	db, err := sqlx.Open("postgres", psqlCon)
-	if err != nil {
-		log.Println("Failed to open a DB connection: ", err)
-		return err
-	}
-
-	configSql := "SELECT * FROM streams where active = true"
-
-	err = db.Select(&tempConfigs, configSql) //populate stream configurations into array of stream config structs
-	if err != nil {
-		log.Println("Failed to execute query: ", err)
-		return err
-	}
-
-	configs = tempConfigs
-
-	fileStoreTypeSql := "SELECT * FROM file_store_types"
-	err = db.Select(&tempFileStoreTypes, fileStoreTypeSql) //populate supported file store types
-	if err != nil {
-		log.Println("Failed to execute query: ", err)
-		return err
-	}
-
-	fileStoreTypes = tempFileStoreTypes
-
-	partitionTimesSql := "SELECT * FROM partition_times"
-	err = db.Select(&tempPartitionTimes, partitionTimesSql) //populate supported file store types
-	if err != nil {
-		log.Println("Failed to execute query: ", err)
-		return err
-	}
-
-	partitionTimes = tempPartitionTimes
-
-	compressionTypesSql := "SELECT * from compression_types"
-	err = db.Select(&tempCompressionTypes, compressionTypesSql)
-	if err != nil {
-		log.Println("Failed to execute query: ", err)
-		return err
-	}
-
-	compressionTypes = tempCompressionTypes
-
-	defer db.Close()
-	log.Println("No. of config records retrieved : " + strconv.Itoa(len(configs)))
-	return nil
-}
 
 //generic function for Dremio request response
 func DremioReqRes(endPoint string, data []byte) (map[string]interface{}, error) {
@@ -453,40 +395,6 @@ func SetDremioConnection() error {
 
 }
 
-//	FUNCTION
-// 	SetDBConnectionString
-//	created by Gavin
-//	on 20220109
-//	last updated 20220111
-//	by Gavin
-//	Description:	(Copied from config-service.go)
-//					Sets the `psqlCon` global variable. Looks up environment variables
-//					and defaults if none are present.
-func SetDBConnectionString() {
-	var db_host, db_port, db_user, db_password, db_dbname = db_host_def, db_port_def, db_user_def, db_password_def, db_dbname_def
-	var db_host_env, db_user_env, db_password_env, db_dbname_env = os.Getenv("RTDL_DB_HOST"), os.Getenv("RTDL_DB_USER"), os.Getenv("RTDL_DB_PASSWORD"), os.Getenv("RTDL_DB_DBNAME")
-	db_port_env, err := strconv.Atoi(os.Getenv("RTDL_DB_PORT"))
-	if err != nil {
-		db_port_env = 0
-	}
-
-	if db_host_env != "" {
-		db_host = db_host_env
-	}
-	if db_port_env != 0 {
-		db_port = db_port_env
-	}
-	if db_user_env != "" {
-		db_user = db_user_env
-	}
-	if db_password_env != "" {
-		db_password = db_password_env
-	}
-	if db_dbname_env != "" {
-		db_dbname = db_dbname_env
-	}
-	psqlCon = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", db_host, db_port, db_user, db_password, db_dbname)
-}
 
 //map between Go and Parquet data types
 func getParquetDataType(dataType string) string {
@@ -1671,10 +1579,6 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 
 
 func main() {
-
-	//log.Println(net.LookupHost("host.docker.internal"))
-	// connection string
-	//SetDBConnectionString()
 
 	//load constants from shared files
 	err := LoadConstants()
