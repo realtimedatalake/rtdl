@@ -15,7 +15,7 @@
 kind: io.statefun.endpoints.v2/http
 spec:
   functions: com.rtdl.sf.deltawriter/*
-  urlPathTemplate: http://172.29.249.23:8083/deltawriter
+  urlPathTemplate: http://delta-writer:8083/deltawriter
   transport:  
     type: io.statefun.transports.v1/async
 ---
@@ -28,8 +28,16 @@ spec:
     type: latest
 
   topics:
-    - topic: egress
+    - topic: ingress
       valueType: com.rtdl.sf.deltawriter/IncomingMessage
       targets:
         - com.rtdl.sf.deltawriter/deltawriter
-    
+
+---
+kind: io.statefun.kafka.v1/egress
+spec:
+  id: com.rtdl.sf.deltawriter/egress
+  address: redpanda:29092
+  deliverySemantic:
+    type: exactly-once
+    transactionTimeout: 5sec

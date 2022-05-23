@@ -59,6 +59,7 @@ async def greet(ctx: Context, message: Message):
     builder = pyspark.sql.SparkSession.builder.appName("RTDL-Spark-Client") \
         .master(spark_master_url) \
         .config("spark.jars.packages", "io.delta:delta-core_2.12:1.1.0") \
+        .config("spark.jars.ivy","/tmp/.ivy") \
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
 
