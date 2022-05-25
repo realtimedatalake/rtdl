@@ -36,6 +36,9 @@ async def greet(ctx: Context, message: Message):
         tablename = data["type"]
     elif "message_type" in data and len(data["message_type"])>0:
         tablename = data["message_type"]
+        if data["message_type"] == "rtdl_205" : #ignore control messages
+            return
+
 
 
     # retrieve host and port details for Spark Master
