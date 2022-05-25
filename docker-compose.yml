@@ -250,7 +250,8 @@ services:
       - 9090:9090
       - 7077:7077
     volumes: 
-      - deltastorage:/app
+      - ./storage/spark:/app
+
   spark-worker:
     platform: linux/amd64
     image: docker.io/bitnami/spark:3
@@ -266,7 +267,7 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
     volumes: 
-      - deltastorage:/app
+      - ./storage/spark:/app
 
   delta-writer:
     build:
@@ -282,14 +283,6 @@ services:
     expose:
       - 8083
     volumes: 
-      - deltastorage:/app
-
-volumes:
-  deltastorage:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind,rw,nolock,soft
-      device: /c/Users/Dipanjan/rtdl/storage/spark
+      - ./storage/spark:/app
 ##### Spark Services - End #####
 
