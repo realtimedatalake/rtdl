@@ -22,9 +22,9 @@ require (
 	cloud.google.com/go v0.100.2 // indirect
 	cloud.google.com/go/compute v1.0.0 // indirect
 	cloud.google.com/go/iam v0.1.0 // indirect
-	cloud.google.com/go/secretmanager v1.0.0 // indirect
-	cloud.google.com/go/storage v1.18.2 // indirect
-	github.com/Azure/azure-storage-blob-go v0.14.0 // indirect
+	cloud.google.com/go/secretmanager v1.0.0
+	cloud.google.com/go/storage v1.18.2
+	github.com/Azure/azure-storage-blob-go v0.14.0
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/akolb1/gometastore v0.0.0-20211122182549-3be600732d4b // indirect
 	github.com/apache/arrow/go/arrow v0.0.0-20211112161151-bc219186db40 // indirect
@@ -35,8 +35,9 @@ require (
 	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
 	github.com/cncf/udpa/go v0.0.0-20220112060539-c52dc94e7fbe // indirect
 	github.com/cncf/xds/go v0.0.0-20220112060520-0fa49ea1db0c // indirect
-	github.com/colinmarc/hdfs v1.1.3 // indirect
+	github.com/colinmarc/hdfs v1.1.3
 	github.com/containerd/containerd v1.5.9 // indirect
+	github.com/creamdog/gonfig v0.0.0-20160810132730-80d86bfb5a37 // indirect
 	github.com/docker/distribution v2.8.0+incompatible // indirect
 	github.com/docker/docker v20.10.12+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -51,14 +52,15 @@ require (
 	github.com/lib/pq v1.10.4
 	github.com/mattn/go-ieproxy v0.0.3 // indirect
 	github.com/pierrec/lz4/v4 v4.1.14 // indirect
-	github.com/snowflakedb/gosnowflake v1.6.7 // indirect
+	github.com/snowflakedb/gosnowflake v1.6.7
 	github.com/xitongsys/parquet-go v1.6.2
 	github.com/xitongsys/parquet-go-source v0.0.0-20211228015320-b4f792c43cd0
 	golang.org/x/crypto v0.0.0-20220313003712-b769efc7c000 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
-	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
+	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5 // indirect
-	google.golang.org/api v0.65.0 // indirect
+	google.golang.org/api v0.65.0
 	google.golang.org/genproto v0.0.0-20220310185008-1973136f34c6 // indirect
 	google.golang.org/grpc v1.44.0 // indirect
+
 )

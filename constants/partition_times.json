@@ -1,0 +1,7 @@
+{
+    "partition_time_hourly"    : 1,
+	"partition_time_daily"     : 2,
+	"partition_time_weekly"    : 3,
+	"partition_time_monthly"   : 4,
+	"partition_time_quarterly" : 5
+}

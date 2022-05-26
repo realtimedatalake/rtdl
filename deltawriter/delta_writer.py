@@ -36,6 +36,9 @@ async def greet(ctx: Context, message: Message):
         tablename = data["type"]
     elif "message_type" in data and len(data["message_type"])>0:
         tablename = data["message_type"]
+        if data["message_type"] == "rtdl_205" : #ignore control messages
+            return
+
 
 
     # retrieve host and port details for Spark Master
@@ -59,6 +62,7 @@ async def greet(ctx: Context, message: Message):
     builder = pyspark.sql.SparkSession.builder.appName("RTDL-Spark-Client") \
         .master(spark_master_url) \
         .config("spark.jars.packages", "io.delta:delta-core_2.12:1.1.0") \
+        .config("spark.jars.ivy","/tmp/.ivy") \
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
 

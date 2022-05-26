@@ -1,0 +1,7 @@
+{
+    "file_store_local" : 1,
+	"file_store_aws"   : 2,
+	"file_store_gcp"   : 3,
+	"file_store_azure" : 4,
+	"file_store_hdfs"  : 5
+}

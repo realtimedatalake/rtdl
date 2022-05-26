@@ -1,0 +1,5 @@
+{
+	"compression_type_snappy" : 1,
+	"compression_type_gzip"   : 2,
+	"compression_type_lzo"    : 3
+}
