@@ -28,16 +28,9 @@ spec:
     type: latest
 
   topics:
-    - topic: ingress
+    - topic: ingester-ingress
       valueType: com.rtdl.sf/IncomingMessage
       targets:
         - com.rtdl.sf/ingest
     
----
-kind: io.statefun.kafka.v1/egress
-spec:
-  id: com.rtdl.sf/egress
-  address: redpanda:29092
-  deliverySemantic:
-    type: exactly-once
-    transactionTimeout: 5sec
+

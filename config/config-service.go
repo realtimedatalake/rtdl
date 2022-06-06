@@ -36,6 +36,7 @@ type stream_json struct {
 	AzureStorageAccessKey   string                 `db:"azure_storage_access_key" json:"azure_storage_access_key, omitempty"`
 	NamenodeHost            string                 `db:"namenode_host" json:"namenode_host, omitempty"`
 	NamenodePort            int                    `db:"namenode_port" json:"namenode_port, omitempty"`
+	Functions				string				   `db:"functions" json:"functions, omitempty"`
 }
 
 //	FUNCTION

@@ -28,7 +28,7 @@ spec:
     type: latest
 
   topics:
-    - topic: ingress
+    - topic: deltawriter-ingress
       valueType: com.rtdl.sf.deltawriter/IncomingMessage
       targets:
         - com.rtdl.sf.deltawriter/deltawriter

@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"database/sql"
+	"strconv"
+	"strings"
 
 	kafka "github.com/segmentio/kafka-go"
 )
@@ -21,6 +24,50 @@ type OutgoingMessage struct {
 	Payload     map[string]interface{} `json:"payload"`
 }
 
+//struct representation of stream configuration
+// StreamAltId is applicable where the stream is being fed from an external system and the alternate id
+// represents the unique identifier for that system
+type Config struct {
+	StreamId                sql.NullString `db:"stream_id" default:""`
+	StreamAltId             sql.NullString `db:"stream_alt_id" default:""`
+	Active                  sql.NullBool   `db:"active"`
+	MessageType             sql.NullString `db:"message_type" default:""`
+	FileStoreTypeId         sql.NullInt64  `db:"file_store_type_id"`
+	Region                  sql.NullString `db:"region" default:""`
+	BucketName              sql.NullString `db:"bucket_name" default:""`
+	FolderName              sql.NullString `db:"folder_name" default:""`
+	PartitionTimeId         sql.NullInt64  `db:"partition_time_id"`
+	CompressionTypeId       sql.NullInt64  `db:"compression_type_id"`
+	AWSAcessKeyID           sql.NullString `db:"aws_access_key_id" default:""`
+	AWSSecretAcessKey       sql.NullString `db:"aws_secret_access_key" default:""`
+	GCPJsonCredentials      sql.NullString `db:"gcp_json_credentials" default:""`
+	AzureStorageAccountname sql.NullString `db:"azure_storage_account_name" default:""`
+	AzureStorageAccessKey   sql.NullString `db:"azure_storage_access_key" default:""`
+	NamenodeHost            sql.NullString `db:"namenode_host" default:"host.docker.internal"`
+	NamenodePort            sql.NullInt64  `db:"namenode_port" default:8020`
+	CreatedAt               time.Time      `db:"created_at"`
+	UpdatedAt               time.Time      `db:"updated_at"`
+	Functions				sql.NullString	`db:"functions" default:""`
+}
+
+var configs []Config
+
+var streamConfigs []map[string]interface{}
+
+//utility method to remove duplicate strings from array
+//https://stackoverflow.com/questions/66643946/how-to-remove-duplicates-strings-or-int-from-slice-in-go
+func removeDuplicateStr(strSlice []string) []string {
+    allKeys := make(map[string]bool)
+    list := []string{}
+    for _, item := range strSlice {
+        if _, value := allKeys[item]; !value {
+            allKeys[item] = true
+            list = append(list, item)
+        }
+    }
+    return list
+}
+
 // GetEnv get key environment variable if exist otherwise return defalutValue
 func GetEnv(key, defaultValue string) string {
 	value := os.Getenv(key)
@@ -29,6 +76,32 @@ func GetEnv(key, defaultValue string) string {
 	}
 	return value
 }
+
+//loads all stream configurations
+func LoadConfig() error {
+	streamConfigs = make([]map[string]interface{},0)
+	configFiles, err := ioutil.ReadDir("configs")
+	if err != nil {
+		return err
+	}
+
+	//read all the config files and load them into the array of map[string]interface{}
+	for _, configFile := range configFiles {
+
+		configString, err2 := ioutil.ReadFile("configs/" + configFile.Name())
+		if err2 != nil {
+			return err2
+		}
+		var configObject map[string]interface{}
+		json.Unmarshal(configString,&configObject)
+		streamConfigs = append(streamConfigs, configObject)
+
+	}
+	log.Println("No. of configs loaded " + strconv.Itoa(len(streamConfigs)))
+	return nil
+
+}
+
 
 //handler function for incoming REST calls
 //based on processingType - either payload is passed on as-is to Kafka or
@@ -95,20 +168,69 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 
 			}
 
+			//now figure out the topic
+			var matchingConfig map[string]interface{}
+
+			//first retrieve relevant destination information from config array
+		
+			for _, configRecord := range streamConfigs {
+		
+				if message["stream_alt_id"] != "" { //use stream_alt_id
+		
+					if configRecord["stream_alt_id"] == message["stream_alt_id"] {
+						matchingConfig = configRecord
+						break
+		
+					}
+		
+				}
+		
+				if message["stream_id"] != "" {
+					if configRecord["stream_id"] == message["stream_id"] {
+						matchingConfig = configRecord
+						break
+		
+					}
+		
+				}
+		
+			}
+
+			if matchingConfig["functions"] != nil && fmt.Sprint(matchingConfig["functions"]) != "" {
+				//parse sequence into string array
+				functions := strings.Split(fmt.Sprint(matchingConfig["functions"]),",")
+				//next need to sanitize the sequence to avoid repeats
+				functions = removeDuplicateStr(functions)
+				topic = functions[0]+"-ingress"
+			} else {
+				topic = "ingester-ingress" //default flow
+			}
+		
+
 		} else { //cache refresh request
 
+			err := LoadConfig()
+
+			if err != nil {
+				log.Fatal("Unable to load configuration ", err)
+			}		
+
 			body = []byte(`{"stream_id":"","message_type":"rtdl_205","payload":{}}`)
+			topic = "ingester-ingress" //cache-refresh requests to always go to ingester
 
 		}
 
 		// to produce messages
 		partition := 0
 
+		fmt.Println("Topic: ", topic)
+
 		conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaURL, topic, partition)
 		if err != nil {
 			log.Fatal("failed to dial leader:", err)
 		}
 
+		
 		conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) //10 seconds timeout
 		_, err = conn.WriteMessages(
 			kafka.Message{
@@ -129,6 +251,13 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 }
 
 func main() {
+
+	err := LoadConfig()
+
+	if err != nil {
+		log.Fatal("Unable to load configuration ", err)
+	}
+
 
 	// get kafka writer using environment variables.
 	kafkaURL := os.Getenv("KAFKA_URL")

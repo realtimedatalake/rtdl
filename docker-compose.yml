@@ -3,8 +3,8 @@ version: '3'
 services:
 
   config:
-    # build:
-    #   context: ./config
+    build:
+      context: ./config
     platform: linux/amd64
     image: rtdl/rtdl-config:latest
     container_name: rtdl_config
@@ -27,8 +27,8 @@ services:
 
   ##### Ingest Service - Start #####
   ingest:
-    # build:
-    #   context: ./ingest
+    build:
+      context: ./ingest
     platform: linux/amd64
     image: rtdl/rtdl-ingest:latest
     container_name: rtdl_ingest
@@ -42,6 +42,9 @@ services:
       LISTENER_PORT: 8080
     depends_on:      
       - redpanda
+    volumes:
+      - ./storage/configs:/app/configs
+
   ##### Ingest Service - End #####
 
   ##### Kafka/Redpanda Services - Start #####
@@ -96,7 +99,7 @@ services:
     volumes:
       - ./storage/rtdl-statefun-manager_store:/checkpoint-dir
       - ./ingester/module.yaml:/opt/statefun/modules/ingester/module.yaml
-      # - ./deltawriter/module.yaml:/opt/statefun/modules/deltawriter/module.yaml
+      - ./deltawriter/module.yaml:/opt/statefun/modules/deltawriter/module.yaml
     depends_on:
       - ingest
 
@@ -113,14 +116,14 @@ services:
     volumes:
       - ./storage/rtdl-statefun-worker_store:/checkpoint-dir
       - ./ingester/module.yaml:/opt/statefun/modules/ingester/module.yaml
-      # - ./deltawriter/module.yaml:/opt/statefun/modules/deltawriter/module.yaml
+      - ./deltawriter/module.yaml:/opt/statefun/modules/deltawriter/module.yaml
     depends_on:
       - statefun-manager
       - redpanda
 
   statefun-functions:
-    # build:
-    #   context: ./ingester
+    build:
+      context: ./ingester
     platform: linux/amd64
     image: rtdl/process-statefun-functions:latest
     container_name: rtdl_process-statefun-functions

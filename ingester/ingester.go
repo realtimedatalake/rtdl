@@ -98,6 +98,7 @@ type Config struct {
 	NamenodePort            sql.NullInt64  `db:"namenode_port" default:8020`
 	CreatedAt               time.Time      `db:"created_at"`
 	UpdatedAt               time.Time      `db:"updated_at"`
+	Functions				sql.NullString	`db:"functions" default:""`
 }
 
 var configs []Config
@@ -154,6 +155,20 @@ var storageTypesConstants gonfig.Gonfig
 var partitionTimesConstants gonfig.Gonfig
 var compressionTypesConstants gonfig.Gonfig
 
+
+//utility method to remove duplicate strings from array
+//https://stackoverflow.com/questions/66643946/how-to-remove-duplicates-strings-or-int-from-slice-in-go
+func removeDuplicateStr(strSlice []string) []string {
+    allKeys := make(map[string]bool)
+    list := []string{}
+    for _, item := range strSlice {
+        if _, value := allKeys[item]; !value {
+            allKeys[item] = true
+            list = append(list, item)
+        }
+    }
+    return list
+}
 
 //load constants from shared constants JSONs
 func LoadConstants() error {
@@ -1452,7 +1467,7 @@ func WriteAzureParquet(messageType string, schema string, payload []byte, config
 }
 
 //Parquet writing logic
-func WriteParquet(request IncomingMessage) error {
+func WriteParquet(request IncomingMessage, matchingConfig map[string]interface{}) error {
 
 	//log.Println(GenerateSchema(request.Payload,request.MessageType, "")+"]}")
 
@@ -1462,33 +1477,6 @@ func WriteParquet(request IncomingMessage) error {
 	var messageType string = "rtdl_default"
 
 	payload, _ := json.Marshal(request.Payload) //convert generic payload structure to JSON string
-
-	var matchingConfig map[string]interface{}
-
-	//first retrieve relevant destination information from config array
-
-	for _, configRecord := range streamConfigs {
-
-		if request.StreamAltId != "" { //use stream_alt_id
-
-			if configRecord["stream_alt_id"] == request.StreamAltId {
-				matchingConfig = configRecord
-				break
-
-			}
-
-		}
-
-		if request.StreamId != "" {
-			if configRecord["stream_id"] == request.StreamId {
-				matchingConfig = configRecord
-				break
-
-			}
-
-		}
-
-	}
 
 	//least precendence - config record message_type
 	if matchingConfig["message_type"] != "" {
@@ -1554,27 +1542,73 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 		return nil
 	}
 
-	err := WriteParquet(request)
+	payload, _ := json.Marshal(request.Payload) //convert generic payload structure to JSON string
+
+	var matchingConfig map[string]interface{}
+
+	//first retrieve relevant destination information from config array
+
+	for _, configRecord := range streamConfigs {
+
+		if request.StreamAltId != "" { //use stream_alt_id
+
+			if configRecord["stream_alt_id"] == request.StreamAltId {
+				matchingConfig = configRecord
+				break
+
+			}
+
+		}
+
+		if request.StreamId != "" {
+			if configRecord["stream_id"] == request.StreamId {
+				matchingConfig = configRecord
+				break
+
+			}
+
+		}
+
+	}
+
+	err := WriteParquet(request, matchingConfig)
 	if err != nil {
 
 		log.Println("error writing Parquet", err)
 
 	}
 
-	payload, _ := json.Marshal(request.Payload) //convert generic payload structure to JSON string
+	//check config and route
+	if matchingConfig["functions"] != nil && fmt.Sprint(matchingConfig["functions"]) != "" { 
 
-	//initial implementation to test out data flow
-	//not required once actual Parquet writing logic has been implemented
-	ctx.SendEgress(statefun.KafkaEgressBuilder{
-		Target: KafkaEgressTypeName,
-		Topic:  "egress",
-		Key:    "message",
-		Value:  []byte(payload),
-	})
+		//parse sequence into string array
+		functions := strings.Split(fmt.Sprint(matchingConfig["functions"]),",")
+		//next need to sanitize the sequence to avoid repeats
+		functions = removeDuplicateStr(functions)
 
-	log.Println("egress message written")
+		for index, value := range(functions) {
+			if value == "ingester" {
+				if len(functions) > index { //there are elements after ingester
+					ctx.SendEgress(statefun.KafkaEgressBuilder{
+						Target: KafkaEgressTypeName,
+						Topic:  functions[index+1]+"-ingress", //standard ingress topic name would be <function>-ingress
+						Key:    "message",
+						Value:  []byte(payload),
+					})
+					log.Println("egress message written")
+
+				}
+
+				return nil
+		
+			}
+		}
+
+
+	}
 
 	return nil
+
 }
 
 
@@ -1588,7 +1622,7 @@ func main() {
 
 
 	//load configuration at the outset
-	//should panic if unable to do source
+	//should panic if unable to do so
 	err = LoadConfig()
 
 	if err != nil {
