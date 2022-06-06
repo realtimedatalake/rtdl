@@ -32,7 +32,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/glue"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/colinmarc/hdfs"
+
 	//"github.com/jmoiron/sqlx"
+	"github.com/creamdog/gonfig"
 	_ "github.com/lib/pq"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/xitongsys/parquet-go-source/local"
@@ -41,7 +43,6 @@ import (
 	"github.com/xitongsys/parquet-go/writer"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
-	"github.com/creamdog/gonfig"
 )
 
 // default database connection settings
@@ -96,9 +97,17 @@ type Config struct {
 	AzureStorageAccessKey   sql.NullString `db:"azure_storage_access_key" default:""`
 	NamenodeHost            sql.NullString `db:"namenode_host" default:"host.docker.internal"`
 	NamenodePort            sql.NullInt64  `db:"namenode_port" default:8020`
+	GlueEnabled             sql.NullBool   `db:"glue_enabled"`
+	GlueRole                sql.NullString `db:"glue_role" default:""`
+	GlueScheduleCron        sql.NullString `db:"glue_schedule_cron" default:""`
+	SnowflakeEnabled        sql.NullBool   `db:"snowflake_enabled"`
+	SnowflakeAccount        sql.NullString `db:"snowflake_account" default:""`
+	SnowflakeUsername       sql.NullString `db:"snowflake_username" default:""`
+	SnowflakePassword       sql.NullString `db:"snowflake_password" default:""`
+	SnowflakeDatabase       sql.NullString `db:"snowflake_database" default:""`
+	Functions               sql.NullString `db:"functions" default:""`
 	CreatedAt               time.Time      `db:"created_at"`
 	UpdatedAt               time.Time      `db:"updated_at"`
-	Functions				sql.NullString	`db:"functions" default:""`
 }
 
 var configs []Config
@@ -155,51 +164,50 @@ var storageTypesConstants gonfig.Gonfig
 var partitionTimesConstants gonfig.Gonfig
 var compressionTypesConstants gonfig.Gonfig
 
-
 //utility method to remove duplicate strings from array
 //https://stackoverflow.com/questions/66643946/how-to-remove-duplicates-strings-or-int-from-slice-in-go
 func removeDuplicateStr(strSlice []string) []string {
-    allKeys := make(map[string]bool)
-    list := []string{}
-    for _, item := range strSlice {
-        if _, value := allKeys[item]; !value {
-            allKeys[item] = true
-            list = append(list, item)
-        }
-    }
-    return list
+	allKeys := make(map[string]bool)
+	list := []string{}
+	for _, item := range strSlice {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
 }
 
 //load constants from shared constants JSONs
 func LoadConstants() error {
 	storageTypesConstantsFile, err := os.Open("constants/file_store_types.json")
 	if err != nil {
-	  return err
+		return err
 	}
-	defer storageTypesConstantsFile.Close();
+	defer storageTypesConstantsFile.Close()
 	storageTypesConstants, err = gonfig.FromJson(storageTypesConstantsFile)
 	if err != nil {
-	  return err
+		return err
 	}
 
 	partitionTimesConstantsFile, err := os.Open("constants/partition_times.json")
 	if err != nil {
-	  return err
+		return err
 	}
-	defer partitionTimesConstantsFile.Close();
+	defer partitionTimesConstantsFile.Close()
 	partitionTimesConstants, err = gonfig.FromJson(partitionTimesConstantsFile)
 	if err != nil {
-	  return err
+		return err
 	}
 
 	compressionTypesConstantsFile, err := os.Open("constants/compression_types.json")
 	if err != nil {
-	  return err
+		return err
 	}
-	defer compressionTypesConstantsFile.Close();
+	defer compressionTypesConstantsFile.Close()
 	compressionTypesConstants, err = gonfig.FromJson(compressionTypesConstantsFile)
 	if err != nil {
-	  return err
+		return err
 	}
 
 	return nil
@@ -208,7 +216,7 @@ func LoadConstants() error {
 
 //utility methods to wrap around gonfig's constant reading logic
 func GetStorageTypeId(fileStoreTypeLiteral string) float64 {
-	fileStoreTypeId, err := storageTypesConstants.GetFloat(fileStoreTypeLiteral,nil)
+	fileStoreTypeId, err := storageTypesConstants.GetFloat(fileStoreTypeLiteral, nil)
 	if err != nil {
 		return -1
 	} else {
@@ -217,7 +225,7 @@ func GetStorageTypeId(fileStoreTypeLiteral string) float64 {
 }
 
 func GetPartitionTimeId(partitionTimeLiteral string) float64 {
-	partitionTimeId, err := partitionTimesConstants.GetFloat(partitionTimeLiteral,nil)
+	partitionTimeId, err := partitionTimesConstants.GetFloat(partitionTimeLiteral, nil)
 	if err != nil {
 		return -1
 	} else {
@@ -226,7 +234,7 @@ func GetPartitionTimeId(partitionTimeLiteral string) float64 {
 }
 
 func GetCompressionTypeId(compressionTypeLiteral string) float64 {
-	compressionTypeId, err := compressionTypesConstants.GetFloat(compressionTypeLiteral,nil)
+	compressionTypeId, err := compressionTypesConstants.GetFloat(compressionTypeLiteral, nil)
 	if err != nil {
 		return -1
 	} else {
@@ -245,7 +253,7 @@ func GetEnv(key, defaultValue string) string {
 
 //loads all stream configurations
 func LoadConfig() error {
-	streamConfigs = make([]map[string]interface{},0)
+	streamConfigs = make([]map[string]interface{}, 0)
 	configFiles, err := ioutil.ReadDir("configs")
 	if err != nil {
 		return err
@@ -259,7 +267,7 @@ func LoadConfig() error {
 			return err2
 		}
 		var configObject map[string]interface{}
-		json.Unmarshal(configString,&configObject)
+		json.Unmarshal(configString, &configObject)
 		streamConfigs = append(streamConfigs, configObject)
 
 	}
@@ -409,7 +417,6 @@ func SetDremioConnection() error {
 	return nil
 
 }
-
 
 //map between Go and Parquet data types
 func getParquetDataType(dataType string) string {
@@ -598,10 +605,11 @@ func UpdateSnowflake(messageType string, sourceType string, configRecord map[str
 
 	var path string
 
-	user := os.Getenv("SNOWFLAKE_USER")
-	password := os.Getenv("SNOWFLAKE_PASSWORD")
-	acct := os.Getenv("SNOWFLAKE_ACCT")
-	db := os.Getenv("SNOWFLAKE_DB")
+	// 20220606, Gavin: changed from environment variables to configuration attributes
+	user := configRecord["snowflake_username"].(string)
+	password := configRecord["snowflake_password"].(string)
+	acct := configRecord["snowflake_account"].(string)
+	db := configRecord["snowflake_database"].(string)
 	if user == "" || password == "" || acct == "" || db == "" {
 		return errors.New("Valid values required for all of Snowflake Account, User, Password and Database")
 	}
@@ -725,14 +733,19 @@ func UpdateGlue(messageType string, configRecord map[string]interface{}, awsSess
 		s3Target := &glue.S3Target{Path: &crawlerPath}
 		s3TargetList := []*glue.S3Target{s3Target}
 
-		glueRole := os.Getenv("GLUE_ROLE")
+		// 20220606, Gavin: changed from environment variables to configuration attributes
+		glueRole := configRecord["glue_role"].(string)
+		glueScheduleCron := "cron("
+		if configRecord["glue_schedule_cron"].(string) != "" {
+			glueScheduleCron = glueScheduleCron + configRecord["glue_schedule_cron"].(string) + ")"
+		} else {
+			glueScheduleCron = glueScheduleCron + "0 0 * * ? *)"
+		}
 
 		if glueRole == "" {
 			log.Println("Role ARN for accessing Glue Services must be provided")
 			return errors.New("AWS Role ARN for accessing Glue Services must be provided")
 		}
-
-		glueScheduleCron := "cron(" + GetEnv("GLUE_SCHEDULE_CRON", "0 0 * * ? *") + ")" //default every day at 12 AM
 
 		databaseName := configRecord["stream_id"].(string)
 
@@ -1579,19 +1592,19 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 	}
 
 	//check config and route
-	if matchingConfig["functions"] != nil && fmt.Sprint(matchingConfig["functions"]) != "" { 
+	if matchingConfig["functions"] != nil && fmt.Sprint(matchingConfig["functions"]) != "" {
 
 		//parse sequence into string array
-		functions := strings.Split(fmt.Sprint(matchingConfig["functions"]),",")
+		functions := strings.Split(fmt.Sprint(matchingConfig["functions"]), ",")
 		//next need to sanitize the sequence to avoid repeats
 		functions = removeDuplicateStr(functions)
 
-		for index, value := range(functions) {
+		for index, value := range functions {
 			if value == "ingester" {
 				if len(functions) > index { //there are elements after ingester
 					ctx.SendEgress(statefun.KafkaEgressBuilder{
 						Target: KafkaEgressTypeName,
-						Topic:  functions[index+1]+"-ingress", //standard ingress topic name would be <function>-ingress
+						Topic:  functions[index+1] + "-ingress", //standard ingress topic name would be <function>-ingress
 						Key:    "message",
 						Value:  []byte(payload),
 					})
@@ -1600,17 +1613,15 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 				}
 
 				return nil
-		
+
 			}
 		}
-
 
 	}
 
 	return nil
 
 }
-
 
 func main() {
 
@@ -1619,7 +1630,6 @@ func main() {
 	if err != nil {
 		log.Fatal("Unable to load constants ", err)
 	}
-
 
 	//load configuration at the outset
 	//should panic if unable to do so

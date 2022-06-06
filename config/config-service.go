@@ -16,12 +16,10 @@ import (
 	_ "github.com/lib/pq"
 )
 
-
-
 type stream_json struct {
 	StreamID                string                 `db:"stream_id" json:"stream_id,omitempty"`
 	StreamAltID             string                 `db:"stream_alt_id" json:"stream_alt_id,omitempty"`
-	Active                  *bool                   `db:"active" json:"active,omitempty"`
+	Active                  *bool                  `db:"active" json:"active,omitempty"`
 	MessageType             string                 `db:"message_type" json:"message_type,omitempty"`
 	FileStoreTypeID         int                    `db:"file_store_type_id" json:"file_store_type_id,omitempty"`
 	Region                  string                 `db:"region" json:"region,omitempty"`
@@ -36,7 +34,15 @@ type stream_json struct {
 	AzureStorageAccessKey   string                 `db:"azure_storage_access_key" json:"azure_storage_access_key, omitempty"`
 	NamenodeHost            string                 `db:"namenode_host" json:"namenode_host, omitempty"`
 	NamenodePort            int                    `db:"namenode_port" json:"namenode_port, omitempty"`
-	Functions				string				   `db:"functions" json:"functions, omitempty"`
+	GlueEnabled             *bool                  `db:"glue_enabled" json:"glue_enabled, omitempty"`
+	GlueRole                string                 `db:"glue_role" json:"glue_role, omitempty"`
+	GlueScheduleCron        string                 `db:"glue_schedule_cron" json:"glue_schedule_chron, omitempty"`
+	SnowflakeEnabled        *bool                  `db:"snowflake_enabled" json:"snowflake_enabled, omitempty"`
+	SnowflakeAccount        string                 `db:"snowflake_account" json:"snowflake_account, omitempty"`
+	SnowflakeUsername       string                 `db:"snowflake_username" json:"snowflake_username, omitempty"`
+	SnowflakePassword       string                 `db:"snowflake_password" json:"snowflake_password, omitempty"`
+	SnowflakeDatabase       string                 `db:"snowflake_database" json:"snowflake_database, omitempty"`
+	Functions               string                 `db:"functions" json:"functions, omitempty"`
 }
 
 //	FUNCTION
@@ -51,10 +57,10 @@ type stream_json struct {
 func main() {
 
 	// Add handler functions
-	http.HandleFunc("/getStream", getStreamHandler())                     // POST; `stream_id` required
-	http.HandleFunc("/getAllStreams", getAllStreamsHandler())             // GET
-	http.HandleFunc("/getAllActiveStreams", getAllActiveStreamsHandler()) //GET
-	http.HandleFunc("/createStream", createStreamHandler())               // POST; `message_type` and `folder_name` required
+	http.HandleFunc("/getStream", getStreamHandler())                           // POST; `stream_id` required
+	http.HandleFunc("/getAllStreams", getAllStreamsHandler())                   // GET
+	http.HandleFunc("/getAllActiveStreams", getAllActiveStreamsHandler())       //GET
+	http.HandleFunc("/createStream", createStreamHandler())                     // POST; `message_type` and `folder_name` required
 	http.HandleFunc("/updateStream", updateStreamHandler())                     // PUT; all fields required (will replace all fields)
 	http.HandleFunc("/deleteStream", deleteStreamHandler())                     // DELETE; `stream_id` required
 	http.HandleFunc("/activateStream", activateStreamHandler())                 // PUT; `stream_id` required
@@ -300,7 +306,6 @@ func updateStreamHandler() func(http.ResponseWriter, *http.Request) {
 			}
 			wrt.WriteHeader(http.StatusOK)
 			wrt.Write(resp)
-		
 
 			// Refresh the cache on the `ingest` service
 			refreshIngestCache()

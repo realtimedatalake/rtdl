@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"time"
-	"database/sql"
 	"strconv"
 	"strings"
+	"time"
 
 	kafka "github.com/segmentio/kafka-go"
 )
@@ -45,9 +45,17 @@ type Config struct {
 	AzureStorageAccessKey   sql.NullString `db:"azure_storage_access_key" default:""`
 	NamenodeHost            sql.NullString `db:"namenode_host" default:"host.docker.internal"`
 	NamenodePort            sql.NullInt64  `db:"namenode_port" default:8020`
+	GlueEnabled             sql.NullBool   `db:"glue_enabled"`
+	GlueRole                sql.NullString `db:"glue_role" default:""`
+	GlueScheduleCron        sql.NullString `db:"glue_schedule_cron" default:""`
+	SnowflakeEnabled        sql.NullBool   `db:"snowflake_enabled"`
+	SnowflakeAccount        sql.NullString `db:"snowflake_account" default:""`
+	SnowflakeUsername       sql.NullString `db:"snowflake_username" default:""`
+	SnowflakePassword       sql.NullString `db:"snowflake_password" default:""`
+	SnowflakeDatabase       sql.NullString `db:"snowflake_database" default:""`
+	Functions               sql.NullString `db:"functions" default:""`
 	CreatedAt               time.Time      `db:"created_at"`
 	UpdatedAt               time.Time      `db:"updated_at"`
-	Functions				sql.NullString	`db:"functions" default:""`
 }
 
 var configs []Config
@@ -57,15 +65,15 @@ var streamConfigs []map[string]interface{}
 //utility method to remove duplicate strings from array
 //https://stackoverflow.com/questions/66643946/how-to-remove-duplicates-strings-or-int-from-slice-in-go
 func removeDuplicateStr(strSlice []string) []string {
-    allKeys := make(map[string]bool)
-    list := []string{}
-    for _, item := range strSlice {
-        if _, value := allKeys[item]; !value {
-            allKeys[item] = true
-            list = append(list, item)
-        }
-    }
-    return list
+	allKeys := make(map[string]bool)
+	list := []string{}
+	for _, item := range strSlice {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
 }
 
 // GetEnv get key environment variable if exist otherwise return defalutValue
@@ -79,7 +87,7 @@ func GetEnv(key, defaultValue string) string {
 
 //loads all stream configurations
 func LoadConfig() error {
-	streamConfigs = make([]map[string]interface{},0)
+	streamConfigs = make([]map[string]interface{}, 0)
 	configFiles, err := ioutil.ReadDir("configs")
 	if err != nil {
 		return err
@@ -93,7 +101,7 @@ func LoadConfig() error {
 			return err2
 		}
 		var configObject map[string]interface{}
-		json.Unmarshal(configString,&configObject)
+		json.Unmarshal(configString, &configObject)
 		streamConfigs = append(streamConfigs, configObject)
 
 	}
@@ -101,7 +109,6 @@ func LoadConfig() error {
 	return nil
 
 }
-
 
 //handler function for incoming REST calls
 //based on processingType - either payload is passed on as-is to Kafka or
@@ -172,40 +179,39 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 			var matchingConfig map[string]interface{}
 
 			//first retrieve relevant destination information from config array
-		
+
 			for _, configRecord := range streamConfigs {
-		
+
 				if message["stream_alt_id"] != "" { //use stream_alt_id
-		
+
 					if configRecord["stream_alt_id"] == message["stream_alt_id"] {
 						matchingConfig = configRecord
 						break
-		
+
 					}
-		
+
 				}
-		
+
 				if message["stream_id"] != "" {
 					if configRecord["stream_id"] == message["stream_id"] {
 						matchingConfig = configRecord
 						break
-		
+
 					}
-		
+
 				}
-		
+
 			}
 
 			if matchingConfig["functions"] != nil && fmt.Sprint(matchingConfig["functions"]) != "" {
 				//parse sequence into string array
-				functions := strings.Split(fmt.Sprint(matchingConfig["functions"]),",")
+				functions := strings.Split(fmt.Sprint(matchingConfig["functions"]), ",")
 				//next need to sanitize the sequence to avoid repeats
 				functions = removeDuplicateStr(functions)
-				topic = functions[0]+"-ingress"
+				topic = functions[0] + "-ingress"
 			} else {
 				topic = "ingester-ingress" //default flow
 			}
-		
 
 		} else { //cache refresh request
 
@@ -213,7 +219,7 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 
 			if err != nil {
 				log.Fatal("Unable to load configuration ", err)
-			}		
+			}
 
 			body = []byte(`{"stream_id":"","message_type":"rtdl_205","payload":{}}`)
 			topic = "ingester-ingress" //cache-refresh requests to always go to ingester
@@ -230,7 +236,6 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 			log.Fatal("failed to dial leader:", err)
 		}
 
-		
 		conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) //10 seconds timeout
 		_, err = conn.WriteMessages(
 			kafka.Message{
@@ -257,7 +262,6 @@ func main() {
 	if err != nil {
 		log.Fatal("Unable to load configuration ", err)
 	}
-
 
 	// get kafka writer using environment variables.
 	kafkaURL := os.Getenv("KAFKA_URL")
