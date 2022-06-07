@@ -11,6 +11,7 @@ import os
 
 import socket
 
+configs = [] #collection of configs
 functions = StatefulFunctions()
 
 # main logic
@@ -81,9 +82,15 @@ async def greet(ctx: Context, message: Message):
     table_path += dbname + "/" + tablename
     #print(table_path)
     jsonDF.write.format("delta").mode("append").save(table_path)
-    df = spark.read.format("delta").load(table_path)
-    df.show()
+    #df = spark.read.format("delta").load(table_path)
+    #df.show()
 
+    #now for dynamic routing to next function
+    #first identify the matching config
+    for config in configs:
+        print("functions" in config) 
+    
+    
 
 handler = RequestReplyHandler(functions)
 
@@ -98,6 +105,12 @@ app = web.Application()
 app.add_routes([web.post('/deltawriter', handle)])
 
 if __name__ == '__main__':
+    #first load all configs into memory
+    for filename in os.listdir("configs"):
+        f = os.path.join("configs", filename)
+        # checking if it is a file
+        if os.path.isfile(f):
+            configs.append(json.load(open(f)))
     print("DeltaWriter started")
     web.run_app(app, port=8083)
 

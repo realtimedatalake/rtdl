@@ -172,55 +172,57 @@ services:
 
 
   ##### Spark Services - Start #####
-  # spark:
-  #   platform: linux/amd64
-  #   image: docker.io/bitnami/spark:3
-  #   container_name: rtdl_spark-master
-  #   user: root
-  #   environment:
-  #     - SPARK_MODE=master
-  #     - SPARK_RPC_AUTHENTICATION_ENABLED=no
-  #     - SPARK_RPC_ENCRYPTION_ENABLED=no
-  #     - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-  #     - SPARK_SSL_ENABLED=no
-  #   ports:
-  #     - 9090:9090
-  #     - 7077:7077
-  #   volumes: 
-  #     - ./storage/spark:/app
+  spark:
+    platform: linux/amd64
+    image: docker.io/bitnami/spark:3
+    container_name: rtdl_spark-master
+    user: root
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - 9090:9090
+      - 7077:7077
+    volumes: 
+      - ./storage/spark:/app
+      
 
-  # spark-worker:
-  #   platform: linux/amd64
-  #   image: docker.io/bitnami/spark:3
-  #   container_name: rtdl_spark-worker
-  #   user: root
-  #   environment:
-  #     - SPARK_MODE=worker
-  #     - SPARK_MASTER_URL=spark://spark:7077
-  #     - SPARK_WORKER_MEMORY=8G
-  #     - SPARK_WORKER_CORES=8
-  #     - SPARK_RPC_AUTHENTICATION_ENABLED=no
-  #     - SPARK_RPC_ENCRYPTION_ENABLED=no
-  #     - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-  #     - SPARK_SSL_ENABLED=no
-  #   volumes: 
-  #     - ./storage/spark:/app
+  spark-worker:
+    platform: linux/amd64
+    image: docker.io/bitnami/spark:3
+    container_name: rtdl_spark-worker
+    user: root
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_MEMORY=8G
+      - SPARK_WORKER_CORES=8
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    volumes: 
+      - ./storage/spark:/app
 
-  # delta-writer:
-  #   # build:
-  #   #   context: ./deltawriter
-  #   platform: linux/amd64
-  #   image: rtdl/rtdl-deltawriter:latest
-  #   container_name: rtdl_deltawriter
-  #   user: root
-  #   environment:
-  #     - SPARK_MASTER_HOST=spark
-  #     - SPARK_MASTER_PORT=7077
-  #     - FILE_STORE_ROOT=/app
-  #   expose:
-  #     - 8083
-  #   volumes: 
-  #     - ./storage/spark:/app
+  delta-writer:
+    build:
+      context: ./deltawriter
+    platform: linux/amd64
+    image: rtdl/rtdl-deltawriter:latest
+    container_name: rtdl_deltawriter
+    user: root
+    environment:
+      - SPARK_MASTER_HOST=spark
+      - SPARK_MASTER_PORT=7077
+      - FILE_STORE_ROOT=/app
+    expose:
+      - 8083
+    volumes: 
+      - ./storage/spark:/app
+      - ./storage/configs:/usr/src/app/configs
   ##### Spark Services - End #####
 
 
