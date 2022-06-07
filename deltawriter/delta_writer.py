@@ -87,8 +87,30 @@ async def greet(ctx: Context, message: Message):
 
     #now for dynamic routing to next function
     #first identify the matching config
+    matching_config = {}
     for config in configs:
-        print("functions" in config) 
+        if "project_id" in data and len(data["project_id"])>0 and "project_id" in config and len(config["project_id"])>0 and data["project_id"]==config["project_id"]:
+            matching_config = config
+            break
+        elif "stream_alt_id" in data and len(data["stream_alt_id"])>0 and "stream_alt_id" in config and len(config["stream_alt_id"])>0 and data["stream_alt_id"]==config["stream_alt_id"]:
+            matching_config = config
+            break
+        elif "stream_id" in data and len(data["stream_id"])>0 and "stream_id" in config and len(config["stream_id"])>0 and data["stream_id"]==config["stream_id"]:
+            matching_config = config
+            break
+    
+    #check if there's a list of functions in the matching config
+    if "functions" in matching_config:
+        functions = matching_config.split(",")
+        try: #try to find the index of deltawriter in the sequence of functions
+            deltawriter_index = functions.index("deltawriter")
+            if len(functions)>deltawriter_index+1: #more elements after deltawriter
+                topic_name = functions[deltawriter_index+1]
+
+        except:
+            pass
+
+                
     
     
 

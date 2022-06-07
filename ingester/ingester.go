@@ -1601,7 +1601,7 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 
 		for index, value := range functions {
 			if value == "ingester" {
-				if len(functions) > index { //there are elements after ingester
+				if len(functions) > index+1 { //there are elements after ingester
 					ctx.SendEgress(statefun.KafkaEgressBuilder{
 						Target: KafkaEgressTypeName,
 						Topic:  functions[index+1] + "-ingress", //standard ingress topic name would be <function>-ingress
