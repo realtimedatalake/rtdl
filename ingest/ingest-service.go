@@ -175,6 +175,7 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 
 			}
 
+			log.Println(len(streamConfigs))
 			//now figure out the topic
 			var matchingConfig map[string]interface{}
 
@@ -182,7 +183,8 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 
 			for _, configRecord := range streamConfigs {
 
-				if message["stream_alt_id"] != "" { //use stream_alt_id
+
+				if message["stream_alt_id"] != nil && message["stream_alt_id"] != "" { //use stream_alt_id
 
 					if configRecord["stream_alt_id"] == message["stream_alt_id"] {
 						matchingConfig = configRecord
@@ -192,7 +194,7 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 
 				}
 
-				if message["stream_id"] != "" {
+				if message["stream_id"] != nil && message["stream_id"] != "" {
 					if configRecord["stream_id"] == message["stream_id"] {
 						matchingConfig = configRecord
 						break
@@ -203,15 +205,19 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 
 			}
 
-			if matchingConfig["functions"] != nil && fmt.Sprint(matchingConfig["functions"]) != "" {
-				//parse sequence into string array
-				functions := strings.Split(fmt.Sprint(matchingConfig["functions"]), ",")
-				//next need to sanitize the sequence to avoid repeats
-				functions = removeDuplicateStr(functions)
-				topic = functions[0] + "-ingress"
-			} else {
-				topic = "ingester-ingress" //default flow
+			if matchingConfig != nil {
+				if matchingConfig["functions"] != nil && fmt.Sprint(matchingConfig["functions"]) != "" {
+					//parse sequence into string array
+					functions := strings.Split(fmt.Sprint(matchingConfig["functions"]), ",")
+					//next need to sanitize the sequence to avoid repeats
+					functions = removeDuplicateStr(functions)
+					topic = functions[0] + "-ingress"
+				} else {
+					topic = "ingester-ingress" //default flow
+				}
+	
 			}
+
 
 		} else { //cache refresh request
 
@@ -229,29 +235,32 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 		// to produce messages
 		partition := 0
 
-		fmt.Println("Topic: ", topic)
+		if topic != "" {
+			fmt.Println("Topic: ", topic)
 
-		conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaURL, topic, partition)
-		if err != nil {
-			log.Fatal("failed to dial leader:", err)
+			conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaURL, topic, partition)
+			if err != nil {
+				log.Fatal("failed to dial leader:", err)
+			}
+	
+			conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) //10 seconds timeout
+			_, err = conn.WriteMessages(
+				kafka.Message{
+					Key:   []byte("message"),
+					Value: body,
+				},
+			)
+			if err != nil {
+				log.Fatal("failed to write messages:", err)
+			}
+	
+			if err := conn.Close(); err != nil {
+				log.Fatal("failed to close writer:", err)
+			}
+	
+			fmt.Println("message written")
+	
 		}
-
-		conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) //10 seconds timeout
-		_, err = conn.WriteMessages(
-			kafka.Message{
-				Key:   []byte("message"),
-				Value: body,
-			},
-		)
-		if err != nil {
-			log.Fatal("failed to write messages:", err)
-		}
-
-		if err := conn.Close(); err != nil {
-			log.Fatal("failed to close writer:", err)
-		}
-
-		fmt.Println("message written")
 	})
 }
 
@@ -265,7 +274,9 @@ func main() {
 
 	// get kafka writer using environment variables.
 	kafkaURL := os.Getenv("KAFKA_URL")
-	topic := os.Getenv("KAFKA_TOPIC")
+	//topic := os.Getenv("KAFKA_TOPIC")
+
+	topic := ""
 
 	//defer kafkaWriter.Close()
 
