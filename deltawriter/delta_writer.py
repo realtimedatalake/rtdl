@@ -15,7 +15,7 @@ configs = [] #collection of configs
 functions = StatefulFunctions()
 
 # main logic
-@functions.bind(typename="com.rtdl.sf.deltawriter/deltawriter")
+@functions.bind(typename="com.rtdl.sf.deltawriter/ingest")
 async def greet(ctx: Context, message: Message):
     host_name = socket.gethostname()
 
@@ -98,14 +98,21 @@ async def greet(ctx: Context, message: Message):
         elif "stream_id" in data and len(data["stream_id"])>0 and "stream_id" in config and len(config["stream_id"])>0 and data["stream_id"]==config["stream_id"]:
             matching_config = config
             break
+
     
     #check if there's a list of functions in the matching config
     if "functions" in matching_config:
-        functions = matching_config.split(",")
+        functions = matching_config["functions"].split(",")
         try: #try to find the index of deltawriter in the sequence of functions
             deltawriter_index = functions.index("deltawriter")
             if len(functions)>deltawriter_index+1: #more elements after deltawriter
-                topic_name = functions[deltawriter_index+1]
+                topic_name = functions[deltawriter_index+1]+"-ingress"
+                ctx.send_egress(kafka_egress_message(
+                    typename='com.rtdl.sf.' + functions[deltawriter_index+1] + '/ingest', 
+                    topic=topic_name, 
+                    key="message",
+                    value=byte(data_json,'utf-8')))
+                print('egress message written')
 
         except:
             pass

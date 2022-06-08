@@ -21,23 +21,15 @@ spec:
 ---
 kind: io.statefun.kafka.v1/ingress
 spec:
-  id: com.rtdl.sf.deltawriter/ingress
+  id: com.rtdl.sf.deltawriter/ingest
   address: redpanda:29092
-  consumerGroupId: deltawriter-group
+  consumerGroupId: deltawriter-ingress-group
   startupPosition:
     type: latest
 
   topics:
     - topic: deltawriter-ingress
-      valueType: com.rtdl.sf.deltawriter/IncomingMessage
+      valueType: com.rtdl.sf/IncomingMessage
       targets:
-        - com.rtdl.sf.deltawriter/deltawriter
+        - com.rtdl.sf.deltawriter/ingest
 
----
-kind: io.statefun.kafka.v1/egress
-spec:
-  id: com.rtdl.sf.deltawriter/egress
-  address: redpanda:29092
-  deliverySemantic:
-    type: exactly-once
-    transactionTimeout: 5sec

@@ -21,7 +21,7 @@ spec:
 ---
 kind: io.statefun.kafka.v1/ingress
 spec:
-  id: com.rtdl.sf/ingress
+  id: com.rtdl.sf.ingester/ingest
   address: redpanda:29092
   consumerGroupId: ingress-group
   startupPosition:
@@ -31,6 +31,6 @@ spec:
     - topic: ingester-ingress
       valueType: com.rtdl.sf/IncomingMessage
       targets:
-        - com.rtdl.sf/ingest
+        - com.rtdl.sf.ingester/ingest
     
 
