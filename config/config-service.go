@@ -3,6 +3,8 @@ package main
 import (
 	// "database/sql"
 	"encoding/json"
+	"errors"
+
 	//"fmt"
 	"io/ioutil"
 	"log"
@@ -242,6 +244,18 @@ func createStreamHandler() func(http.ResponseWriter, *http.Request) {
 				CheckError(err)
 			}
 
+			//validate the stream before generating a UUID and persisting
+			streamValid, validateError := validateStream(reqStream)
+			if streamValid == false {
+				if validateError == nil {
+					validateError = errors.New("Bad Request")
+				}
+
+				wrt.WriteHeader(http.StatusBadRequest)
+				http.Error(wrt, validateError.Error(), http.StatusBadRequest)
+				CheckError(validateError)
+			}
+
 			//generate UUID and persist
 			id := uuid.New()
 			reqStream.StreamID = id.String()
@@ -293,22 +307,50 @@ func updateStreamHandler() func(http.ResponseWriter, *http.Request) {
 				CheckError(err)
 			}
 
-			log.Println(reqStream.Active)
-			resp, errRet := json.MarshalIndent(reqStream, "", "    ")
-			if errRet == nil {
-				errRet = ioutil.WriteFile("configs/"+reqStream.StreamID+".json", resp, 0644)
-			}
-			if errRet != nil {
-				resp = nil
-				wrt.WriteHeader(http.StatusInternalServerError)
-				http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
-				CheckError(err)
-			}
-			wrt.WriteHeader(http.StatusOK)
-			wrt.Write(resp)
+			if reqStream.StreamID != "" {
+				configJson, err := ioutil.ReadFile("configs/" + reqStream.StreamID + ".json")
+				if err != nil {
+					wrt.WriteHeader(http.StatusBadRequest)
+					http.Error(wrt, "Invalid `stream_id`", http.StatusBadRequest)
+					CheckError(err)
+				}
 
-			// Refresh the cache on the `ingest` service
-			refreshIngestCache()
+				//validate the stream before persisting
+				streamValid, validateError := validateStream(reqStream)
+				if streamValid == false {
+					if validateError == nil {
+						validateError = errors.New("Bad Request")
+					}
+
+					wrt.WriteHeader(http.StatusBadRequest)
+					http.Error(wrt, validateError.Error(), http.StatusBadRequest)
+					CheckError(validateError)
+				}
+
+				log.Println(reqStream.Active)
+				resp, errRet := json.MarshalIndent(reqStream, "", "    ")
+				if errRet == nil {
+					errRet = ioutil.WriteFile("configs/"+reqStream.StreamID+".json", resp, 0644)
+				}
+				if errRet != nil {
+					resp = nil
+					wrt.WriteHeader(http.StatusInternalServerError)
+					http.Error(wrt, "Internal Server Error", http.StatusInternalServerError)
+					CheckError(err)
+				}
+				wrt.WriteHeader(http.StatusOK)
+				wrt.Write(resp)
+
+				// Refresh the cache on the `ingest` service
+				refreshIngestCache()
+			} else {
+				err = errors.New("No `stream_id`")
+				if err != nil {
+					wrt.WriteHeader(http.StatusBadRequest)
+					http.Error(wrt, err.Error(), http.StatusBadRequest)
+					CheckError(err)
+				}
+			}
 		case http.MethodGet:
 		case http.MethodPost:
 		case http.MethodDelete:
@@ -343,7 +385,7 @@ func deleteStreamHandler() func(http.ResponseWriter, *http.Request) {
 				configJson, err := ioutil.ReadFile("configs/" + reqStream.StreamID + ".json")
 				if err != nil {
 					wrt.WriteHeader(http.StatusBadRequest)
-					http.Error(wrt, "Bad Request", http.StatusBadRequest)
+					http.Error(wrt, "Invalid `stream_id`", http.StatusBadRequest)
 					CheckError(err)
 				}
 
@@ -359,7 +401,12 @@ func deleteStreamHandler() func(http.ResponseWriter, *http.Request) {
 				// Refresh the cache on the `ingest` service
 				refreshIngestCache()
 			} else {
-				http.Error(wrt, "`stream_id` is required", http.StatusUnprocessableEntity)
+				err = errors.New("No `stream_id`")
+				if err != nil {
+					wrt.WriteHeader(http.StatusBadRequest)
+					http.Error(wrt, err.Error(), http.StatusBadRequest)
+					CheckError(err)
+				}
 			}
 		case http.MethodGet:
 		case http.MethodPost:
@@ -394,7 +441,7 @@ func activateStreamHandler() func(http.ResponseWriter, *http.Request) {
 				configString, err2 := ioutil.ReadFile("configs/" + reqStream.StreamID + ".json")
 				if err2 != nil {
 					wrt.WriteHeader(http.StatusInternalServerError)
-					http.Error(wrt, "Bad Request", http.StatusBadRequest)
+					http.Error(wrt, "Invalid `stream_id`", http.StatusBadRequest)
 					CheckError(err)
 				}
 				var configObject map[string]interface{}
@@ -424,7 +471,12 @@ func activateStreamHandler() func(http.ResponseWriter, *http.Request) {
 				// Refresh the cache on the `ingest` service
 				refreshIngestCache()
 			} else {
-				http.Error(wrt, "`stream_id` is required", http.StatusUnprocessableEntity)
+				err = errors.New("No `stream_id`")
+				if err != nil {
+					wrt.WriteHeader(http.StatusBadRequest)
+					http.Error(wrt, err.Error(), http.StatusBadRequest)
+					CheckError(err)
+				}
 			}
 		case http.MethodGet:
 		case http.MethodPost:
@@ -459,7 +511,7 @@ func deactivateStreamHandler() func(http.ResponseWriter, *http.Request) {
 				configString, err2 := ioutil.ReadFile("configs/" + reqStream.StreamID + ".json")
 				if err2 != nil {
 					wrt.WriteHeader(http.StatusInternalServerError)
-					http.Error(wrt, "Bad Request", http.StatusBadRequest)
+					http.Error(wrt, "Invalid `stream_id`", http.StatusBadRequest)
 					CheckError(err)
 				}
 				var configObject map[string]interface{}
@@ -488,7 +540,12 @@ func deactivateStreamHandler() func(http.ResponseWriter, *http.Request) {
 				// Refresh the cache on the `ingest` service
 				refreshIngestCache()
 			} else {
-				http.Error(wrt, "`stream_id` is required", http.StatusUnprocessableEntity)
+				err = errors.New("No `stream_id`")
+				if err != nil {
+					wrt.WriteHeader(http.StatusBadRequest)
+					http.Error(wrt, err.Error(), http.StatusBadRequest)
+					CheckError(err)
+				}
 			}
 		case http.MethodGet:
 		case http.MethodPost:
@@ -586,8 +643,6 @@ func getAllCompressionTypesHandler() func(http.ResponseWriter, *http.Request) {
 ////////// HANDLER FUNCTIONS - End //////////
 
 ////////// HELPER FUNCTIONS - Start //////////
-
-////////// HELPER FUNCTIONS - Start //////////
 //	FUNCTION
 // 	refreshIngestCacher
 //	created by Gavin
@@ -603,6 +658,42 @@ func refreshIngestCache() {
 	if refreshCacheResp != nil {
 
 	}
+}
+
+//	FUNCTION
+// 	validateStream
+//	created by Gavin
+//	on 20220608
+//	last updated 20220608
+//	by Gavin
+//	Description:	Validates that a stream input includes all required values
+func validateStream(stream stream_json) (streamValid bool, err error) {
+	streamValid = true
+	if streamValid {
+		switch stream_json.FileStoreTypeID {
+		// Local
+		case 1:
+			streamValid = true
+		// AWS
+		case 2:
+			streamValid = true
+		// GCP
+		case 3:
+			streamValid = true
+		// Azure
+		case 4:
+			streamValid = true
+		// HDFS
+		case 5:
+			streamValid = true
+		// Invalid
+		default:
+			streamValid = false
+			err = errors.New("Invalid `file_store_type_id` value")
+		}
+	}
+
+	return streamValid, err
 }
 
 func CheckError(err error) {
