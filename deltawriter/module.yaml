@@ -14,14 +14,14 @@
 # limitations under the License.
 kind: io.statefun.endpoints.v2/http
 spec:
-  functions: com.rtdl.sf.deltawriter/*
+  functions: com.rtdl.sf/deltawriter
   urlPathTemplate: http://delta-writer:8083/deltawriter
   transport:  
     type: io.statefun.transports.v1/async
 ---
 kind: io.statefun.kafka.v1/ingress
 spec:
-  id: com.rtdl.sf.deltawriter/ingest
+  id: com.rtdl.sf/deltawriter
   address: redpanda:29092
   consumerGroupId: deltawriter-ingress-group
   startupPosition:
@@ -31,5 +31,5 @@ spec:
     - topic: deltawriter-ingress
       valueType: com.rtdl.sf/IncomingMessage
       targets:
-        - com.rtdl.sf.deltawriter/ingest
+        - com.rtdl.sf/deltawriter
 

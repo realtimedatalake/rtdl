@@ -15,7 +15,7 @@ configs = [] #collection of configs
 functions = StatefulFunctions()
 
 # main logic
-@functions.bind(typename="com.rtdl.sf.deltawriter/ingest")
+@functions.bind(typename="com.rtdl.sf/deltawriter")
 async def greet(ctx: Context, message: Message):
     host_name = socket.gethostname()
 
@@ -81,7 +81,10 @@ async def greet(ctx: Context, message: Message):
         table_path += file_store_root + "/"
     table_path += dbname + "/" + tablename
     #print(table_path)
-    jsonDF.write.format("delta").mode("append").save(table_path)
+    try:
+        jsonDF.write.format("delta").mode("append").save(table_path)
+    except:
+        pass # will need to log and pass to next function
     #df = spark.read.format("delta").load(table_path)
     #df.show()
 
@@ -108,7 +111,7 @@ async def greet(ctx: Context, message: Message):
             if len(functions)>deltawriter_index+1: #more elements after deltawriter
                 topic_name = functions[deltawriter_index+1]+"-ingress"
                 ctx.send_egress(kafka_egress_message(
-                    typename='com.rtdl.sf.' + functions[deltawriter_index+1] + '/ingest', 
+                    typename='com.rtdl.sf/' + functions[deltawriter_index+1], 
                     topic=topic_name, 
                     key="message",
                     value=byte(data_json,'utf-8')))

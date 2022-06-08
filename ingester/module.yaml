@@ -14,14 +14,14 @@
 # limitations under the License.
 kind: io.statefun.endpoints.v2/http
 spec:
-  functions: com.rtdl.sf/*
+  functions: com.rtdl.sf/ingester
   urlPathTemplate: http://statefun-functions:8082/statefun
   transport:  
     type: io.statefun.transports.v1/async
 ---
 kind: io.statefun.kafka.v1/ingress
 spec:
-  id: com.rtdl.sf.ingester/ingest
+  id: com.rtdl.sf/ingester
   address: redpanda:29092
   consumerGroupId: ingress-group
   startupPosition:
@@ -31,6 +31,6 @@ spec:
     - topic: ingester-ingress
       valueType: com.rtdl.sf/IncomingMessage
       targets:
-        - com.rtdl.sf.ingester/ingest
+        - com.rtdl.sf/ingester
     
 
