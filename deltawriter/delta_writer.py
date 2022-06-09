@@ -85,8 +85,8 @@ async def greet(ctx: Context, message: Message):
         jsonDF.write.format("delta").mode("append").save(table_path)
     except:
         pass # will need to log and pass to next function
-    #df = spark.read.format("delta").load(table_path)
-    #df.show()
+    df = spark.read.format("delta").load(table_path)
+    df.show()
 
     #now for dynamic routing to next function
     #first identify the matching config
@@ -104,13 +104,14 @@ async def greet(ctx: Context, message: Message):
 
     
     #check if there's a list of functions in the matching config
+    '''
     if "functions" in matching_config:
         functions = matching_config["functions"].split(",")
         try: #try to find the index of deltawriter in the sequence of functions
             deltawriter_index = functions.index("deltawriter")
             if len(functions)>deltawriter_index+1: #more elements after deltawriter
                 topic_name = functions[deltawriter_index+1]+"-ingress"
-                ctx.send_egress(kafka_egress_message(
+                ctx.send_ingress(kafka_ingress_message(
                     typename='com.rtdl.sf/' + functions[deltawriter_index+1], 
                     topic=topic_name, 
                     key="message",
@@ -119,6 +120,7 @@ async def greet(ctx: Context, message: Message):
 
         except:
             pass
+    '''
 
                 
     

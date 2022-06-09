@@ -308,7 +308,7 @@ func updateStreamHandler() func(http.ResponseWriter, *http.Request) {
 			}
 
 			if reqStream.StreamID != "" {
-				configJson, err := ioutil.ReadFile("configs/" + reqStream.StreamID + ".json")
+				_, err := ioutil.ReadFile("configs/" + reqStream.StreamID + ".json")
 				if err != nil {
 					wrt.WriteHeader(http.StatusBadRequest)
 					http.Error(wrt, "Invalid `stream_id`", http.StatusBadRequest)
@@ -670,7 +670,7 @@ func refreshIngestCache() {
 func validateStream(stream stream_json) (streamValid bool, err error) {
 	streamValid = true
 	if streamValid {
-		switch stream_json.FileStoreTypeID {
+		switch stream.FileStoreTypeID {
 		// Local
 		case 1:
 			streamValid = true

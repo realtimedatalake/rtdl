@@ -43,7 +43,12 @@ import (
 	"github.com/xitongsys/parquet-go/writer"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
+
+	kafka "github.com/segmentio/kafka-go"
 )
+
+//Kafka URL
+var kafkaURL string
 
 // default database connection settings
 const (
@@ -1603,6 +1608,7 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 			if value == "ingester" {
 				if len(functions) > index+1 { //there are elements after ingester
 					//construct the target name
+					/**
 					KafkaEgressTypeName := statefun.TypeNameFrom("com.rtdl.sf/" + functions[index+1])
 					ctx.SendEgress(statefun.KafkaEgressBuilder{
 						Target: KafkaEgressTypeName,
@@ -1610,8 +1616,30 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 						Key:    "message",
 						Value:  []byte(payload),
 					})
-					log.Println("egress message written")
+					*/
+					partition := 0
 
+					fmt.Println("Topic: ", functions[index+1]+"-ingress")
+
+					conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaURL, functions[index+1]+"-ingress", partition)
+					if err != nil {
+						log.Fatal("failed to dial leader:", err)
+					}
+
+					conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) //10 seconds timeout
+					_, err = conn.WriteMessages(
+						kafka.Message{
+							Key:   []byte("message"),
+							Value: []byte(payload),
+						},
+					)
+					if err != nil {
+						log.Fatal("failed to write messages:", err)
+					}
+
+					if err := conn.Close(); err != nil {
+						log.Fatal("failed to close writer:", err)
+					}
 				}
 
 				return nil
@@ -1626,6 +1654,12 @@ func Ingest(ctx statefun.Context, message statefun.Message) error {
 }
 
 func main() {
+
+	kafkaURL = os.Getenv("KAFKA_URL")
+
+	if kafkaURL == "" {
+		log.Fatal("KAFKA_URL must be specified for")
+	}
 
 	//load constants from shared files
 	err := LoadConstants()
