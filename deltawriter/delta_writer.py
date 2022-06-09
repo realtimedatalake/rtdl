@@ -39,7 +39,15 @@ async def greet(ctx: Context, message: Message):
     elif "message_type" in data and len(data["message_type"])>0:
         tablename = data["message_type"]
         if data["message_type"] == "rtdl_205" : #ignore control messages
+            configs.clear()
+            for filename in os.listdir("configs"):
+                f = os.path.join("configs", filename)
+                # checking if it is a file
+                if os.path.isfile(f):
+                    configs.append(json.load(open(f)))
+            print(len(configs),' configs loaded')
             return
+
 
 
 
@@ -59,7 +67,6 @@ async def greet(ctx: Context, message: Message):
         spark_master_port = "7077" # default port if not specified
 
     spark_master_url = "spark://" + spark_master_host + ":" + spark_master_port
-
 
     builder = pyspark.sql.SparkSession.builder.appName("RTDL-Spark-Client") \
         .master(spark_master_url) \
@@ -122,14 +129,16 @@ async def greet(ctx: Context, message: Message):
                 if os.environ == '':
                     print("KAFKA_URL should not be empty")
                 else:
+                    print(kafka_url)
+                    print(topic_name)
                     producer = KafkaProducer(bootstrap_servers=kafka_url)
                     producer.send(topic_name,key='message',value=byte(data_json,'utf-8'))
                     producer.flush()
 
                 print('egress message written')
 
-        except:
-            pass
+        except Exception as e:
+            print(e)
 
                 
     
@@ -154,6 +163,7 @@ if __name__ == '__main__':
         # checking if it is a file
         if os.path.isfile(f):
             configs.append(json.load(open(f)))
+    print(len(configs),' configs loaded')
     print("DeltaWriter started")
     web.run_app(app, port=8083)
 
