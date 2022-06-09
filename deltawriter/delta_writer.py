@@ -10,6 +10,7 @@ import json
 import os
 
 import socket
+from kafka import KafkaProducer
 
 configs = [] #collection of configs
 functions = StatefulFunctions()
@@ -104,23 +105,31 @@ async def greet(ctx: Context, message: Message):
 
     
     #check if there's a list of functions in the matching config
-    '''
     if "functions" in matching_config:
         functions = matching_config["functions"].split(",")
         try: #try to find the index of deltawriter in the sequence of functions
             deltawriter_index = functions.index("deltawriter")
             if len(functions)>deltawriter_index+1: #more elements after deltawriter
                 topic_name = functions[deltawriter_index+1]+"-ingress"
+                '''
                 ctx.send_ingress(kafka_ingress_message(
                     typename='com.rtdl.sf/' + functions[deltawriter_index+1], 
                     topic=topic_name, 
                     key="message",
                     value=byte(data_json,'utf-8')))
+                '''
+                kafka_url = os.environ['KAFKA_URL']
+                if os.environ == '':
+                    print("KAFKA_URL should not be empty")
+                else:
+                    producer = KafkaProducer(bootstrap_servers=kafka_url)
+                    producer.send(topic_name,key='message',value=byte(data_json,'utf-8'))
+                    producer.flush()
+
                 print('egress message written')
 
         except:
             pass
-    '''
 
                 
     

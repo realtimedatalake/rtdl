@@ -218,6 +218,8 @@ services:
       - SPARK_MASTER_HOST=spark
       - SPARK_MASTER_PORT=7077
       - FILE_STORE_ROOT=/app
+      - KAFKA_URL=redpanda:29092
+
     expose:
       - 8083
     volumes: 
