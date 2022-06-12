@@ -48,6 +48,7 @@ services:
 
   ##### Kafka/Redpanda Services - Start #####
   redpanda:
+    user: root
     platform: linux/amd64
     image: docker.vectorized.io/vectorized/redpanda:v21.9.5
     container_name: rtdl_redpanda
@@ -149,6 +150,7 @@ services:
 
   ##### Dremio Services - Start #####
   dremio:
+    user: root
     platform: linux/amd64
     image: dremio/dremio-oss
     container_name: rtdl_dremio
@@ -173,6 +175,7 @@ services:
 
   ##### Spark Services - Start #####
   spark:
+    user: root
     platform: linux/amd64
     image: docker.io/bitnami/spark:3
     container_name: rtdl_spark-master
@@ -191,6 +194,7 @@ services:
       
 
   spark-worker:
+    user: root
     platform: linux/amd64
     image: docker.io/bitnami/spark:3
     container_name: rtdl_spark-worker
@@ -208,6 +212,7 @@ services:
       - ./storage/spark:/app
 
   delta-writer:
+    user: root
     build:
       context: ./deltawriter
     platform: linux/amd64

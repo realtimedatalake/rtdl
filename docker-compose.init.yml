@@ -5,6 +5,7 @@ services:
 
   ##### Kafka/Redpanda Services - Start #####
   redpanda:
+    user: root
     command: 
     - redpanda
     - start
@@ -50,6 +51,7 @@ services:
 
   ##### Dremio Services - Start #####
   dremio:
+    user: root
     platform: linux/amd64
     image: dremio/dremio-oss
     container_name: rtdl_dremio

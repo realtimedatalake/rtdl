@@ -95,7 +95,7 @@ async def greet(ctx: Context, message: Message):
         pass # will need to log and pass to next function
     df = spark.read.format("delta").load(table_path)
     df.show()
-
+    print("spark part done")
     #now for dynamic routing to next function
     #first identify the matching config
     matching_config = {}
@@ -129,11 +129,12 @@ async def greet(ctx: Context, message: Message):
                 if os.environ == '':
                     print("KAFKA_URL should not be empty")
                 else:
-                    print(kafka_url)
                     print(topic_name)
                     producer = KafkaProducer(bootstrap_servers=kafka_url)
-                    producer.send(topic_name,key='message',value=byte(data_json,'utf-8'))
+                    producer.send(topic_name,key='message',value=bytes(data_json,'utf-8'))
                     producer.flush()
+                    producer.close()
+                    print("egress message written")
 
                 print('egress message written')
 
