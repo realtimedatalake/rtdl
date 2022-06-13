@@ -150,7 +150,6 @@ services:
 
   ##### Dremio Services - Start #####
   dremio:
-    user: root
     platform: linux/amd64
     image: dremio/dremio-oss
     container_name: rtdl_dremio
@@ -174,12 +173,12 @@ services:
 
 
   ##### Spark Services - Start #####
-  spark:
-    user: root
+  spark-master:
     platform: linux/amd64
-    image: docker.io/bitnami/spark:3
+    #image: docker.io/bitnami/spark:3
+    image: mk-spark-master
     container_name: rtdl_spark-master
-    user: root
+    #user: root
     environment:
       - SPARK_MODE=master
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -194,14 +193,14 @@ services:
       
 
   spark-worker:
-    user: root
     platform: linux/amd64
-    image: docker.io/bitnami/spark:3
+    #image: docker.io/bitnami/spark:3
+    image: mk-spark-worker
     container_name: rtdl_spark-worker
-    user: root
+    #user: root
     environment:
       - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_MASTER_URL=spark-master://spark:7077
       - SPARK_WORKER_MEMORY=8G
       - SPARK_WORKER_CORES=8
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -211,16 +210,17 @@ services:
     volumes: 
       - ./storage/spark:/app
 
+
   delta-writer:
-    user: root
-    build:
-      context: ./deltawriter
+    #build:
+    #  context: ./deltawriter
     platform: linux/amd64
-    image: rtdl/rtdl-deltawriter:latest
+    #image: rtdl/rtdl-deltawriter:latest
+    image: mk-deltawriter
     container_name: rtdl_deltawriter
     user: root
     environment:
-      - SPARK_MASTER_HOST=spark
+      - SPARK_MASTER_HOST=spark-master
       - SPARK_MASTER_PORT=7077
       - FILE_STORE_ROOT=/app
       - KAFKA_URL=redpanda:29092

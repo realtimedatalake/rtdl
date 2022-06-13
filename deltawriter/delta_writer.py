@@ -167,4 +167,3 @@ if __name__ == '__main__':
     print(len(configs),' configs loaded')
     print("DeltaWriter started")
     web.run_app(app, port=8083)
-
