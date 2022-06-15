@@ -43,6 +43,7 @@ services:
       - redpanda
     volumes:
       - ./storage/configs:/app/configs
+      - ./constants:/app/constants
 
   ##### Ingest Service - End #####
 

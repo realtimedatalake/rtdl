@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"github.com/creamdog/gonfig"
 
 	kafka "github.com/segmentio/kafka-go"
 )
@@ -62,6 +63,8 @@ var configs []Config
 
 var streamConfigs []map[string]interface{}
 
+var allFunctions []string
+
 //utility method to remove duplicate strings from array
 //https://stackoverflow.com/questions/66643946/how-to-remove-duplicates-strings-or-int-from-slice-in-go
 func removeDuplicateStr(strSlice []string) []string {
@@ -108,6 +111,39 @@ func LoadConfig() error {
 	log.Println("No. of configs loaded " + strconv.Itoa(len(streamConfigs)))
 	return nil
 
+}
+
+//utility method for Kafka message writing
+func WriteKafkaMessage(kafkaURL string, topic string,body []byte) {
+	// to produce messages
+	partition := 0
+
+	if topic != "" {
+		fmt.Println("Topic: ", topic)
+
+		conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaURL, topic, partition)
+		if err != nil {
+			log.Fatal("failed to dial leader:", err)
+		}
+
+		conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) //10 seconds timeout
+		_, err = conn.WriteMessages(
+			kafka.Message{
+				Key:   []byte("message"),
+				Value: body,
+			},
+		)
+		if err != nil {
+			log.Fatal("failed to write messages:", err)
+		}
+
+		if err := conn.Close(); err != nil {
+			log.Fatal("failed to close writer:", err)
+		}
+
+		fmt.Println("message written")
+	}
+	
 }
 
 //handler function for incoming REST calls
@@ -215,6 +251,8 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 				} else {
 					topic = "ingester-ingress" //default flow
 				}
+
+				WriteKafkaMessage(kafkaURL, topic, body)
 	
 			}
 
@@ -228,39 +266,15 @@ func producerHandler(kafkaURL string, topic string, processingType string) func(
 			}
 
 			body = []byte(`{"stream_id":"","message_type":"rtdl_205","payload":{}}`)
-			topic = "ingester-ingress" //cache-refresh requests to always go to ingester
+
+			//cache refresh request to all functions
+			for _, function := range allFunctions {
+				WriteKafkaMessage(kafkaURL, function + "-ingress", body)
+			}
 
 		}
+	
 
-		// to produce messages
-		partition := 0
-
-		if topic != "" {
-			fmt.Println("Topic: ", topic)
-
-			conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaURL, topic, partition)
-			if err != nil {
-				log.Fatal("failed to dial leader:", err)
-			}
-	
-			conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) //10 seconds timeout
-			_, err = conn.WriteMessages(
-				kafka.Message{
-					Key:   []byte("message"),
-					Value: body,
-				},
-			)
-			if err != nil {
-				log.Fatal("failed to write messages:", err)
-			}
-	
-			if err := conn.Close(); err != nil {
-				log.Fatal("failed to close writer:", err)
-			}
-	
-			fmt.Println("message written")
-	
-		}
 	})
 }
 
@@ -272,6 +286,26 @@ func main() {
 		log.Fatal("Unable to load configuration ", err)
 	}
 
+	//load list of all functions, this would be required for sending control messages
+	allFunctionsListFile, err := os.Open("constants/all_functions.json")
+	if err != nil {
+		log.Println(err)
+	} else {
+		allFunctionsList, err := gonfig.FromJson(allFunctionsListFile)
+		if err != nil {
+			log.Println(err)
+		} else {
+			allFunctionsListString, err := allFunctionsList.GetString("functions","")
+			if err != nil {
+				log.Println(err)
+			} else {
+				if allFunctionsListString != "" {
+					allFunctions = strings.Split(fmt.Sprint(allFunctionsListString),",")
+				}
+			}
+		}
+
+	}
 	// get kafka writer using environment variables.
 	kafkaURL := os.Getenv("KAFKA_URL")
 	//topic := os.Getenv("KAFKA_TOPIC")
