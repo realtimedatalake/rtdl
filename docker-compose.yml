@@ -27,8 +27,8 @@ services:
 
   ##### Ingest Service - Start #####
   ingest:
-    # build:
-    #   context: ./ingest
+    build:
+      context: ./ingest
     platform: linux/amd64
     image: rtdl/rtdl-ingest:latest
     container_name: rtdl_ingest
@@ -38,14 +38,18 @@ services:
       - 8080:8080
     environment:
       KAFKA_URL: redpanda:29092
-      KAFKA_TOPIC: ingress
       LISTENER_PORT: 8080
     depends_on:      
       - redpanda
+    volumes:
+      - ./storage/configs:/app/configs
+      - ./constants:/app/constants
+
   ##### Ingest Service - End #####
 
   ##### Kafka/Redpanda Services - Start #####
   redpanda:
+    user: root
     platform: linux/amd64
     image: docker.vectorized.io/vectorized/redpanda:v21.9.5
     container_name: rtdl_redpanda
@@ -132,14 +136,7 @@ services:
       DREMIO_USERNAME: rtdl
       DREMIO_PASSWORD: rtdl1234      
       DREMIO_MOUNT_PATH: /mnt/datastore
-      GLUE_ENABLED: "false"
-      GLUE_ROLE: arn:aws:iam::<account number>:role/<glue role>
-      GLUE_SCHEDULE_CRON: 0 0 * * ? *
-      SNOWFLAKE_ENABLED: "false"
-      SNOWFLAKE_ACCT: <account identifier>
-      SNOWFLAKE_USER: <username>
-      SNOWFLAKE_PASSWORD: <password>
-      SNOWFLAKE_DB: <database>
+      KAFKA_URL: redpanda:29092
     volumes:
       - ./storage/rtdl-data_store:/app/datastore    
       - ./storage/configs:/app/configs
