@@ -176,7 +176,7 @@ services:
   ##### Spark Services - Start #####
   # spark:
   #   platform: linux/amd64
-  #   image: docker.io/bitnami/spark:3
+  #   image: rtdl/rtdl-spark-master:latest
   #   container_name: rtdl_spark-master
   #   user: root
   #   environment:
@@ -193,7 +193,7 @@ services:
 
   # spark-worker:
   #   platform: linux/amd64
-  #   image: docker.io/bitnami/spark:3
+  #   image: rtdl/rtdl-spark-worker:latest
   #   container_name: rtdl_spark-worker
   #   user: root
   #   environment:
