@@ -132,7 +132,7 @@ async def greet(ctx: Context, message: Message):
                 producer = KafkaProducer(bootstrap_servers=kafka_url,max_block_ms=1000)
                 future = producer.send(topic_name,key=bytes('message','utf-8'),value=json.dumps(data).encode('utf-8'))
                 try:
-                    result = future.get(timeout=10)
+                    result = future.get(timeout=100)
                     producer.close()
                     print("egress message written")
                 except KafkaError:
