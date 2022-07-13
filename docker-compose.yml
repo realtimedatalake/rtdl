@@ -3,8 +3,8 @@ version: '3'
 services:
 
   config:
-    build:
-      context: ./config
+    #build:
+    #  context: ./config
     platform: linux/amd64
     image: rtdl/rtdl-config:latest
     container_name: rtdl_config
@@ -27,8 +27,8 @@ services:
 
   ##### Ingest Service - Start #####
   ingest:
-    build:
-      context: ./ingest
+    #build:
+    #  context: ./ingest
     platform: linux/amd64
     image: rtdl/rtdl-ingest:latest
     container_name: rtdl_ingest
@@ -123,8 +123,8 @@ services:
       - redpanda
 
   statefun-functions:
-    build:
-      context: ./ingester
+    #build:
+    #  context: ./ingester
     platform: linux/amd64
     image: rtdl/process-statefun-functions:latest
     container_name: rtdl_process-statefun-functions
@@ -176,8 +176,7 @@ services:
   ##### Spark Services - Start #####
   spark-master:
     platform: linux/amd64
-    image: mk-spark-master
-    #image: rtdl/rtdl-spark-master:latest
+    image: rtdl/rtdl-spark-master:latest
     container_name: rtdl_spark-master
     #user: root
     environment:
@@ -194,8 +193,7 @@ services:
 
   spark-worker:
     platform: linux/amd64
-    #image: rtdl/rtdl-spark-worker:latest
-    image: mk-spark-worker
+    image: rtdl/rtdl-spark-worker:latest
     container_name: rtdl_spark-worker
     #user: root
     environment:
@@ -211,8 +209,8 @@ services:
      - ./storage/spark:/app
 
   delta-writer:
-    build:
-      context: ./deltawriter
+    #build:
+    #  context: ./deltawriter
     platform: linux/amd64
     image: rtdl/rtdl-deltawriter:latest
     container_name: rtdl_deltawriter
