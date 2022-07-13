@@ -1,4 +1,4 @@
- FROM rtdl/rtdl-spark-base:0.2.1-alpha
+ FROM rtdl/rtdl-spark-base:latest
 
   # Python packages
   RUN pip3 install wget requests datawrangler

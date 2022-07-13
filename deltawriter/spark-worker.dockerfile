@@ -1,4 +1,4 @@
-FROM rtdl/rtdl-spark-base:0.2.1-alpha
+FROM rtdl/rtdl-spark-base:latest
 
    ENV APP=/app
    ENV JAVA_HOME=/usr
