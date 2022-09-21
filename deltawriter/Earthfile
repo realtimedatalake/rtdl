@@ -1,0 +1,20 @@
+VERSION 0.6
+FROM python:3.9-alpine
+WORKDIR app
+
+deps:
+    COPY requirements.txt ./
+    RUN apk update && apk add bash && apk add openjdk11-jre
+    RUN pip3 install -r ./requirements.txt
+
+docker:
+    FROM +deps
+    ARG ver='0.0.0'
+    COPY module.yaml delta_writer.py ./
+    ENV SPARK_MASTER_HOST=0.0.0.0
+    ENV SPARK_MASTER_PORT=7077
+    EXPOSE 8083
+    USER 1001
+    CMD ["python3", "-u", "delta_writer.py"]
+    SAVE IMAGE --push rtdl/rtdl-deltawriter:$ver
+    SAVE IMAGE --push rtdl/rtdl-deltawriter:latest

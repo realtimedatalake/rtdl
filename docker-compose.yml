@@ -1,10 +1,8 @@
 version: '3'
 
 services:
-
+  ##### Config Services - Start #####
   config:
-    #build:
-    #  context: ./config
     platform: linux/amd64
     image: rtdl/rtdl-config:latest
     container_name: rtdl_config
@@ -21,14 +19,11 @@ services:
     volumes:
       - ./storage/configs:/app/configs
       - ./constants:/app/constants
-
   ##### Config Services - End #####
 
 
   ##### Ingest Service - Start #####
   ingest:
-    #build:
-    #  context: ./ingest
     platform: linux/amd64
     image: rtdl/rtdl-ingest:latest
     container_name: rtdl_ingest
@@ -44,8 +39,8 @@ services:
     volumes:
       - ./storage/configs:/app/configs
       - ./constants:/app/constants
-
   ##### Ingest Service - End #####
+
 
   ##### Kafka/Redpanda Services - Start #####
   redpanda:
@@ -123,8 +118,6 @@ services:
       - redpanda
 
   statefun-functions:
-    #build:
-    #  context: ./ingester
     platform: linux/amd64
     image: rtdl/process-statefun-functions:latest
     container_name: rtdl_process-statefun-functions
@@ -209,8 +202,6 @@ services:
      - ./storage/spark:/app
 
   delta-writer:
-    #build:
-    #  context: ./deltawriter
     platform: linux/amd64
     image: rtdl/rtdl-deltawriter:latest
     container_name: rtdl_deltawriter
