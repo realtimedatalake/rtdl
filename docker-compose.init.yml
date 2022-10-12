@@ -1,8 +1,6 @@
 version: '3'
 
 services:
-
-
   ##### Kafka/Redpanda Services - Start #####
   redpanda:
     user: root

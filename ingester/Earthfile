@@ -1,0 +1,18 @@
+VERSION 0.6
+FROM golang:1.17-alpine
+WORKDIR /app
+ENV GIN_MODE=release
+
+build:
+    COPY go.mod go.sum ingester.go ./
+    RUN go mod download -x
+    RUN go build -o ./ingester
+    SAVE ARTIFACT ./ingester ingester AS LOCAL ingester
+
+docker:
+    ARG ver='0.0.0'
+    COPY +build/ingester .
+    EXPOSE 8082
+    CMD [ "./ingester" ]
+    SAVE IMAGE --push rtdl/process-statefun-functions:$ver
+    SAVE IMAGE --push rtdl/process-statefun-functions:latest

@@ -1,0 +1,18 @@
+VERSION 0.6
+FROM golang:1.17-alpine
+WORKDIR /app
+ENV GIN_MODE=release
+
+build:
+    COPY go.mod go.sum config-service.go ./
+    RUN go mod download -x
+    RUN go build -o ./config-service
+    SAVE ARTIFACT ./config-service config-service AS LOCAL config-service
+
+docker:
+    ARG ver='0.0.0'
+    COPY +build/config-service .
+    EXPOSE 80
+    CMD [ "./config-service" ]
+    SAVE IMAGE --push rtdl/rtdl-config:$ver
+    SAVE IMAGE --push rtdl/rtdl-config:latest
